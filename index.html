@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZEDSON WATCHCRAFT - Management System</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/login.css">
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-container">
+            <div class="login-logo">
+                <img src="assets/zedson-logo.png" alt="ZEDSON WATCHCRAFT" class="login-logo-image">
+                <!-- Fallback to original design if image fails to load -->
+                <div class="login-logo-circle" style="display: none;">
+                    <div class="login-logo-watch"></div>
+                </div>
+                <h1 class="login-title" style="display: none;">ZEDSON</h1>
+                <div class="login-subtitle" style="display: none;">WATCHCRAFT</div>
+            </div>
+            
+            <form class="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>Username:</label>
+                    <input type="text" id="loginUsername" required placeholder="Enter your username">
+                </div>
+                <div class="form-group">
+                    <label>Password:</label>
+                    <input type="password" id="loginPassword" required placeholder="Enter your password">
+                </div>
+                <button type="submit" class="login-btn">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- First Login Password Setup Modal -->
+    <div id="firstLoginModal" class="modal" style="z-index: 3000;">
+        <div class="modal-content">
+            <h2>First Time Login - Set Your Password</h2>
+            <p>Please set your new password for security purposes.</p>
+            <form onsubmit="handleFirstTimePasswordSetup(event)">
+                <div class="form-group">
+                    <label>New Password:</label>
+                    <input type="password" id="newPasswordSetup" required placeholder="Enter new password" minlength="6">
+                </div>
+                <div class="form-group">
+                    <label>Confirm Password:</label>
+                    <input type="password" id="confirmPasswordSetup" required placeholder="Confirm new password" minlength="6">
+                </div>
+                <button type="submit" class="btn">Set Password</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="mainApp" class="app-container">
+        <div class="container">
+            <!-- REVERTED Header with Original Layout -->
+            <div class="header">
+                <!-- User Info Bar -->
+                <div class="user-info">
+                    <span id="currentUser">Welcome, User</span>
+                    <span id="currentUserRole" class="user-role">ROLE</span>
+                    <button class="logout-btn" onclick="logout()">Logout</button>
+                </div>
+                
+                <!-- Original Header Layout: Logo Left, Navigation Right -->
+                <div class="header-main">
+                    <!-- Logo Section (Left Side) -->
+                    <div class="logo-section">
+                        <img src="assets/zedson-logo.png" alt="ZEDSON WATCHCRAFT" class="header-logo-main">
+                        <!-- Fallback to original design if image fails to load -->
+                        <div class="logo-fallback" style="display: none;">
+                            <div class="logo-circle-main">
+                                <div class="logo-watch"></div>
+                            </div>
+                            <div class="logo-text">
+                                <h1>ZEDSON</h1>
+                                <div class="subtitle">WATCHCRAFT</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Navigation Section (Right Side) -->
+                    <div class="nav-section">
+                        <div class="nav" id="mainNavigation">
+                            <button class="nav-btn active" onclick="showSection('dashboard', this)">Dashboard</button>
+                            <button class="nav-btn" onclick="showSection('customers', this)">Customers</button>
+                            <button class="nav-btn" onclick="showSection('inventory', this)">Inventory</button>
+                            <button class="nav-btn" onclick="showSection('sales', this)">Sales</button>
+                            <button class="nav-btn" onclick="showSection('service', this)">Service</button>
+                            <button class="nav-btn" onclick="showSection('expenses', this)">Expenses</button>
+                            <button class="nav-btn" onclick="showSection('invoices', this)">Invoices</button>
+                            <button class="nav-btn" id="userManagementBtn" onclick="showSection('users', this)" style="display: none;">User Management</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content">
+                <!-- Dashboard Section -->
+                <div id="dashboard" class="section active">
+                    <h2>Dashboard Overview</h2>
+                    <div class="stats">
+                        <div class="stat-card">
+                            <h3 id="totalWatches">3</h3>
+                            <p>Total Items</p>
+                        </div>
+                        <div class="stat-card clickable-stat" onclick="openRevenueAnalytics()">
+                            <h3 id="todayRevenue">₹0</h3>
+                            <p>Today's Sales</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3 id="incompleteServices">0</h3>
+                            <p>Incomplete Services</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3 id="totalCustomers">2</h3>
+                            <p>Total Customers</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3 id="totalInvoices">0</h3>
+                            <p>Total Invoices</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-2">
+                        <div class="card">
+                            <h3>Recent Sales</h3>
+                            <div id="recentSales">No sales yet</div>
+                        </div>
+                        <div class="card">
+                            <h3>Incomplete Service Requests</h3>
+                            <div id="incompleteServicesList">No incomplete services</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Inventory Section -->
+                <div id="inventory" class="section">
+                    <h2>Inventory Management</h2>
+                    <div style="margin-bottom: 20px;">
+                        <button class="btn" onclick="openAddWatchModal()">Add New Item</button>
+                        <input type="text" class="search-box" placeholder="Search by code, type, brand, or model..." 
+                               onkeyup="searchWatches(this.value)" style="width: 300px; display: inline-block; margin-left: 20px;">
+                    </div>
+                    <table class="table" id="watchTable">
+                        <thead>
+                            <tr>
+                                <th>S.No</th>
+                                <th>Code</th>
+                                <th>Type</th>
+                                <th>Brand</th>
+                                <th>Model</th>
+                                <th>Size</th>
+                                <th>Price</th>
+                                <th>Quantity</th>
+                                <th>Outlet</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="watchTableBody">
+                            <!-- Sample data will be loaded by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Sales Section -->
+                <div id="sales" class="section">
+                    <h2>Sales Management</h2>
+                    <div style="margin-bottom: 20px;">
+                        <button class="btn" onclick="openNewSaleModal()">New Sale</button>
+                        <input type="text" class="search-box" placeholder="Search sales..." 
+                               onkeyup="searchSales(this.value)" style="width: 300px; display: inline-block; margin-left: 20px;">
+                    </div>
+                    <table class="table" id="salesTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;">S.No</th>
+                                <th style="width: 80px;">Date</th>
+                                <th style="width: 60px;">Time</th>
+                                <th style="width: 140px;">Customer</th>
+                                <th style="width: 180px;">Item</th>
+                                <th style="width: 100px;">Price</th>
+                                <th style="width: 100px;">Payment Method</th>
+                                <th style="width: 160px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="salesTableBody">
+                            <!-- Sales data will be loaded by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Service Section -->
+                <div id="service" class="section">
+                    <h2>Service Management</h2>
+                    <div style="margin-bottom: 20px;">
+                        <button class="btn" onclick="openNewServiceModal()">New Service Request</button>
+                        <input type="text" class="search-box" placeholder="Search services..." 
+                               onkeyup="searchServices(this.value)" style="width: 300px; display: inline-block; margin-left: 20px;">
+                    </div>
+                    <table class="table" id="serviceTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;">S.No</th>
+                                <th style="width: 80px;">Date</th>
+                                <th style="width: 60px;">Time</th>
+                                <th style="width: 120px;">Customer</th>
+                                <th style="width: 130px;">Watch Details</th>
+                                <th style="width: 130px;">Specifications</th>
+                                <th style="width: 160px;">Issue</th>
+                                <th style="width: 80px;">Status</th>
+                                <th style="width: 80px;">Cost</th>
+                                <th style="width: 280px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="serviceTableBody">
+                            <!-- Service data will be loaded by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Expenses Section -->
+                <div id="expenses" class="section">
+                    <h2>Expense Management</h2>
+                    <div style="margin-bottom: 20px;">
+                        <button class="btn" onclick="openAddExpenseModal()">Add New Expense</button>
+                        <input type="text" class="search-box" placeholder="Search expenses..." 
+                               onkeyup="searchExpenses(this.value)" style="width: 300px; display: inline-block; margin-left: 20px;">
+                    </div>
+                    <table class="table" id="expenseTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;">S.No</th>
+                                <th style="width: 120px;">Date</th>
+                                <th style="width: 300px;">Description</th>
+                                <th style="width: 120px;">Amount</th>
+                                <th style="width: 160px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expenseTableBody">
+                            <!-- Expense data will be loaded by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Invoices Section -->
+                <div id="invoices" class="section">
+                    <h2>Invoice Management</h2>
+                    <div style="margin-bottom: 20px;">
+                        <input type="text" class="search-box" placeholder="Search invoices..." 
+                               onkeyup="searchInvoices(this.value)" style="width: 300px;">
+                        <select id="invoiceTypeFilter" onchange="filterInvoicesByType()" style="margin-left: 10px; padding: 8px;">
+                            <option value="">All Types</option>
+                            <option value="Sales">Sales Invoice</option>
+                            <option value="Service Completion">Service Completion</option>
+                        </select>
+                    </div>
+                    <table class="table" id="invoiceTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px;">S.No</th>
+                                <th style="width: 100px;">Invoice No</th>
+                                <th style="width: 80px;">Type</th>
+                                <th style="width: 80px;">Date</th>
+                                <th style="width: 130px;">Customer</th>
+                                <th style="width: 180px;">Details</th>
+                                <th style="width: 100px;">Amount</th>
+                                <th style="width: 80px;">Status</th>
+                                <th style="width: 100px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoiceTableBody">
+                            <!-- Invoice data will be loaded by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Customers Section with Net Value column -->
+                <div id="customers" class="section">
+                    <h2>Customer Management</h2>
+                    <div style="margin-bottom: 20px;">
+                        <button class="btn" onclick="openAddCustomerModal()">Add Customer</button>
+                        <input type="text" class="search-box" placeholder="Search customers..." 
+                               onkeyup="searchCustomers(this.value)" style="width: 300px; display: inline-block; margin-left: 20px;">
+                    </div>
+                    <table class="table" id="customerTable">
+                        <thead>
+                            <tr>
+                                <th>S.No</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Purchases</th>
+                                <th>Services</th>
+                                <th>Net Value</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customerTableBody">
+                            <!-- Customer data will be loaded by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- User Management Section (Admin Only) -->
+                <div id="users" class="section">
+                    <h2>User Management</h2>
+                    <div style="margin-bottom: 20px;">
+                        <button class="btn" onclick="openAddUserModal()">Add New User</button>
+                    </div>
+                    <table class="table" id="userTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;">S.No</th>
+                                <th style="width: 120px;">Username</th>
+                                <th style="width: 100px;">Role</th>
+                                <th style="width: 100px;">Status</th>
+                                <th style="width: 120px;">Created Date</th>
+                                <th style="width: 120px;">Last Login</th>
+                                <th style="width: 150px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userTableBody">
+                            <!-- User data will be loaded by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- UPDATED Revenue Analytics Modal -->
+    <div id="revenueAnalyticsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('revenueAnalyticsModal')">&times;</span>
+            <h2>Revenue Analytics</h2>
+            <div class="filter-controls">
+                <div class="grid grid-2">
+                    <div class="form-group">
+                        <label>Filter Type:</label>
+                        <select id="revenueFilterType" onchange="toggleRevenueFilterInputs()">
+                            <option value="all">All Transactions</option>
+                            <option value="dateRange">Date Range</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Revenue Type:</label>
+                        <select id="revenueTypeFilter" onchange="applyRevenueFilter()">
+                            <option value="all">All Revenue</option>
+                            <option value="sales">Sales Only</option>
+                            <option value="services">Services Only</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group" id="revenueYearGroup">
+                    <label>Year:</label>
+                    <select id="revenueYear"></select>
+                </div>
+                <div class="grid grid-2" id="revenueDateRangeInputs" style="display: none;">
+                    <div class="form-group">
+                        <label>From Date:</label>
+                        <input type="date" id="revenueFromDate">
+                    </div>
+                    <div class="form-group">
+                        <label>To Date:</label>
+                        <input type="date" id="revenueToDate">
+                    </div>
+                </div>
+                <div class="form-group" id="revenueMonthGroup" style="display: none;">
+                    <label>Month:</label>
+                    <select id="revenueMonth">
+                        <option value="0">January</option>
+                        <option value="1">February</option>
+                        <option value="2">March</option>
+                        <option value="3">April</option>
+                        <option value="4">May</option>
+                        <option value="5">June</option>
+                        <option value="6">July</option>
+                        <option value="7">August</option>
+                        <option value="8">September</option>
+                        <option value="9">October</option>
+                        <option value="10">November</option>
+                        <option value="11">December</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="includeExpenses" onchange="applyRevenueFilter()">
+                        Include Expenses
+                    </label>
+                </div>
+                <button class="btn" onclick="applyRevenueFilter()">Apply Filter</button>
+                <button class="btn btn-danger" onclick="resetRevenueFilter()">Reset</button>
+            </div>
+            <div id="revenueFilterResults">
+                <!-- Results will be displayed here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Invoice Preview Modal -->
+    <div id="invoicePreviewModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <span class="close" onclick="closeModal('invoicePreviewModal')">&times;</span>
+            <div id="invoicePreviewContent"></div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn" onclick="printInvoice()">Print Invoice</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include all modal templates -->
+    <div id="modals-container"></div>
+
+    <!-- JavaScript Files -->
+    <script src="js/utils.js"></script>
+    <script src="js/logging.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/inventory.js"></script>
+    <script src="js/sales-core.js"></script>
+    <script src="js/sales-extended.js"></script>
+    <script src="js/service.js"></script>
+    <script src="js/expenses.js"></script>
+    <script src="js/customers.js"></script>
+    <script src="js/invoice-templates.js"></script>
+    <script src="js/invoices.js"></script>
+    <script src="js/app-core.js"></script>
+    <script src="js/app-extended.js"></script>
+
+    <script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyAoxPLdv7yFr_a7BwUKIJ7BNkVl7MzqaxY",
+    authDomain: "zedsonwatchcraft-93d67.firebaseapp.com",
+    projectId: "zedsonwatchcraft-93d67",
+    storageBucket: "zedsonwatchcraft-93d67.firebasestorage.app",
+    messagingSenderId: "20067888601",
+    appId: "1:20067888601:web:b96f6580e0e2aa7ccb3dc8",
+    measurementId: "G-0DGDMVLLWC"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+</script>
+
+</body>
+</html>
