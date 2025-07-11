@@ -1,5 +1,5 @@
 // File: backend/models/index.js
-// ZEDSON WATCHCRAFT - MongoDB Models
+// ZEDSON WATCHCRAFT - MongoDB Models (FIXED)
 // Developed by PULSEWARE❤️
 
 const mongoose = require('mongoose');
@@ -22,7 +22,6 @@ const UserSchema = new mongoose.Schema({
 
 // Customer Schema
 const CustomerSchema = new mongoose.Schema({
-    id: { type: Number, required: true, unique: true },
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     phone: { type: String, required: true },
@@ -37,7 +36,6 @@ const CustomerSchema = new mongoose.Schema({
 
 // Inventory Schema
 const InventorySchema = new mongoose.Schema({
-    id: { type: Number, required: true, unique: true },
     code: { type: String, required: true, unique: true },
     type: { type: String, required: true },
     brand: { type: String, required: true },
@@ -55,7 +53,6 @@ const InventorySchema = new mongoose.Schema({
 
 // Sales Schema
 const SalesSchema = new mongoose.Schema({
-    id: { type: Number, required: true, unique: true },
     date: { type: String, required: true },
     time: { type: String, required: true },
     timestamp: { type: String, required: true },
@@ -83,7 +80,6 @@ const SalesSchema = new mongoose.Schema({
 
 // Service Schema
 const ServiceSchema = new mongoose.Schema({
-    id: { type: Number, required: true, unique: true },
     date: { type: String, required: true },
     time: { type: String, required: true },
     timestamp: { type: String, required: true },
@@ -118,7 +114,6 @@ const ServiceSchema = new mongoose.Schema({
 
 // Expense Schema
 const ExpenseSchema = new mongoose.Schema({
-    id: { type: Number, required: true, unique: true },
     date: { type: String, required: true },
     formattedDate: { type: String, required: true },
     description: { type: String, required: true },
@@ -131,7 +126,6 @@ const ExpenseSchema = new mongoose.Schema({
 
 // Invoice Schema
 const InvoiceSchema = new mongoose.Schema({
-    id: { type: Number, required: true, unique: true },
     invoiceNo: { type: String, required: true, unique: true },
     type: { type: String, required: true },
     subType: { type: String, required: true },
@@ -164,7 +158,6 @@ const InvoiceSchema = new mongoose.Schema({
 
 // Activity Log Schema
 const ActivityLogSchema = new mongoose.Schema({
-    id: { type: Number, required: true, unique: true },
     timestamp: { type: String, required: true },
     date: { type: String, required: true },
     time: { type: String, required: true },
@@ -181,14 +174,14 @@ const ActivityLogSchema = new mongoose.Schema({
 // Auto-increment plugin for ID fields
 const AutoIncrement = require('mongoose-sequence')(mongoose);
 
-// Apply auto-increment to schemas
-CustomerSchema.plugin(AutoIncrement, {inc_field: 'id'});
-InventorySchema.plugin(AutoIncrement, {inc_field: 'id'});
-SalesSchema.plugin(AutoIncrement, {inc_field: 'id'});
-ServiceSchema.plugin(AutoIncrement, {inc_field: 'id'});
-ExpenseSchema.plugin(AutoIncrement, {inc_field: 'id'});
-InvoiceSchema.plugin(AutoIncrement, {inc_field: 'id'});
-ActivityLogSchema.plugin(AutoIncrement, {inc_field: 'id'});
+// Apply auto-increment to schemas with unique collection identifiers
+CustomerSchema.plugin(AutoIncrement, {inc_field: 'id', id: 'customer_counter'});
+InventorySchema.plugin(AutoIncrement, {inc_field: 'id', id: 'inventory_counter'});
+SalesSchema.plugin(AutoIncrement, {inc_field: 'id', id: 'sales_counter'});
+ServiceSchema.plugin(AutoIncrement, {inc_field: 'id', id: 'service_counter'});
+ExpenseSchema.plugin(AutoIncrement, {inc_field: 'id', id: 'expense_counter'});
+InvoiceSchema.plugin(AutoIncrement, {inc_field: 'id', id: 'invoice_counter'});
+ActivityLogSchema.plugin(AutoIncrement, {inc_field: 'id', id: 'activity_log_counter'});
 
 // Create Models
 const User = mongoose.model('User', UserSchema);
