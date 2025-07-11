@@ -1,15 +1,15 @@
-// ZEDSON WATCHCRAFT - Sales Core Module (Part 1)
+// ZEDSON WATCHCRAFT - Sales Core Module with MongoDB Integration
+// Developed by PULSEWARE❤️
 
 /**
- * Sales Transaction Management System - Core Functions
+ * Sales Transaction Management System - Core Functions with MongoDB Backend
  */
 
-// Sales database
+// Sales database (local cache)
 let sales = [];
-let nextSaleId = 1;
 
 /**
- * Open New Sale Modal - FIXED
+ * Open New Sale Modal
  */
 function openNewSaleModal() {
     if (!AuthModule.hasPermission('sales')) {
@@ -155,9 +155,9 @@ function updateCalculationDisplay() {
 }
 
 /**
- * Add new sale
+ * Add new sale - with MongoDB integration
  */
-function addNewSale(event) {
+async function addNewSale(event) {
     event.preventDefault();
     
     console.log('Adding new sale...');
@@ -223,68 +223,79 @@ function addNewSale(event) {
     
     const totalAmount = subtotal - discountAmount;
 
-    // Create sale object with time and discount details
-    const now = new Date();
-    const newSale = {
-        id: nextSaleId++,
-        date: Utils.formatDate(now),
-        time: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-        timestamp: Utils.getCurrentTimestamp(),
-        customerId: customerId,
-        customerName: customer.name,
-        watchId: watchId,
-        watchName: `${watch.brand} ${watch.model}`,
-        watchCode: watch.code,
-        price: price,
-        quantity: quantity,
-        subtotal: subtotal,
-        discountType: discountType,
-        discountValue: discountValue,
-        discountAmount: discountAmount,
-        totalAmount: totalAmount,
-        paymentMethod: paymentMethod,
-        status: 'completed',
-        createdBy: AuthModule.getCurrentUser().username,
-        invoiceGenerated: false,
-        notes: []
-    };
+    try {
+        // Create sale object with time and discount details
+        const now = new Date();
+        const newSale = {
+            date: Utils.formatDate(now),
+            time: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+            timestamp: Utils.getCurrentTimestamp(),
+            customerId: customerId,
+            customerName: customer.name,
+            watchId: watchId,
+            watchName: `${watch.brand} ${watch.model}`,
+            watchCode: watch.code,
+            price: price,
+            quantity: quantity,
+            subtotal: subtotal,
+            discountType: discountType,
+            discountValue: discountValue,
+            discountAmount: discountAmount,
+            totalAmount: totalAmount,
+            paymentMethod: paymentMethod,
+            status: 'completed',
+            createdBy: AuthModule.getCurrentUser().username,
+            invoiceGenerated: false,
+            notes: []
+        };
 
-    // Add to sales array
-    sales.push(newSale);
-    
-    // Update inventory (decrease quantity)
-    InventoryModule.decreaseWatchQuantity(watchId, quantity);
-    
-    // Update customer purchase count
-    CustomerModule.incrementCustomerPurchases(customerId);
-    
-    // Generate Sales Invoice automatically
-    if (window.InvoiceModule) {
-        const invoice = InvoiceModule.generateSalesInvoice(newSale);
-        if (invoice) {
-            newSale.invoiceGenerated = true;
-            newSale.invoiceId = invoice.id;
+        // Save to MongoDB
+        const response = await window.apiService.createSale(newSale);
+        
+        if (response.success) {
+            // Add to local cache
+            sales.push(response.data);
+            
+            // Update inventory (decrease quantity)
+            await InventoryModule.decreaseWatchQuantity(watchId, quantity);
+            
+            // Update customer purchase count
+            await CustomerModule.incrementCustomerPurchases(customerId);
+            
+            // Generate Sales Invoice automatically
+            if (window.InvoiceModule) {
+                const invoice = InvoiceModule.generateSalesInvoice(response.data);
+                if (invoice) {
+                    response.data.invoiceGenerated = true;
+                    response.data.invoiceId = invoice.id;
+                }
+            }
+            
+            // Update displays
+            renderSalesTable();
+            if (window.updateDashboard) {
+                updateDashboard();
+            }
+            
+            // Close modal and reset form
+            document.getElementById('newSaleModal').style.display = 'none';
+            event.target.reset();
+            
+            Utils.showNotification(`Sale recorded successfully! Sale ID: ${response.data.id}. Total: ${Utils.formatCurrency(totalAmount)}. Invoice automatically generated.`);
+            console.log('Sale added:', response.data);
+        } else {
+            Utils.showNotification(response.error || 'Failed to add sale');
         }
+    } catch (error) {
+        console.error('Error adding sale:', error);
+        Utils.showNotification('Error adding sale: ' + error.message);
     }
-    
-    // Update displays
-    renderSalesTable();
-    if (window.updateDashboard) {
-        updateDashboard();
-    }
-    
-    // Close modal and reset form
-    document.getElementById('newSaleModal').style.display = 'none';
-    event.target.reset();
-    
-    Utils.showNotification(`Sale recorded successfully! Sale ID: ${newSale.id}. Total: ${Utils.formatCurrency(totalAmount)}. Invoice automatically generated.`);
-    console.log('Sale added:', newSale);
 }
 
 /**
- * Delete sale
+ * Delete sale - with MongoDB integration
  */
-function deleteSale(saleId) {
+async function deleteSale(saleId) {
     if (!AuthModule.hasPermission('sales')) {
         Utils.showNotification('You do not have permission to delete sales.');
         return;
@@ -297,18 +308,29 @@ function deleteSale(saleId) {
     }
 
     if (confirm(`Are you sure you want to delete the sale for ${sale.watchName}?`)) {
-        // Restore inventory and customer counts
-        InventoryModule.increaseWatchQuantity(sale.watchId, sale.quantity);
-        CustomerModule.decrementCustomerPurchases(sale.customerId);
-        
-        // Remove from sales array
-        sales = sales.filter(s => s.id !== saleId);
-        
-        renderSalesTable();
-        if (window.updateDashboard) {
-            updateDashboard();
+        try {
+            const response = await window.apiService.deleteSale(saleId);
+            
+            if (response.success) {
+                // Restore inventory and customer counts
+                await InventoryModule.increaseWatchQuantity(sale.watchId, sale.quantity);
+                await CustomerModule.decrementCustomerPurchases(sale.customerId);
+                
+                // Remove from local cache
+                sales = sales.filter(s => s.id !== saleId);
+                
+                renderSalesTable();
+                if (window.updateDashboard) {
+                    updateDashboard();
+                }
+                Utils.showNotification('Sale deleted successfully!');
+            } else {
+                Utils.showNotification(response.error || 'Failed to delete sale');
+            }
+        } catch (error) {
+            console.error('Error deleting sale:', error);
+            Utils.showNotification('Error deleting sale: ' + error.message);
         }
-        Utils.showNotification('Sale deleted successfully!');
     }
 }
 
@@ -368,6 +390,29 @@ function searchSales(query) {
         } else {
             row.style.display = 'none';
         }
+    });
+}
+
+/**
+ * Filter sales by date range
+ */
+function filterSalesByDateRange(fromDate, toDate) {
+    const from = new Date(fromDate);
+    const to = new Date(toDate);
+    
+    return sales.filter(sale => {
+        const saleDate = new Date(sale.timestamp);
+        return saleDate >= from && saleDate <= to;
+    });
+}
+
+/**
+ * Filter sales by month and year
+ */
+function filterSalesByMonth(month, year) {
+    return sales.filter(sale => {
+        const saleDate = new Date(sale.timestamp);
+        return saleDate.getMonth() === parseInt(month) && saleDate.getFullYear() === parseInt(year);
     });
 }
 
@@ -433,6 +478,32 @@ function renderSalesTable() {
     });
 }
 
+/**
+ * Load sales from MongoDB
+ */
+async function loadSales() {
+    try {
+        const response = await window.apiService.getSales();
+        if (response.success) {
+            sales = response.data;
+            renderSalesTable();
+            console.log('Sales loaded from MongoDB:', sales.length);
+        }
+    } catch (error) {
+        console.error('Error loading sales:', error);
+        Utils.showNotification('Error loading sales from server');
+    }
+}
+
+/**
+ * Initialize sales module
+ */
+async function initializeSales() {
+    await loadSales();
+    renderSalesTable();
+    console.log('Sales module initialized with MongoDB integration');
+}
+
 // Export core functions for Part 2
 window.SalesCoreModule = {
     openNewSaleModal,
@@ -447,6 +518,10 @@ window.SalesCoreModule = {
     getRecentSales,
     getSalesByCustomer,
     searchSales,
+    filterSalesByDateRange,
+    filterSalesByMonth,
     renderSalesTable,
+    loadSales,
+    initializeSales,
     sales // For access by other modules
 };

@@ -1,81 +1,12 @@
-// ZEDSON WATCHCRAFT - Customer Management Module with Net Value
+// ZEDSON WATCHCRAFT - Customer Management Module with MongoDB Integration
+// Developed by PULSEWARE❤️
 
 /**
- * Customer Management System with Net Value calculation and Staff restrictions
+ * Customer Management System with MongoDB Backend
  */
 
-// Customer database
-let customers = [
-    { 
-        id: 1, 
-        name: "Raj Kumar", 
-        email: "raj@email.com", 
-        phone: "+91-9876543210", 
-        address: "Chennai, Tamil Nadu", 
-        purchases: 0, 
-        serviceCount: 0,
-        netValue: 0,
-        addedDate: "2024-01-01"
-    },
-    { 
-        id: 2, 
-        name: "Priya Sharma", 
-        email: "priya@email.com", 
-        phone: "+91-9876543211", 
-        address: "Mumbai, Maharashtra", 
-        purchases: 0, 
-        serviceCount: 0,
-        netValue: 0,
-        addedDate: "2024-01-01"
-    }
-];
-
-let nextCustomerId = 3;
-
-/**
- * Calculate customer's net value from sales and services
- */
-function calculateCustomerNetValue(customerId) {
-    let salesValue = 0;
-    let servicesValue = 0;
-    
-    // Calculate sales value
-    if (window.SalesModule && SalesModule.sales) {
-        salesValue = SalesModule.sales
-            .filter(sale => sale.customerId === customerId)
-            .reduce((sum, sale) => sum + sale.totalAmount, 0);
-    }
-    
-    // Calculate services value (completed services only)
-    if (window.ServiceModule && ServiceModule.services) {
-        servicesValue = ServiceModule.services
-            .filter(service => service.customerId === customerId && service.status === 'completed')
-            .reduce((sum, service) => sum + service.cost, 0);
-    }
-    
-    return salesValue + servicesValue;
-}
-
-/**
- * Update customer's net value
- */
-function updateCustomerNetValue(customerId) {
-    const customer = customers.find(c => c.id === customerId);
-    if (customer) {
-        customer.netValue = calculateCustomerNetValue(customerId);
-        renderCustomerTable();
-    }
-}
-
-/**
- * Update all customers' net values
- */
-function updateAllCustomersNetValue() {
-    customers.forEach(customer => {
-        customer.netValue = calculateCustomerNetValue(customer.id);
-    });
-    renderCustomerTable();
-}
+// Customer database (local cache)
+let customers = [];
 
 /**
  * Open Add Customer Modal
@@ -86,16 +17,13 @@ function openAddCustomerModal() {
         return;
     }
     
-    if (window.logAction) {
-        logAction('Opened add customer modal');
-    }
     document.getElementById('addCustomerModal').style.display = 'block';
 }
 
 /**
- * Add new customer
+ * Add new customer - with MongoDB integration
  */
-function addNewCustomer(event) {
+async function addNewCustomer(event) {
     event.preventDefault();
     
     if (!AuthModule.hasPermission('customers')) {
@@ -127,55 +55,54 @@ function addNewCustomer(event) {
         return;
     }
 
-    // Check if email already exists
-    if (customers.find(c => c.email === email)) {
-        Utils.showNotification('A customer with this email already exists');
-        return;
-    }
+    try {
+        // Create new customer object
+        const newCustomer = {
+            name: name,
+            email: email,
+            phone: phone,
+            address: address,
+            purchases: 0,
+            serviceCount: 0,
+            netValue: 0,
+            addedBy: AuthModule.getCurrentUser().username
+        };
 
-    // Check if phone already exists
-    if (customers.find(c => c.phone === phone)) {
-        Utils.showNotification('A customer with this phone number already exists');
-        return;
+        // Save to MongoDB
+        const response = await window.apiService.createCustomer(newCustomer);
+        
+        if (response.success) {
+            // Add to local cache
+            customers.push(response.data);
+            
+            // Update display
+            renderCustomerTable();
+            if (window.updateDashboard) {
+                updateDashboard();
+            }
+            
+            // Close modal and reset form
+            closeModal('addCustomerModal');
+            event.target.reset();
+            
+            Utils.showNotification('Customer added successfully!');
+        } else {
+            Utils.showNotification(response.error || 'Failed to add customer');
+        }
+    } catch (error) {
+        console.error('Error adding customer:', error);
+        if (error.message.includes('Duplicate')) {
+            Utils.showNotification('A customer with this email or phone already exists');
+        } else {
+            Utils.showNotification('Error adding customer: ' + error.message);
+        }
     }
-
-    // Create new customer object
-    const newCustomer = {
-        id: nextCustomerId++,
-        name: name,
-        email: email,
-        phone: phone,
-        address: address,
-        purchases: 0,
-        serviceCount: 0,
-        netValue: 0, // Initial net value is 0
-        addedDate: Utils.formatDate(new Date()),
-        addedBy: AuthModule.getCurrentUser().username
-    };
-
-    // Add to customers array
-    customers.push(newCustomer);
-    
-    // Log action
-    if (window.logCustomerAction) {
-        logCustomerAction('Added new customer: ' + name, newCustomer);
-    }
-    
-    // Update display
-    renderCustomerTable();
-    updateDashboard();
-    
-    // Close modal and reset form
-    closeModal('addCustomerModal');
-    event.target.reset();
-    
-    Utils.showNotification('Customer added successfully!');
 }
 
 /**
- * Edit customer
+ * Edit customer - with MongoDB integration
  */
-function editCustomer(customerId) {
+async function editCustomer(customerId) {
     const currentUser = AuthModule.getCurrentUser();
     const isStaff = currentUser && currentUser.role === 'staff';
     
@@ -189,69 +116,66 @@ function editCustomer(customerId) {
         return;
     }
 
-    const customer = customers.find(c => c.id === customerId);
-    if (!customer) {
-        Utils.showNotification('Customer not found.');
-        return;
-    }
+    try {
+        const response = await window.apiService.getCustomer(customerId);
+        const customer = response.data;
+        
+        if (!customer) {
+            Utils.showNotification('Customer not found.');
+            return;
+        }
 
-    if (window.logAction) {
-        logAction('Opened edit modal for customer: ' + customer.name);
+        // Create edit modal with Net Value display (read-only)
+        const editModal = document.createElement('div');
+        editModal.className = 'modal';
+        editModal.id = 'editCustomerModal';
+        editModal.style.display = 'block';
+        editModal.innerHTML = `
+            <div class="modal-content">
+                <span class="close" onclick="closeModal('editCustomerModal')">&times;</span>
+                <h2>Edit Customer</h2>
+                <form onsubmit="CustomerModule.updateCustomer(event, ${customerId})">
+                    <div class="form-group">
+                        <label>Name:</label>
+                        <input type="text" id="editCustomerName" value="${customer.name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email:</label>
+                        <input type="email" id="editCustomerEmail" value="${customer.email}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Phone:</label>
+                        <input type="tel" id="editCustomerPhone" value="${customer.phone}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Address:</label>
+                        <textarea id="editCustomerAddress" rows="3">${customer.address || ''}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Net Value:</label>
+                        <input type="text" value="${Utils.formatCurrency(customer.netValue)}" readonly 
+                               style="background-color: #f0f0f0; color: #666;">
+                        <small>Total value from sales and services (automatically calculated)</small>
+                    </div>
+                    <button type="submit" class="btn">Update Customer</button>
+                    <button type="button" class="btn btn-danger" onclick="closeModal('editCustomerModal')">Cancel</button>
+                </form>
+            </div>
+        `;
+        
+        document.body.appendChild(editModal);
+    } catch (error) {
+        console.error('Error fetching customer for edit:', error);
+        Utils.showNotification('Error loading customer data: ' + error.message);
     }
-
-    // Create edit modal with Net Value display (read-only)
-    const editModal = document.createElement('div');
-    editModal.className = 'modal';
-    editModal.id = 'editCustomerModal';
-    editModal.style.display = 'block';
-    editModal.innerHTML = `
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('editCustomerModal')">&times;</span>
-            <h2>Edit Customer</h2>
-            <form onsubmit="CustomerModule.updateCustomer(event, ${customerId})">
-                <div class="form-group">
-                    <label>Name:</label>
-                    <input type="text" id="editCustomerName" value="${customer.name}" required>
-                </div>
-                <div class="form-group">
-                    <label>Email:</label>
-                    <input type="email" id="editCustomerEmail" value="${customer.email}" required>
-                </div>
-                <div class="form-group">
-                    <label>Phone:</label>
-                    <input type="tel" id="editCustomerPhone" value="${customer.phone}" required>
-                </div>
-                <div class="form-group">
-                    <label>Address:</label>
-                    <textarea id="editCustomerAddress" rows="3">${customer.address || ''}</textarea>
-                </div>
-                <div class="form-group">
-                    <label>Net Value:</label>
-                    <input type="text" value="${Utils.formatCurrency(customer.netValue)}" readonly 
-                           style="background-color: #f0f0f0; color: #666;">
-                    <small>Total value from sales and services (automatically calculated)</small>
-                </div>
-                <button type="submit" class="btn">Update Customer</button>
-                <button type="button" class="btn btn-danger" onclick="closeModal('editCustomerModal')">Cancel</button>
-            </form>
-        </div>
-    `;
-    
-    document.body.appendChild(editModal);
 }
 
 /**
- * Update customer
+ * Update customer - with MongoDB integration
  */
-function updateCustomer(event, customerId) {
+async function updateCustomer(event, customerId) {
     event.preventDefault();
     
-    const customer = customers.find(c => c.id === customerId);
-    if (!customer) {
-        Utils.showNotification('Customer not found.');
-        return;
-    }
-
     const name = document.getElementById('editCustomerName').value.trim();
     const email = document.getElementById('editCustomerEmail').value.trim();
     const phone = document.getElementById('editCustomerPhone').value.trim();
@@ -275,46 +199,47 @@ function updateCustomer(event, customerId) {
         return;
     }
 
-    // Check if email already exists (excluding current customer)
-    if (customers.find(c => c.email === email && c.id !== customerId)) {
-        Utils.showNotification('A customer with this email already exists');
-        return;
+    try {
+        const updateData = {
+            name,
+            email,
+            phone,
+            address
+        };
+
+        const response = await window.apiService.updateCustomer(customerId, updateData);
+        
+        if (response.success) {
+            // Update local cache
+            const customerIndex = customers.findIndex(c => c.id === customerId);
+            if (customerIndex !== -1) {
+                customers[customerIndex] = { ...customers[customerIndex], ...updateData };
+            }
+            
+            renderCustomerTable();
+            if (window.updateDashboard) {
+                updateDashboard();
+            }
+            closeModal('editCustomerModal');
+            document.getElementById('editCustomerModal').remove();
+            Utils.showNotification('Customer updated successfully!');
+        } else {
+            Utils.showNotification(response.error || 'Failed to update customer');
+        }
+    } catch (error) {
+        console.error('Error updating customer:', error);
+        if (error.message.includes('Duplicate')) {
+            Utils.showNotification('A customer with this email or phone already exists');
+        } else {
+            Utils.showNotification('Error updating customer: ' + error.message);
+        }
     }
-
-    // Check if phone already exists (excluding current customer)
-    if (customers.find(c => c.phone === phone && c.id !== customerId)) {
-        Utils.showNotification('A customer with this phone number already exists');
-        return;
-    }
-
-    // Log action
-    if (window.logCustomerAction) {
-        logCustomerAction('Updated customer: ' + customer.name + ' -> ' + name, {
-            id: customerId,
-            oldName: customer.name,
-            newName: name,
-            oldEmail: customer.email,
-            newEmail: email
-        });
-    }
-
-    // Update customer
-    customer.name = name;
-    customer.email = email;
-    customer.phone = phone;
-    customer.address = address;
-
-    renderCustomerTable();
-    updateDashboard();
-    closeModal('editCustomerModal');
-    document.getElementById('editCustomerModal').remove();
-    Utils.showNotification('Customer updated successfully!');
 }
 
 /**
- * Delete customer
+ * Delete customer - with MongoDB integration
  */
-function deleteCustomer(customerId) {
+async function deleteCustomer(customerId) {
     const currentUser = AuthModule.getCurrentUser();
     const isStaff = currentUser && currentUser.role === 'staff';
     
@@ -335,59 +260,144 @@ function deleteCustomer(customerId) {
     }
 
     if (confirm('Are you sure you want to delete customer "' + customer.name + '"?')) {
-        // Log action
-        if (window.logCustomerAction) {
-            logCustomerAction('Deleted customer: ' + customer.name, customer);
+        try {
+            const response = await window.apiService.deleteCustomer(customerId);
+            
+            if (response.success) {
+                // Remove from local cache
+                customers = customers.filter(c => c.id !== customerId);
+                
+                renderCustomerTable();
+                if (window.updateDashboard) {
+                    updateDashboard();
+                }
+                Utils.showNotification('Customer deleted successfully!');
+            } else {
+                Utils.showNotification(response.error || 'Failed to delete customer');
+            }
+        } catch (error) {
+            console.error('Error deleting customer:', error);
+            Utils.showNotification('Error deleting customer: ' + error.message);
         }
-        
-        customers = customers.filter(c => c.id !== customerId);
-        renderCustomerTable();
-        updateDashboard();
-        Utils.showNotification('Customer deleted successfully!');
     }
 }
 
 /**
- * Update customer purchase count and net value
+ * Calculate customer's net value from sales and services
  */
-function incrementCustomerPurchases(customerId) {
+function calculateCustomerNetValue(customerId) {
+    let salesValue = 0;
+    let servicesValue = 0;
+    
+    // Calculate sales value
+    if (window.SalesModule && SalesModule.sales) {
+        salesValue = SalesModule.sales
+            .filter(sale => sale.customerId === customerId)
+            .reduce((sum, sale) => sum + sale.totalAmount, 0);
+    }
+    
+    // Calculate services value (completed services only)
+    if (window.ServiceModule && ServiceModule.services) {
+        servicesValue = ServiceModule.services
+            .filter(service => service.customerId === customerId && service.status === 'completed')
+            .reduce((sum, service) => sum + service.cost, 0);
+    }
+    
+    return salesValue + servicesValue;
+}
+
+/**
+ * Update customer's net value - with MongoDB integration
+ */
+async function updateCustomerNetValue(customerId) {
+    const customer = customers.find(c => c.id === customerId);
+    if (customer) {
+        const newNetValue = calculateCustomerNetValue(customerId);
+        customer.netValue = newNetValue;
+        
+        try {
+            // Update in MongoDB
+            await window.apiService.updateCustomer(customerId, { netValue: newNetValue });
+            renderCustomerTable();
+        } catch (error) {
+            console.error('Error updating customer net value:', error);
+        }
+    }
+}
+
+/**
+ * Update customer purchase count and net value - with MongoDB integration
+ */
+async function incrementCustomerPurchases(customerId) {
     const customer = customers.find(c => c.id === customerId);
     if (customer) {
         customer.purchases++;
-        updateCustomerNetValue(customerId);
+        
+        try {
+            await window.apiService.updateCustomer(customerId, { 
+                purchases: customer.purchases 
+            });
+            await updateCustomerNetValue(customerId);
+        } catch (error) {
+            console.error('Error incrementing customer purchases:', error);
+        }
     }
 }
 
 /**
- * Update customer service count and net value
+ * Update customer service count and net value - with MongoDB integration
  */
-function incrementCustomerServices(customerId) {
+async function incrementCustomerServices(customerId) {
     const customer = customers.find(c => c.id === customerId);
     if (customer) {
         customer.serviceCount++;
-        updateCustomerNetValue(customerId);
+        
+        try {
+            await window.apiService.updateCustomer(customerId, { 
+                serviceCount: customer.serviceCount 
+            });
+            await updateCustomerNetValue(customerId);
+        } catch (error) {
+            console.error('Error incrementing customer services:', error);
+        }
     }
 }
 
 /**
- * Decrease customer purchase count and net value
+ * Decrease customer purchase count and net value - with MongoDB integration
  */
-function decrementCustomerPurchases(customerId) {
+async function decrementCustomerPurchases(customerId) {
     const customer = customers.find(c => c.id === customerId);
     if (customer) {
         customer.purchases = Math.max(0, customer.purchases - 1);
-        updateCustomerNetValue(customerId);
+        
+        try {
+            await window.apiService.updateCustomer(customerId, { 
+                purchases: customer.purchases 
+            });
+            await updateCustomerNetValue(customerId);
+        } catch (error) {
+            console.error('Error decrementing customer purchases:', error);
+        }
     }
 }
 
 /**
- * Decrease customer service count and net value
+ * Decrease customer service count and net value - with MongoDB integration
  */
-function decrementCustomerServices(customerId) {
+async function decrementCustomerServices(customerId) {
     const customer = customers.find(c => c.id === customerId);
     if (customer) {
         customer.serviceCount = Math.max(0, customer.serviceCount - 1);
-        updateCustomerNetValue(customerId);
+        
+        try {
+            await window.apiService.updateCustomer(customerId, { 
+                serviceCount: customer.serviceCount 
+            });
+            await updateCustomerNetValue(customerId);
+        } catch (error) {
+            console.error('Error decrementing customer services:', error);
+        }
     }
 }
 
@@ -426,11 +436,6 @@ function initiateSaleFromCustomer(customerId) {
         return;
     }
     
-    const customer = customers.find(c => c.id === customerId);
-    if (window.logAction && customer) {
-        logAction('Initiated sale from customer profile: ' + customer.name);
-    }
-    
     // Switch to sales section
     showSection('sales');
     
@@ -447,7 +452,7 @@ function initiateSaleFromCustomer(customerId) {
                 customerSelect.value = customerId;
             }
         } else {
-            Utils.showNotification('Sales module not available. Please ensure sales.js is loaded.');
+            Utils.showNotification('Sales module is loading. Please try again in a moment.');
         }
     }, 100);
 }
@@ -459,11 +464,6 @@ function initiateServiceFromCustomer(customerId) {
     if (!AuthModule.hasPermission('service')) {
         Utils.showNotification('You do not have permission to create service requests.');
         return;
-    }
-
-    const customer = customers.find(c => c.id === customerId);
-    if (window.logAction && customer) {
-        logAction('Initiated service from customer profile: ' + customer.name);
     }
     
     // Switch to service section
@@ -482,13 +482,13 @@ function initiateServiceFromCustomer(customerId) {
                 customerSelect.value = customerId;
             }
         } else {
-            Utils.showNotification('Service module not available. Please ensure service.js is loaded.');
+            Utils.showNotification('Service module is loading. Please try again in a moment.');
         }
     }, 100);
 }
 
 /**
- * Render customer table with Net Value column and updated action buttons
+ * Render customer table with Net Value column
  */
 function renderCustomerTable() {
     const tbody = document.getElementById('customerTableBody');
@@ -586,12 +586,29 @@ function populateCustomerDropdown(selectId) {
 }
 
 /**
+ * Load customers from MongoDB
+ */
+async function loadCustomers() {
+    try {
+        const response = await window.apiService.getCustomers();
+        if (response.success) {
+            customers = response.data;
+            renderCustomerTable();
+            console.log('Customers loaded from MongoDB:', customers.length);
+        }
+    } catch (error) {
+        console.error('Error loading customers:', error);
+        Utils.showNotification('Error loading customers from server');
+    }
+}
+
+/**
  * Initialize customer module
  */
-function initializeCustomers() {
-    updateAllCustomersNetValue();
+async function initializeCustomers() {
+    await loadCustomers();
     renderCustomerTable();
-    console.log('Customer module initialized with Net Value calculations');
+    console.log('Customer module initialized with MongoDB integration');
 }
 
 // Export functions for global use
@@ -614,7 +631,7 @@ window.CustomerModule = {
     populateCustomerDropdown,
     initializeCustomers,
     updateCustomerNetValue,
-    updateAllCustomersNetValue,
     calculateCustomerNetValue,
+    loadCustomers,
     customers // For access by other modules
 };
