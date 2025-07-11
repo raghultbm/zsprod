@@ -1,8 +1,9 @@
-// ZEDSON WATCHCRAFT - Authentication Module with MongoDB Integration
+// ZEDSON WATCHCRAFT - Authentication Module with Pure MongoDB Integration
 // Developed by PULSEWARE❤️
 
 /**
- * Authentication and User Management System with MongoDB Backend
+ * Authentication and User Management System - PURE MONGODB BACKEND
+ * NO LOCAL REFERENCE DATA - EVERYTHING FROM MONGODB API
  */
 
 // Current logged-in user
@@ -34,10 +35,10 @@ async function handleLogin(event) {
         // Show loading state
         const loginBtn = event.target.querySelector('button[type="submit"]');
         const originalText = loginBtn.textContent;
-        loginBtn.textContent = 'Logging in...';
+        loginBtn.textContent = 'Connecting to MongoDB...';
         loginBtn.disabled = true;
         
-        // Call API
+        // Call MongoDB API
         const response = await window.apiService.login({ username, password });
         
         if (response.success) {
@@ -48,6 +49,11 @@ async function handleLogin(event) {
     } catch (error) {
         console.error('Login error:', error);
         Utils.showNotification('Login failed: ' + error.message);
+        
+        // Update database status
+        if (window.AppCoreModule?.updateDatabaseStatus) {
+            window.AppCoreModule.updateDatabaseStatus('disconnected', '✗ MongoDB Connection Failed');
+        }
     } finally {
         // Reset button state
         const loginBtn = event.target.querySelector('button[type="submit"]');
@@ -70,6 +76,11 @@ function completeLogin(user) {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('mainApp').classList.add('logged-in');
     
+    // Update database status
+    if (window.AppCoreModule?.updateDatabaseStatus) {
+        window.AppCoreModule.updateDatabaseStatus('connected', '✓ MongoDB Connected');
+    }
+    
     // Setup navigation based on user role
     setupNavigation();
     
@@ -78,7 +89,7 @@ function completeLogin(user) {
         LoggingModule.initializeLogging();
     }
     
-    // Load initial data from MongoDB
+    // Load initial data from MongoDB - NO LOCAL FALLBACK
     loadInitialData();
     
     // Clear login form
@@ -89,135 +100,147 @@ function completeLogin(user) {
 }
 
 /**
- * Load initial data from MongoDB
+ * Load initial data from MongoDB - PURE MONGODB APPROACH
  */
 async function loadInitialData() {
     try {
-        showLoading(true);
+        if (window.AppCoreModule?.showLoadingIndicator) {
+            window.AppCoreModule.showLoadingIndicator(true);
+        }
         
-        // Load all collections from MongoDB
-        await Promise.all([
-            loadCustomers(),
-            loadInventory(),
-            loadSales(),
-            loadServices(),
-            loadExpenses(),
-            loadInvoices()
-        ]);
+        console.log('📥 Loading all data from MongoDB...');
         
-        // Update dashboard after data is loaded
+        // Load all collections from MongoDB in parallel
+        const loadPromises = [];
+        
+        // Load customers
+        if (window.CustomerModule?.loadCustomers) {
+            loadPromises.push(
+                window.CustomerModule.loadCustomers()
+                    .then(() => console.log('✅ Customers loaded from MongoDB'))
+                    .catch(error => console.error('❌ Failed to load customers:', error))
+            );
+        }
+        
+        // Load inventory
+        if (window.InventoryModule?.loadInventory) {
+            loadPromises.push(
+                window.InventoryModule.loadInventory()
+                    .then(() => console.log('✅ Inventory loaded from MongoDB'))
+                    .catch(error => console.error('❌ Failed to load inventory:', error))
+            );
+        }
+        
+        // Load sales
+        if (window.SalesModule?.loadSales || window.SalesCoreModule?.loadSales) {
+            const salesLoader = window.SalesModule?.loadSales || window.SalesCoreModule?.loadSales;
+            const salesContext = window.SalesModule || window.SalesCoreModule;
+            loadPromises.push(
+                salesLoader.call(salesContext)
+                    .then(() => console.log('✅ Sales loaded from MongoDB'))
+                    .catch(error => console.error('❌ Failed to load sales:', error))
+            );
+        }
+        
+        // Load services
+        if (window.ServiceModule?.loadServices) {
+            loadPromises.push(
+                window.ServiceModule.loadServices()
+                    .then(() => console.log('✅ Services loaded from MongoDB'))
+                    .catch(error => console.error('❌ Failed to load services:', error))
+            );
+        } else if (window.ServiceModule) {
+            // Create loadServices if it doesn't exist
+            window.ServiceModule.loadServices = async function() {
+                const response = await window.apiService.getServices();
+                if (response.success) {
+                    this.services = response.data || [];
+                    return this.services;
+                }
+                throw new Error('Failed to load services');
+            };
+            loadPromises.push(
+                window.ServiceModule.loadServices()
+                    .then(() => console.log('✅ Services loaded from MongoDB'))
+                    .catch(error => console.error('❌ Failed to load services:', error))
+            );
+        }
+        
+        // Load expenses
+        if (window.ExpenseModule?.loadExpenses) {
+            loadPromises.push(
+                window.ExpenseModule.loadExpenses()
+                    .then(() => console.log('✅ Expenses loaded from MongoDB'))
+                    .catch(error => console.error('❌ Failed to load expenses:', error))
+            );
+        } else if (window.ExpenseModule) {
+            // Create loadExpenses if it doesn't exist
+            window.ExpenseModule.loadExpenses = async function() {
+                const response = await window.apiService.getExpenses();
+                if (response.success) {
+                    this.expenses = response.data || [];
+                    return this.expenses;
+                }
+                throw new Error('Failed to load expenses');
+            };
+            loadPromises.push(
+                window.ExpenseModule.loadExpenses()
+                    .then(() => console.log('✅ Expenses loaded from MongoDB'))
+                    .catch(error => console.error('❌ Failed to load expenses:', error))
+            );
+        }
+        
+        // Load invoices
+        if (window.InvoiceModule?.loadInvoices) {
+            loadPromises.push(
+                window.InvoiceModule.loadInvoices()
+                    .then(() => console.log('✅ Invoices loaded from MongoDB'))
+                    .catch(error => console.error('❌ Failed to load invoices:', error))
+            );
+        } else if (window.InvoiceModule) {
+            // Create loadInvoices if it doesn't exist
+            window.InvoiceModule.loadInvoices = async function() {
+                const response = await window.apiService.getInvoices();
+                if (response.success) {
+                    this.invoices = response.data || [];
+                    return this.invoices;
+                }
+                throw new Error('Failed to load invoices');
+            };
+            loadPromises.push(
+                window.InvoiceModule.loadInvoices()
+                    .then(() => console.log('✅ Invoices loaded from MongoDB'))
+                    .catch(error => console.error('❌ Failed to load invoices:', error))
+            );
+        }
+        
+        // Wait for all data to load
+        await Promise.allSettled(loadPromises);
+        
+        // Update dashboard after data is loaded - FROM MONGODB
         if (window.updateDashboard) {
-            updateDashboard();
+            await window.updateDashboard();
         }
         
-        console.log('Initial data loaded from MongoDB');
+        console.log('✅ All initial data loaded from MongoDB successfully');
+        
+        // Validate no reference data is being used
+        if (window.dataManager?.validateNoReferenceData) {
+            window.dataManager.validateNoReferenceData();
+        }
+        
     } catch (error) {
-        console.error('Error loading initial data:', error);
-        Utils.showNotification('Warning: Some data could not be loaded from the server.');
+        console.error('❌ Error loading initial data from MongoDB:', error);
+        Utils.showNotification('Warning: Some data could not be loaded from MongoDB server.');
+        
+        // Update database status
+        if (window.AppCoreModule?.updateDatabaseStatus) {
+            window.AppCoreModule.updateDatabaseStatus('disconnected', '✗ Data Load Failed');
+        }
     } finally {
-        showLoading(false);
-    }
-}
-
-/**
- * Load customers from MongoDB
- */
-async function loadCustomers() {
-    try {
-        const response = await window.apiService.getCustomers();
-        if (response.success && window.CustomerModule) {
-            window.CustomerModule.customers = response.data;
-            if (window.CustomerModule.renderCustomerTable) {
-                window.CustomerModule.renderCustomerTable();
-            }
+        if (window.AppCoreModule?.showLoadingIndicator) {
+            window.AppCoreModule.showLoadingIndicator(false);
         }
-    } catch (error) {
-        console.error('Error loading customers:', error);
-    }
-}
-
-/**
- * Load inventory from MongoDB
- */
-async function loadInventory() {
-    try {
-        const response = await window.apiService.getInventory();
-        if (response.success && window.InventoryModule) {
-            window.InventoryModule.watches = response.data;
-            if (window.InventoryModule.renderWatchTable) {
-                window.InventoryModule.renderWatchTable();
-            }
-        }
-    } catch (error) {
-        console.error('Error loading inventory:', error);
-    }
-}
-
-/**
- * Load sales from MongoDB
- */
-async function loadSales() {
-    try {
-        const response = await window.apiService.getSales();
-        if (response.success && window.SalesModule) {
-            window.SalesModule.sales = response.data;
-            if (window.SalesModule.renderSalesTable) {
-                window.SalesModule.renderSalesTable();
-            }
-        }
-    } catch (error) {
-        console.error('Error loading sales:', error);
-    }
-}
-
-/**
- * Load services from MongoDB
- */
-async function loadServices() {
-    try {
-        const response = await window.apiService.getServices();
-        if (response.success && window.ServiceModule) {
-            window.ServiceModule.services = response.data;
-            if (window.ServiceModule.renderServiceTable) {
-                window.ServiceModule.renderServiceTable();
-            }
-        }
-    } catch (error) {
-        console.error('Error loading services:', error);
-    }
-}
-
-/**
- * Load expenses from MongoDB
- */
-async function loadExpenses() {
-    try {
-        const response = await window.apiService.getExpenses();
-        if (response.success && window.ExpenseModule) {
-            window.ExpenseModule.expenses = response.data;
-            if (window.ExpenseModule.renderExpenseTable) {
-                window.ExpenseModule.renderExpenseTable();
-            }
-        }
-    } catch (error) {
-        console.error('Error loading expenses:', error);
-    }
-}
-
-/**
- * Load invoices from MongoDB
- */
-async function loadInvoices() {
-    try {
-        const response = await window.apiService.getInvoices();
-        if (response.success && window.InvoiceModule) {
-            window.InvoiceModule.invoices = response.data;
-            if (window.InvoiceModule.renderInvoiceTable) {
-                window.InvoiceModule.renderInvoiceTable();
-            }
-        }
-    } catch (error) {
-        console.error('Error loading invoices:', error);
     }
 }
 
@@ -239,6 +262,11 @@ async function logout() {
             // Clear login form
             document.getElementById('loginUsername').value = '';
             document.getElementById('loginPassword').value = '';
+            
+            // Update database status
+            if (window.AppCoreModule?.updateDatabaseStatus) {
+                window.AppCoreModule.updateDatabaseStatus('disconnected', 'Logged Out');
+            }
             
             Utils.showNotification('Logged out successfully');
         } catch (error) {
@@ -266,7 +294,6 @@ function hasPermission(section) {
 function setupNavigation() {
     const navButtons = document.querySelectorAll('.nav-btn');
     const userPermissions = permissions[currentUser.role];
-    const isStaff = currentUser.role === 'staff';
     
     navButtons.forEach(button => {
         const section = button.onclick.toString().match(/showSection\('(.+?)'/);
@@ -284,7 +311,7 @@ function setupNavigation() {
     const userMgmtBtn = document.getElementById('userManagementBtn');
     if (currentUser.role === 'admin') {
         userMgmtBtn.style.display = 'inline-block';
-        loadUsers(); // Load users for admin
+        loadUsers(); // Load users for admin FROM MONGODB
     } else {
         userMgmtBtn.style.display = 'none';
     }
@@ -305,23 +332,40 @@ function setupNavigation() {
 }
 
 /**
- * Load users from MongoDB (Admin only)
+ * Load users from MongoDB (Admin only) - PURE MONGODB
  */
 async function loadUsers() {
     if (currentUser.role !== 'admin') return;
     
     try {
+        console.log('📥 Loading users from MongoDB...');
         const response = await window.apiService.getUsers();
         if (response.success) {
             updateUserTable(response.data);
+            console.log(`✅ Loaded ${response.data.length} users from MongoDB`);
+        } else {
+            throw new Error('Failed to load users from MongoDB');
         }
     } catch (error) {
-        console.error('Error loading users:', error);
+        console.error('❌ Error loading users from MongoDB:', error);
+        Utils.showNotification('Error loading users from MongoDB server');
     }
 }
 
 /**
- * Add new user (Admin only) - With MongoDB integration
+ * Open Add User Modal (Admin only)
+ */
+function openAddUserModal() {
+    if (currentUser.role !== 'admin') {
+        Utils.showNotification('Only administrators can add new users.');
+        return;
+    }
+    
+    document.getElementById('addUserModal').style.display = 'block';
+}
+
+/**
+ * Add new user (Admin only) - WITH MONGODB INTEGRATION
  */
 async function addNewUser(event) {
     event.preventDefault();
@@ -362,25 +406,147 @@ async function addNewUser(event) {
             fullName,
             email,
             status: 'active',
-            firstLogin: false
+            firstLogin: false,
+            createdBy: currentUser.username
         };
 
+        console.log('📤 Creating user in MongoDB...');
         const response = await window.apiService.createUser(userData);
         
         if (response.success) {
-            await loadUsers(); // Reload users table
+            // Reload users from MongoDB
+            await loadUsers();
             closeModal('addUserModal');
             event.target.reset();
-            Utils.showNotification('User created successfully!');
+            Utils.showNotification('User created successfully in MongoDB!');
+            console.log('✅ User created in MongoDB:', response.data);
         } else {
-            Utils.showNotification(response.error || 'Failed to create user');
+            Utils.showNotification(response.error || 'Failed to create user in MongoDB');
         }
     } catch (error) {
-        console.error('Error creating user:', error);
+        console.error('❌ Error creating user in MongoDB:', error);
         if (error.message.includes('Duplicate')) {
-            Utils.showNotification('Username or email already exists. Please choose different values.');
+            Utils.showNotification('Username or email already exists in MongoDB. Please choose different values.');
         } else {
-            Utils.showNotification('Error creating user: ' + error.message);
+            Utils.showNotification('Error creating user in MongoDB: ' + error.message);
+        }
+    }
+}
+
+/**
+ * Edit user - with MongoDB integration
+ */
+async function editUser(username) {
+    if (currentUser.role !== 'admin') {
+        Utils.showNotification('Only administrators can edit users.');
+        return;
+    }
+
+    try {
+        console.log('📥 Fetching user from MongoDB for edit...');
+        const response = await window.apiService.getOne('users', { username });
+        const user = response.data;
+        
+        if (!user) {
+            Utils.showNotification('User not found in MongoDB.');
+            return;
+        }
+
+        // Create edit modal
+        const editModal = document.createElement('div');
+        editModal.className = 'modal';
+        editModal.id = 'editUserModal';
+        editModal.style.display = 'block';
+        editModal.innerHTML = `
+            <div class="modal-content">
+                <span class="close" onclick="closeModal('editUserModal')">&times;</span>
+                <h2>Edit User: ${user.username}</h2>
+                <form onsubmit="AuthModule.updateUser(event, '${username}')">
+                    <div class="form-group">
+                        <label>Full Name:</label>
+                        <input type="text" id="editUserFullName" value="${user.fullName}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email:</label>
+                        <input type="email" id="editUserEmail" value="${user.email}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Role:</label>
+                        <select id="editUserRole" required>
+                            <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                            <option value="owner" ${user.role === 'owner' ? 'selected' : ''}>Owner</option>
+                            <option value="staff" ${user.role === 'staff' ? 'selected' : ''}>Staff</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Status:</label>
+                        <select id="editUserStatus" required>
+                            <option value="active" ${user.status === 'active' ? 'selected' : ''}>Active</option>
+                            <option value="inactive" ${user.status === 'inactive' ? 'selected' : ''}>Inactive</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn">Update User in MongoDB</button>
+                    <button type="button" class="btn btn-danger" onclick="closeModal('editUserModal')">Cancel</button>
+                </form>
+            </div>
+        `;
+        
+        document.body.appendChild(editModal);
+    } catch (error) {
+        console.error('❌ Error fetching user from MongoDB for edit:', error);
+        Utils.showNotification('Error loading user data from MongoDB: ' + error.message);
+    }
+}
+
+/**
+ * Update user - with MongoDB integration
+ */
+async function updateUser(event, username) {
+    event.preventDefault();
+    
+    const fullName = document.getElementById('editUserFullName').value.trim();
+    const email = document.getElementById('editUserEmail').value.trim();
+    const role = document.getElementById('editUserRole').value;
+    const status = document.getElementById('editUserStatus').value;
+
+    // Validate input
+    if (!fullName || !email || !role || !status) {
+        Utils.showNotification('Please fill in all fields.');
+        return;
+    }
+
+    if (!Utils.validateEmail(email)) {
+        Utils.showNotification('Please enter a valid email address.');
+        return;
+    }
+
+    try {
+        const updateData = {
+            fullName,
+            email,
+            role,
+            status
+        };
+
+        console.log('📤 Updating user in MongoDB...');
+        const response = await window.apiService.updateOne('users', { username }, updateData);
+        
+        if (response.success) {
+            // Reload users from MongoDB
+            await loadUsers();
+            closeModal('editUserModal');
+            document.getElementById('editUserModal').remove();
+            Utils.showNotification('User updated successfully in MongoDB!');
+            console.log('✅ User updated in MongoDB');
+        } else {
+            Utils.showNotification(response.error || 'Failed to update user in MongoDB');
+        }
+    } catch (error) {
+        console.error('❌ Error updating user in MongoDB:', error);
+        if (error.message.includes('Duplicate')) {
+            Utils.showNotification('Email already exists in MongoDB. Please use a different email.');
+        } else {
+            Utils.showNotification('Error updating user in MongoDB: ' + error.message);
         }
     }
 }
@@ -404,65 +570,39 @@ async function deleteUser(username) {
         return;
     }
 
-    if (confirm(`Are you sure you want to delete user "${username}"?`)) {
+    if (confirm(`Are you sure you want to delete user "${username}" from MongoDB?`)) {
         try {
+            console.log('📤 Deleting user from MongoDB...');
             const response = await window.apiService.deleteOne('users', { username });
             
             if (response.success) {
-                await loadUsers(); // Reload users table
-                Utils.showNotification('User deleted successfully!');
+                // Reload users from MongoDB
+                await loadUsers();
+                Utils.showNotification('User deleted successfully from MongoDB!');
+                console.log('✅ User deleted from MongoDB');
             } else {
-                Utils.showNotification(response.error || 'Failed to delete user');
+                Utils.showNotification(response.error || 'Failed to delete user from MongoDB');
             }
         } catch (error) {
-            console.error('Error deleting user:', error);
-            Utils.showNotification('Error deleting user: ' + error.message);
+            console.error('❌ Error deleting user from MongoDB:', error);
+            Utils.showNotification('Error deleting user from MongoDB: ' + error.message);
         }
     }
 }
 
 /**
- * Show/hide loading indicator
- */
-function showLoading(show) {
-    let loader = document.getElementById('loadingSpinner');
-    if (!loader) {
-        loader = document.createElement('div');
-        loader.id = 'loadingSpinner';
-        loader.innerHTML = `
-            <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-                        background: rgba(0,0,0,0.5); z-index: 9999; display: flex; 
-                        align-items: center; justify-content: center;">
-                <div style="background: white; padding: 20px; border-radius: 10px; 
-                           text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-                    <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; 
-                               border-top: 4px solid #1a237e; border-radius: 50%; 
-                               animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
-                    <p style="margin: 0; color: #1a237e; font-weight: 600;">Loading...</p>
-                </div>
-            </div>
-            <style>
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
-            </style>
-        `;
-        document.body.appendChild(loader);
-    }
-    loader.style.display = show ? 'block' : 'none';
-}
-
-/**
  * Update user table display
  */
-function updateUserTable(users = null) {
+function updateUserTable(users = []) {
     const tbody = document.getElementById('userTableBody');
     if (!tbody) return;
     
     tbody.innerHTML = '';
     
-    if (!users) return;
+    if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: #666;">No users found in MongoDB</td></tr>';
+        return;
+    }
     
     users.forEach((user, index) => {
         const roleClass = user.role === 'admin' ? 'available' : user.role === 'owner' ? 'in-progress' : 'pending';
@@ -481,7 +621,7 @@ function updateUserTable(users = null) {
                 <td>${lastLogin}</td>
                 <td>
                     <button class="btn btn-sm" onclick="editUser('${user.username}')">Edit</button>
-                    <button class="btn btn-sm btn-danger" onclick="confirmTransaction('Are you sure you want to delete user ${user.username}?', () => deleteUser('${user.username}'))" 
+                    <button class="btn btn-sm btn-danger" onclick="confirmTransaction('Are you sure you want to delete user ${user.username} from MongoDB?', () => deleteUser('${user.username}'))" 
                             ${!canDelete ? 'disabled' : ''}>Delete</button>
                 </td>
             </tr>
@@ -518,23 +658,45 @@ function canEditDelete() {
 }
 
 /**
- * Initialize authentication system
+ * Initialize authentication system with MongoDB
  */
 async function initializeAuth() {
     try {
+        console.log('🔄 Initializing Authentication with MongoDB...');
+        
         // Test connection to backend
         await window.apiService.testConnection();
-        console.log('Connected to MongoDB backend');
+        console.log('✅ Connected to MongoDB backend successfully');
         
         // Check if we have a stored token
         const token = localStorage.getItem('authToken');
         if (token) {
             window.apiService.setToken(token);
-            // You could validate the token here by making a test API call
         }
+        
+        // Update database status
+        if (window.AppCoreModule?.updateDatabaseStatus) {
+            window.AppCoreModule.updateDatabaseStatus('connected', '✓ MongoDB Ready');
+        }
+        
     } catch (error) {
-        console.error('Backend connection failed:', error);
-        Utils.showNotification('Warning: Could not connect to server. Some features may not work.');
+        console.error('❌ MongoDB backend connection failed:', error);
+        Utils.showNotification('Warning: Could not connect to MongoDB server. Please check your connection.');
+        
+        // Update database status
+        if (window.AppCoreModule?.updateDatabaseStatus) {
+            window.AppCoreModule.updateDatabaseStatus('disconnected', '✗ MongoDB Connection Failed');
+        }
+    }
+}
+
+/**
+ * Close modal helper
+ */
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
     }
 }
 
@@ -558,5 +720,6 @@ window.AuthModule = {
     isStaffUser,
     canEditDelete,
     loadUsers,
-    loadInitialData
+    loadInitialData,
+    closeModal
 };
