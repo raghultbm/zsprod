@@ -568,6 +568,322 @@
             }
         });
     </script>
+// Add this HTML to your index.html file, just before the closing </body> tag
 
+const missingModalsHTML = `
+<!-- Customer Management Modal -->
+<div id="addCustomerModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal('addCustomerModal')">&times;</span>
+        <h2>Add New Customer</h2>
+        <form onsubmit="CustomerModule.addNewCustomer(event)">
+            <div class="form-group">
+                <label>Name:</label>
+                <input type="text" id="customerName" required>
+            </div>
+            <div class="form-group">
+                <label>Email:</label>
+                <input type="email" id="customerEmail" required>
+            </div>
+            <div class="form-group">
+                <label>Phone:</label>
+                <input type="tel" id="customerPhone" required>
+            </div>
+            <div class="form-group">
+                <label>Address:</label>
+                <textarea id="customerAddress" rows="3"></textarea>
+            </div>
+            <button type="submit" class="btn">Add Customer</button>
+            <button type="button" class="btn btn-danger" onclick="closeModal('addCustomerModal')">Cancel</button>
+        </form>
+    </div>
+</div>
+
+<!-- Inventory Management Modal -->
+<div id="addWatchModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal('addWatchModal')">&times;</span>
+        <h2>Add New Item</h2>
+        <form onsubmit="InventoryModule.addNewWatch(event)">
+            <div class="grid grid-2">
+                <div class="form-group">
+                    <label>Code:</label>
+                    <input type="text" id="watchCode" required>
+                </div>
+                <div class="form-group">
+                    <label>Type:</label>
+                    <select id="watchType" required>
+                        <option value="">Select Type</option>
+                        <option value="Watch">Watch</option>
+                        <option value="Clock">Clock</option>
+                        <option value="Timepiece">Timepiece</option>
+                        <option value="Strap">Strap</option>
+                        <option value="Battery">Battery</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-2">
+                <div class="form-group">
+                    <label>Brand:</label>
+                    <input type="text" id="watchBrand" required onkeyup="InventoryModule.updateWatchCode()">
+                </div>
+                <div class="form-group">
+                    <label>Model:</label>
+                    <input type="text" id="watchModel" required>
+                </div>
+            </div>
+            <div class="grid grid-2">
+                <div class="form-group">
+                    <label>Size (Optional):</label>
+                    <input type="text" id="watchSize" placeholder="e.g., 40mm, 42mm">
+                </div>
+                <div class="form-group">
+                    <label>Price (₹):</label>
+                    <input type="number" id="watchPrice" required min="0" step="0.01">
+                </div>
+            </div>
+            <div class="grid grid-2">
+                <div class="form-group">
+                    <label>Quantity:</label>
+                    <input type="number" id="watchQuantity" required min="1">
+                </div>
+                <div class="form-group">
+                    <label>Outlet:</label>
+                    <select id="watchOutlet" required>
+                        <option value="">Select Outlet</option>
+                        <option value="Semmancheri">Semmancheri</option>
+                        <option value="Navalur">Navalur</option>
+                        <option value="Padur">Padur</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Description:</label>
+                <textarea id="watchDescription" rows="3"></textarea>
+            </div>
+            <button type="submit" class="btn">Add Item</button>
+            <button type="button" class="btn btn-danger" onclick="closeModal('addWatchModal')">Cancel</button>
+        </form>
+    </div>
+</div>
+
+<!-- Sales Modal -->
+<div id="newSaleModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal('newSaleModal')">&times;</span>
+        <h2>New Sale</h2>
+        <form onsubmit="SalesCoreModule.addNewSale(event)">
+            <div class="grid grid-2">
+                <div class="form-group">
+                    <label>Customer:</label>
+                    <select id="saleCustomer" required>
+                        <option value="">Select Customer</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Search by Code:</label>
+                    <input type="text" id="saleWatchCode" placeholder="Enter watch code" onkeyup="SalesCoreModule.searchWatchByCode()">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Select Item:</label>
+                <select id="saleWatch" required onchange="SalesCoreModule.updateSalePrice()">
+                    <option value="">Select Item</option>
+                </select>
+            </div>
+            <div class="grid grid-2">
+                <div class="form-group">
+                    <label>Price (₹):</label>
+                    <input type="number" id="salePrice" required min="0" step="0.01" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Quantity:</label>
+                    <input type="number" id="saleQuantity" value="1" required min="1" onchange="SalesCoreModule.updateCalculationDisplay()">
+                </div>
+            </div>
+            <div class="grid grid-2">
+                <div class="form-group">
+                    <label>Discount Type:</label>
+                    <select id="saleDiscountType" onchange="SalesCoreModule.updateCalculationDisplay()">
+                        <option value="">No Discount</option>
+                        <option value="percentage">Percentage (%)</option>
+                        <option value="amount">Fixed Amount (₹)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Discount Value:</label>
+                    <input type="number" id="saleDiscountValue" min="0" step="0.01" onchange="SalesCoreModule.updateCalculationDisplay()">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Payment Method:</label>
+                <select id="salePaymentMethod" required>
+                    <option value="">Select Payment Method</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Card">Card</option>
+                    <option value="UPI">UPI</option>
+                    <option value="Net Banking">Net Banking</option>
+                    <option value="Cheque">Cheque</option>
+                </select>
+            </div>
+            
+            <!-- Calculation Display -->
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <h4>Sale Summary:</h4>
+                <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                    <span>Subtotal:</span>
+                    <span id="saleSubtotal">₹0</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                    <span>Discount:</span>
+                    <span id="saleDiscountAmount" style="color: #dc3545;">₹0</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin: 5px 0; font-weight: bold; font-size: 1.2em;">
+                    <span>Total Amount:</span>
+                    <span id="saleTotalAmount" style="color: #1a237e;">₹0</span>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn">Complete Sale</button>
+            <button type="button" class="btn btn-danger" onclick="closeModal('newSaleModal')">Cancel</button>
+        </form>
+    </div>
+</div>
+
+<!-- Service Modal -->
+<div id="newServiceModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal('newServiceModal')">&times;</span>
+        <h2>New Service Request</h2>
+        <form onsubmit="ServiceModule.addNewService(event)">
+            <div class="grid grid-2">
+                <div class="form-group">
+                    <label>Customer:</label>
+                    <select id="serviceCustomer" required>
+                        <option value="">Select Customer</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Service Type:</label>
+                    <select id="serviceType" required>
+                        <option value="">Select Type</option>
+                        <option value="Watch">Watch Service</option>
+                        <option value="Clock">Clock Service</option>
+                        <option value="Repair">General Repair</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-2">
+                <div class="form-group">
+                    <label>Watch/Item Name:</label>
+                    <input type="text" id="serviceWatchName" required>
+                </div>
+                <div class="form-group">
+                    <label>Brand:</label>
+                    <input type="text" id="serviceBrand" required>
+                </div>
+            </div>
+            <div class="grid grid-2">
+                <div class="form-group">
+                    <label>Model:</label>
+                    <input type="text" id="serviceModel" required>
+                </div>
+                <div class="form-group">
+                    <label>Movement No:</label>
+                    <input type="text" id="serviceMovementNo" required>
+                </div>
+            </div>
+            <div class="grid grid-2">
+                <div class="form-group">
+                    <label>Dial Color:</label>
+                    <input type="text" id="serviceDialColor" value="N/A">
+                </div>
+                <div class="form-group">
+                    <label>Gender:</label>
+                    <select id="serviceGender">
+                        <option value="N/A">Not Applicable</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Unisex">Unisex</option>
+                    </select>
+                </div>
+            </div>
+            <div class="grid grid-2">
+                <div class="form-group">
+                    <label>Case Type:</label>
+                    <input type="text" id="serviceCaseType" value="N/A">
+                </div>
+                <div class="form-group">
+                    <label>Strap Type:</label>
+                    <input type="text" id="serviceStrapType" value="N/A">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Issue Description:</label>
+                <textarea id="serviceIssue" rows="3" required placeholder="Describe the problem..."></textarea>
+            </div>
+            <div class="grid grid-2">
+                <div class="form-group">
+                    <label>Estimated Cost (₹):</label>
+                    <input type="number" id="serviceCost" required min="0" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>Estimated Delivery:</label>
+                    <input type="date" id="serviceEstimatedDelivery">
+                </div>
+            </div>
+            <button type="submit" class="btn">Create Service Request</button>
+            <button type="button" class="btn btn-danger" onclick="closeModal('newServiceModal')">Cancel</button>
+        </form>
+    </div>
+</div>
+
+<!-- User Management Modal (Admin Only) -->
+<div id="addUserModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal('addUserModal')">&times;</span>
+        <h2>Add New User</h2>
+        <form onsubmit="UserModule.addNewUser(event)">
+            <div class="form-group">
+                <label>Username:</label>
+                <input type="text" id="newUsername" required>
+            </div>
+            <div class="form-group">
+                <label>Full Name:</label>
+                <input type="text" id="newUserFullName" required>
+            </div>
+            <div class="form-group">
+                <label>Email:</label>
+                <input type="email" id="newUserEmail" required>
+            </div>
+            <div class="form-group">
+                <label>Role:</label>
+                <select id="newUserRole" required>
+                    <option value="">Select Role</option>
+                    <option value="admin">Admin</option>
+                    <option value="owner">Owner</option>
+                    <option value="staff">Staff</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Password:</label>
+                <input type="password" id="newUserPassword" required>
+            </div>
+            <button type="submit" class="btn">Add User</button>
+            <button type="button" class="btn btn-danger" onclick="closeModal('addUserModal')">Cancel</button>
+        </form>
+    </div>
+</div>`;
+
+// Function to add missing modals to the page
+function addMissingModals() {
+    document.body.insertAdjacentHTML('beforeend', missingModalsHTML);
+    console.log('✅ Missing modals added successfully');
+}
+
+// Auto-add modals when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    addMissingModals();
+});
 </body>
 </html>
