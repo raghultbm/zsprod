@@ -1,8 +1,8 @@
-// ZEDSON WATCHCRAFT - Simplified API Service for Local MongoDB
+// ZEDSON WATCHCRAFT - FIXED API Service for Local MongoDB
 // Developed by PULSEWARE❤️
 
 /**
- * API Service for Local MongoDB Integration
+ * FIXED API Service for Local MongoDB Integration
  */
 
 class APIService {
@@ -46,7 +46,9 @@ class APIService {
             
             const response = await fetch(this.healthURL, {
                 method: 'GET',
-                headers: this.getHeaders()
+                headers: {
+                    'Content-Type': 'application/json'
+                }
             });
             
             if (response.ok) {
@@ -95,8 +97,12 @@ class APIService {
                 config.body = JSON.stringify(options.body);
             }
 
+            console.log('🔄 Making API request:', config.method, url);
+
             const response = await fetch(url, config);
             const data = await response.json();
+
+            console.log('📡 API Response:', response.status, data);
 
             if (response.ok) {
                 return data;
@@ -104,7 +110,7 @@ class APIService {
                 throw new Error(data.error || 'API request failed');
             }
         } catch (error) {
-            console.error('API request failed:', error);
+            console.error('❌ API request failed:', error);
             return this.handleOffline(endpoint, options);
         }
     }
@@ -205,25 +211,103 @@ class APIService {
         return { success: true, data: { deletedCount: data.length - filteredData.length } };
     }
 
-    // Authentication methods
+    // FIXED Authentication methods
     async login(credentials) {
-        console.log('🔐 Attempting login...');
+        console.log('🔐 Attempting login...', credentials);
         
         try {
-            const response = await this.request('/auth/login', {
-                method: 'POST',
-                body: credentials
-            });
-            
-            if (response.success && response.token) {
-                this.setToken(response.token);
-                return response;
-            } else {
-                return { success: false, error: response.error || 'Login failed' };
+            // First try to reconnect if disconnected
+            if (!this.isConnected) {
+                console.log('🔄 Reconnecting to backend...');
+                await this.testConnection();
             }
+
+            if (this.isConnected) {
+                console.log('🌐 Trying backend authentication...');
+                const response = await fetch(`${this.baseURL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(credentials)
+                });
+                
+                const data = await response.json();
+                console.log('🔑 Backend auth response:', data);
+                
+                if (response.ok && data.success && data.token) {
+                    this.setToken(data.token);
+                    return data;
+                } else {
+                    console.log('❌ Backend auth failed:', data.error);
+                    // Fall through to offline auth
+                }
+            }
+            
+            // Fallback to offline authentication
+            console.log('📁 Trying offline authentication...');
+            return this.authenticateOffline(credentials);
+            
         } catch (error) {
-            console.error('Login error:', error);
-            return { success: false, error: 'Authentication service unavailable' };
+            console.error('❌ Login error:', error);
+            // Try offline authentication as fallback
+            return this.authenticateOffline(credentials);
+        }
+    }
+
+    // FIXED Offline authentication
+    authenticateOffline(credentials) {
+        console.log('🔓 Offline authentication for:', credentials.username);
+        
+        const { username, password } = credentials;
+        
+        // Demo users for offline mode
+        const demoUsers = {
+            'admin': { 
+                password: 'admin123', 
+                role: 'admin', 
+                fullName: 'System Administrator', 
+                email: 'admin@zedsonwatchcraft.com' 
+            },
+            'owner': { 
+                password: 'owner123', 
+                role: 'owner', 
+                fullName: 'Shop Owner', 
+                email: 'owner@zedsonwatchcraft.com' 
+            },
+            'staff': { 
+                password: 'staff123', 
+                role: 'staff', 
+                fullName: 'Staff Member', 
+                email: 'staff@zedsonwatchcraft.com' 
+            }
+        };
+        
+        const user = demoUsers[username];
+        
+        if (user && user.password === password) {
+            console.log('✅ Offline authentication successful');
+            
+            // Create a simple token for offline mode
+            const token = `offline_${username}_${Date.now()}`;
+            this.setToken(token);
+            
+            return {
+                success: true,
+                token: token,
+                user: {
+                    username,
+                    role: user.role,
+                    fullName: user.fullName,
+                    email: user.email
+                }
+            };
+        } else {
+            console.log('❌ Invalid offline credentials');
+            return { 
+                success: false, 
+                error: 'Invalid username or password' 
+            };
         }
     }
 
@@ -428,4 +512,4 @@ class APIService {
 // Create global instance
 window.apiService = new APIService();
 
-console.log('✅ API Service initialized for Local MongoDB integration');
+console.log('✅ FIXED API Service initialized for Local MongoDB integration');

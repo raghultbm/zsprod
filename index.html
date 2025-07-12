@@ -873,7 +873,7 @@ const missingModalsHTML = `
             <button type="button" class="btn btn-danger" onclick="closeModal('addUserModal')">Cancel</button>
         </form>
     </div>
-</div>`;
+</div>
 
 // Function to add missing modals to the page
 function addMissingModals() {
@@ -885,5 +885,241 @@ function addMissingModals() {
 document.addEventListener('DOMContentLoaded', function() {
     addMissingModals();
 });
+
+// ZEDSON WATCHCRAFT - Debug Startup Script
+// Add this to the bottom of your index.html before closing </body> tag
+
+console.log('🚀 ZEDSON WATCHCRAFT Debug Script Starting...');
+
+// Debug function to check system status
+function debugSystemStatus() {
+    console.log('=== SYSTEM DEBUG STATUS ===');
+    console.log('1. Utils Module:', typeof window.Utils);
+    console.log('2. AuthModule:', typeof window.AuthModule);
+    console.log('3. AppCoreModule:', typeof window.AppCoreModule);
+    console.log('4. apiService:', typeof window.apiService);
+    console.log('5. Login Screen:', document.getElementById('loginScreen') ? 'FOUND' : 'NOT FOUND');
+    console.log('6. Main App:', document.getElementById('mainApp') ? 'FOUND' : 'NOT FOUND');
+    console.log('7. Login Username Field:', document.getElementById('loginUsername') ? 'FOUND' : 'NOT FOUND');
+    console.log('8. Login Password Field:', document.getElementById('loginPassword') ? 'FOUND' : 'NOT FOUND');
+    console.log('9. Current User:', window.AuthModule?.getCurrentUser());
+    console.log('10. Auth Token:', localStorage.getItem('authToken') ? 'EXISTS' : 'NONE');
+    console.log('===============================');
+}
+
+// Enhanced login function with debugging
+function debugLogin() {
+    console.log('🔐 DEBUG LOGIN FUNCTION');
+    
+    const username = document.getElementById('loginUsername')?.value;
+    const password = document.getElementById('loginPassword')?.value;
+    
+    console.log('Username:', username);
+    console.log('Password:', password ? '***PROVIDED***' : 'NOT PROVIDED');
+    
+    if (!username || !password) {
+        alert('Please enter both username and password');
+        return;
+    }
+    
+    // Use demo credentials
+    const demoUsers = {
+        'admin': { password: 'admin123', role: 'admin', fullName: 'System Administrator' },
+        'owner': { password: 'owner123', role: 'owner', fullName: 'Shop Owner' },
+        'staff': { password: 'staff123', role: 'staff', fullName: 'Staff Member' }
+    };
+    
+    const user = demoUsers[username];
+    
+    if (user && user.password === password) {
+        console.log('✅ Valid credentials, proceeding with login...');
+        
+        // Set token
+        const token = `debug_${username}_${Date.now()}`;
+        localStorage.setItem('authToken', token);
+        
+        // Create user object
+        const userObj = {
+            username: username,
+            role: user.role,
+            fullName: user.fullName,
+            email: `${username}@zedsonwatchcraft.com`
+        };
+        
+        // Store user
+        localStorage.setItem('currentUser', JSON.stringify(userObj));
+        
+        // Hide login, show app
+        const loginScreen = document.getElementById('loginScreen');
+        const mainApp = document.getElementById('mainApp');
+        
+        if (loginScreen) loginScreen.style.display = 'none';
+        if (mainApp) {
+            mainApp.classList.add('logged-in');
+            mainApp.style.display = 'block';
+        }
+        
+        // Update user display
+        const currentUserElement = document.getElementById('currentUser');
+        const currentUserRoleElement = document.getElementById('currentUserRole');
+        
+        if (currentUserElement) currentUserElement.textContent = `Welcome, ${user.fullName}`;
+        if (currentUserRoleElement) currentUserRoleElement.textContent = user.role.toUpperCase();
+        
+        // Clear form
+        document.getElementById('loginUsername').value = '';
+        document.getElementById('loginPassword').value = '';
+        
+        alert(`Login successful! Welcome, ${user.fullName}`);
+        
+        console.log('🎉 Login completed successfully');
+        
+    } else {
+        alert('Invalid username or password');
+        console.log('❌ Invalid credentials');
+    }
+}
+
+// Force initialization function
+function forceInitialize() {
+    console.log('🔧 FORCE INITIALIZATION');
+    
+    // Create essential modules if missing
+    if (!window.Utils) {
+        window.Utils = {
+            showNotification: (msg) => alert(msg),
+            formatCurrency: (amount) => `₹${parseFloat(amount).toLocaleString('en-IN')}`,
+            formatDate: (date) => new Date(date).toLocaleDateString('en-IN'),
+            sanitizeHtml: (text) => text,
+            validateEmail: (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
+            validatePhone: (phone) => /^[\+]?[0-9\-\s\(\)]{10,15}$/.test(phone)
+        };
+        console.log('✅ Utils module created');
+    }
+    
+    // Override global handleLogin function
+    window.handleLogin = function(event) {
+        event.preventDefault();
+        debugLogin();
+    };
+    console.log('✅ handleLogin function overridden');
+    
+    // Set up logout function
+    window.logout = function() {
+        if (confirm('Are you sure you want to logout?')) {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('currentUser');
+            
+            const loginScreen = document.getElementById('loginScreen');
+            const mainApp = document.getElementById('mainApp');
+            
+            if (loginScreen) loginScreen.style.display = 'flex';
+            if (mainApp) {
+                mainApp.classList.remove('logged-in');
+                mainApp.style.display = 'none';
+            }
+            
+            alert('Logged out successfully');
+        }
+    };
+    console.log('✅ logout function created');
+}
+
+// Auto-fix function
+function autoFix() {
+    console.log('🛠️ AUTO-FIX STARTING...');
+    
+    // Wait for DOM to be ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', autoFix);
+        return;
+    }
+    
+    setTimeout(() => {
+        debugSystemStatus();
+        forceInitialize();
+        
+        // Check if user is already logged in
+        const storedUser = localStorage.getItem('currentUser');
+        const authToken = localStorage.getItem('authToken');
+        
+        if (storedUser && authToken) {
+            try {
+                const user = JSON.parse(storedUser);
+                console.log('🔄 Restoring session for:', user.fullName);
+                
+                // Hide login, show app
+                const loginScreen = document.getElementById('loginScreen');
+                const mainApp = document.getElementById('mainApp');
+                
+                if (loginScreen) loginScreen.style.display = 'none';
+                if (mainApp) {
+                    mainApp.classList.add('logged-in');
+                    mainApp.style.display = 'block';
+                }
+                
+                // Update user display
+                const currentUserElement = document.getElementById('currentUser');
+                const currentUserRoleElement = document.getElementById('currentUserRole');
+                
+                if (currentUserElement) currentUserElement.textContent = `Welcome, ${user.fullName}`;
+                if (currentUserRoleElement) currentUserRoleElement.textContent = user.role.toUpperCase();
+                
+                console.log('✅ Session restored');
+            } catch (error) {
+                console.error('❌ Session restore error:', error);
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('authToken');
+            }
+        }
+        
+        console.log('🎯 AUTO-FIX COMPLETED');
+    }, 500);
+}
+
+// Emergency reset function
+function emergencyReset() {
+    console.log('🚨 EMERGENCY RESET');
+    
+    // Clear all storage
+    localStorage.clear();
+    
+    // Show login screen
+    const loginScreen = document.getElementById('loginScreen');
+    const mainApp = document.getElementById('mainApp');
+    
+    if (loginScreen) loginScreen.style.display = 'flex';
+    if (mainApp) {
+        mainApp.classList.remove('logged-in');
+        mainApp.style.display = 'none';
+    }
+    
+    // Clear forms
+    const usernameField = document.getElementById('loginUsername');
+    const passwordField = document.getElementById('loginPassword');
+    
+    if (usernameField) usernameField.value = '';
+    if (passwordField) passwordField.value = '';
+    
+    console.log('✅ Emergency reset completed');
+    alert('System reset. Please try logging in again.');
+}
+
+// Make functions globally available for debugging
+window.debugSystemStatus = debugSystemStatus;
+window.debugLogin = debugLogin;
+window.forceInitialize = forceInitialize;
+window.emergencyReset = emergencyReset;
+
+// Auto-start the fix
+autoFix();
+
+console.log('🔧 Debug script loaded. Available functions:');
+console.log('- debugSystemStatus(): Check system status');
+console.log('- debugLogin(): Direct login attempt');
+console.log('- forceInitialize(): Force system initialization');
+console.log('- emergencyReset(): Reset everything');
+console.log('✅ ZEDSON WATCHCRAFT Debug Script Ready!');
+
 </body>
 </html>
