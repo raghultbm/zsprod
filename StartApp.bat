@@ -1,6 +1,6 @@
 @echo off
 echo ========================================
-echo ZEDSON WATCHCRAFT - Startup Script
+echo ZEDSON WATCHCRAFT - Simplified Startup
 echo Developed by PULSEWARE with Love
 echo ========================================
 echo.
@@ -20,8 +20,8 @@ if not exist "backend\server.js" (
 )
 
 echo Step 1: Starting MongoDB...
-echo Please make sure MongoDB is installed and running
-echo If MongoDB is not running, press Ctrl+C and start it manually
+echo Please ensure MongoDB is installed and running on your system
+echo MongoDB should be available at: mongodb://localhost:27017
 echo.
 timeout /t 3
 
@@ -34,16 +34,10 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Step 3: Seeding database...
-call npm run db:seed
-if errorlevel 1 (
-    echo WARNING: Database seeding failed, trying to continue...
-)
-
-echo Step 4: Starting backend server...
+echo Step 3: Starting backend server...
 echo.
 echo ========================================
-echo Backend will start now
+echo Backend starting now
 echo Keep this window open
 echo Backend URL: http://localhost:5000
 echo Health Check: http://localhost:5000/health
@@ -54,12 +48,12 @@ start "ZEDSON Backend" cmd /k "npm run dev"
 
 timeout /t 5
 
-echo Step 5: Starting frontend server...
+echo Step 4: Starting frontend server...
 cd ..
 
 echo.
 echo ========================================
-echo Frontend will start now
+echo Frontend starting now
 echo Keep this window open
 echo Frontend URL: http://localhost:8000
 echo ========================================
@@ -73,10 +67,13 @@ echo.
 echo ========================================
 echo SETUP COMPLETE!
 echo.
-echo Backend: http://localhost:5000/health
 echo Frontend: http://localhost:8000
+echo Backend: http://localhost:5000/health
 echo.
-echo Login with: admin / admin123
+echo Default Login Credentials:
+echo Username: admin | Password: admin123
+echo Username: owner | Password: owner123
+echo Username: staff | Password: staff123
 echo ========================================
 echo.
 

@@ -43,41 +43,12 @@
         </div>
     </div>
 
-    <!-- UPDATED Loading Indicator - No MongoDB messaging -->
-    <div id="loadingIndicator" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-                                      background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center;">
-        <div style="background: white; padding: 30px; border-radius: 10px; text-align: center;">
-            <div style="width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #1a237e; 
-                       border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
-            <p style="margin: 0; color: #1a237e; font-weight: 600;">Loading data...</p>
-        </div>
-    </div>
-
-    <!-- First Login Password Setup Modal -->
-    <div id="firstLoginModal" class="modal" style="z-index: 3000;">
-        <div class="modal-content">
-            <h2>First Time Login - Set Your Password</h2>
-            <p>Please set your new password for security purposes.</p>
-            <form onsubmit="handleFirstTimePasswordSetup(event)">
-                <div class="form-group">
-                    <label>New Password:</label>
-                    <input type="password" id="newPasswordSetup" required placeholder="Enter new password" minlength="6">
-                </div>
-                <div class="form-group">
-                    <label>Confirm Password:</label>
-                    <input type="password" id="confirmPasswordSetup" required placeholder="Confirm new password" minlength="6">
-                </div>
-                <button type="submit" class="btn">Set Password</button>
-            </form>
-        </div>
-    </div>
-
     <!-- Main Application -->
     <div id="mainApp" class="app-container">
         <div class="container">
-            <!-- Header with UPDATED Database Connection Status -->
+            <!-- Header -->
             <div class="header">
-                <!-- UPDATED Database Connection Status - No MongoDB specific messaging -->
+                <!-- Database Connection Status -->
                 <div style="position: absolute; top: 10px; left: 20px; font-size: 12px; color: #666;">
                     <span id="dbStatus" class="db-status">
                         <span id="dbStatusText">Initializing...</span>
@@ -91,9 +62,9 @@
                     <button class="logout-btn" onclick="logout()">Logout</button>
                 </div>
                 
-                <!-- Original Header Layout: Logo Left, Navigation Right -->
+                <!-- Header Layout -->
                 <div class="header-main">
-                    <!-- Logo Section (Left Side) -->
+                    <!-- Logo Section -->
                     <div class="logo-section">
                         <img src="assets/zedson-logo.png" alt="ZEDSON WATCHCRAFT" class="header-logo-main">
                         <!-- Fallback to original design if image fails to load -->
@@ -108,7 +79,7 @@
                         </div>
                     </div>
                     
-                    <!-- Navigation Section (Right Side) -->
+                    <!-- Navigation Section -->
                     <div class="nav-section">
                         <div class="nav" id="mainNavigation">
                             <button class="nav-btn active" onclick="showSection('dashboard', this)">Dashboard</button>
@@ -305,7 +276,7 @@
                     </table>
                 </div>
 
-                <!-- Customers Section with Net Value column -->
+                <!-- Customers Section -->
                 <div id="customers" class="section">
                     <h2>Customer Management</h2>
                     <div style="margin-bottom: 20px;">
@@ -359,7 +330,7 @@
         </div>
     </div>
 
-    <!-- UPDATED Revenue Analytics Modal -->
+    <!-- Revenue Analytics Modal -->
     <div id="revenueAnalyticsModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeModal('revenueAnalyticsModal')">&times;</span>
@@ -368,7 +339,7 @@
                 <div class="grid grid-2">
                     <div class="form-group">
                         <label>Filter Type:</label>
-                        <select id="revenueFilterType" onchange="toggleRevenueFilterInputs()">
+                        <select id="revenueFilterType">
                             <option value="all">All Transactions</option>
                             <option value="dateRange">Date Range</option>
                             <option value="monthly">Monthly</option>
@@ -376,7 +347,7 @@
                     </div>
                     <div class="form-group">
                         <label>Revenue Type:</label>
-                        <select id="revenueTypeFilter" onchange="applyRevenueFilter()">
+                        <select id="revenueTypeFilter">
                             <option value="all">All Revenue</option>
                             <option value="sales">Sales Only</option>
                             <option value="services">Services Only</option>
@@ -416,7 +387,7 @@
                 </div>
                 <div class="form-group">
                     <label>
-                        <input type="checkbox" id="includeExpenses" onchange="applyRevenueFilter()">
+                        <input type="checkbox" id="includeExpenses">
                         Include Expenses
                     </label>
                 </div>
@@ -440,10 +411,10 @@
         </div>
     </div>
 
-    <!-- Include all modal templates -->
+    <!-- Modals Container -->
     <div id="modals-container"></div>
 
-    <!-- UPDATED CSS for Database Status and Loading Animation -->
+    <!-- CSS for Status Indicators -->
     <style>
         @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -475,7 +446,6 @@
             color: #721c24;
         }
         
-        /* Status indicator dot */
         .db-status::before {
             content: '';
             width: 8px;
@@ -503,58 +473,100 @@
         }
     </style>
 
-    <!-- JavaScript Files in Correct Loading Order -->
-    <!-- 1. Core Utilities -->
+    <!-- JavaScript Files in Optimized Loading Order -->
     <script src="js/utils.js"></script>
-    
-    <!-- 2. API Service (Critical for backend communication) -->
     <script src="js/api-service.js"></script>
-    
-    <!-- 3. Logging System -->
-    <script src="js/logging.js"></script>
-    
-    <!-- 4. UPDATED Authentication (with fixed login flow) -->
-    <script>
-        // Replace the auth.js file with the fixed version from the artifact above
-        // Or update your existing auth.js with the fixed authentication module
-    </script>
-    
-    <!-- 5. Invoice Templates (independent) -->
-    <script src="js/invoice-templates.js"></script>
-    
-    <!-- 6. Business Logic Modules (need auth and API) -->
-    <script src="js/customers.js"></script>
-    <script src="js/inventory.js"></script>
-    <script src="js/sales-core.js"></script>
-    <script src="js/sales-extended.js"></script>
-    <script src="js/service.js"></script>
-    <script src="js/expenses.js"></script>
-    <script src="js/invoices.js"></script>
-    
-    <!-- 7. Main Application Controllers -->
+    <script src="js/auth.js"></script>
     <script src="js/app-core.js"></script>
-    <script src="js/app-extended.js"></script>
 
-    <!-- Firebase Analytics (Optional) -->
-    <script type="module">
-        // Import the functions you need from the SDKs you need
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-analytics.js";
-        
-        // Your web app's Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyAoxPLdv7yFr_a7BwUKIJ7BNkVl7MzqaxY",
-            authDomain: "zedsonwatchcraft-93d67.firebaseapp.com",
-            projectId: "zedsonwatchcraft-93d67",
-            storageBucket: "zedsonwatchcraft-93d67.firebasestorage.app",
-            messagingSenderId: "20067888601",
-            appId: "1:20067888601:web:b96f6580e0e2aa7ccb3dc8",
-            measurementId: "G-0DGDMVLLWC"
+    <!-- Additional modules will be loaded dynamically as needed -->
+    <script>
+        // Global functions for modal events
+        window.handleLogin = function(event) {
+            if (window.AuthModule) {
+                AuthModule.handleLogin(event);
+            }
         };
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app);
+        window.logout = function() {
+            if (window.AuthModule) {
+                AuthModule.logout();
+            }
+        };
+
+        // Simplified modal functions
+        window.openAddWatchModal = function() {
+            Utils.showNotification('Inventory module loading...');
+        };
+
+        window.openAddCustomerModal = function() {
+            Utils.showNotification('Customer module loading...');
+        };
+
+        window.openNewSaleModal = function() {
+            Utils.showNotification('Sales module loading...');
+        };
+
+        window.openNewServiceModal = function() {
+            Utils.showNotification('Service module loading...');
+        };
+
+        window.openAddExpenseModal = function() {
+            Utils.showNotification('Expense module loading...');
+        };
+
+        window.openAddUserModal = function() {
+            Utils.showNotification('User management in offline mode.');
+        };
+
+        // Search functions
+        window.searchWatches = function(query) {
+            console.log('Searching watches:', query);
+        };
+
+        window.searchCustomers = function(query) {
+            console.log('Searching customers:', query);
+        };
+
+        window.searchSales = function(query) {
+            console.log('Searching sales:', query);
+        };
+
+        window.searchServices = function(query) {
+            console.log('Searching services:', query);
+        };
+
+        window.searchExpenses = function(query) {
+            console.log('Searching expenses:', query);
+        };
+
+        window.searchInvoices = function(query) {
+            console.log('Searching invoices:', query);
+        };
+
+        window.filterInvoicesByType = function() {
+            console.log('Filtering invoices by type');
+        };
+
+        window.printInvoice = function() {
+            window.print();
+        };
+
+        // Revenue analytics functions
+        window.applyRevenueFilter = function() {
+            console.log('Applying revenue filter');
+        };
+
+        window.resetRevenueFilter = function() {
+            console.log('Resetting revenue filter');
+        };
+
+        // Initialize app when DOM loads
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.AppCoreModule) {
+                AppCoreModule.initializeApp();
+            }
+        });
     </script>
 
 </body>

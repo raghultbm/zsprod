@@ -1,1038 +1,433 @@
-// ZEDSON WATCHCRAFT - Service Management Module (FIXED)
+// ZEDSON WATCHCRAFT - Simplified MongoDB Backend Server
+// Developed by PULSEWARE❤️
 
-/**
- * Service Request Management System - Fixed Issues
- */
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+require('dotenv').config();
 
-// Service requests database
-let services = [];
-let nextServiceId = 1;
+const app = express();
+const PORT = process.env.PORT || 5000;
 
-/**
- * Open New Service Modal
- */
-function openNewServiceModal() {
-    if (!AuthModule.hasPermission('service')) {
-        Utils.showNotification('You do not have permission to create service requests.');
-        return;
-    }
-    
-    if (window.logAction) {
-        logAction('Opened new service modal');
-    }
-    
-    // Populate customer dropdown
-    CustomerModule.populateCustomerDropdown('serviceCustomer');
-    
-    document.getElementById('newServiceModal').style.display = 'block';
-}
+// Middleware
+app.use(cors({
+    origin: ['http://localhost:3000', 'http://localhost:8000', 'http://127.0.0.1:8000'],
+    credentials: true
+}));
+app.use(express.json());
 
-/**
- * Add new service request - FIXED to always show Movement No. and Cost fields
- */
-function addNewService(event) {
-    event.preventDefault();
-    
-    if (!AuthModule.hasPermission('service')) {
-        Utils.showNotification('You do not have permission to create service requests.');
-        return;
-    }
+// MongoDB connection
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/zedson_watchcraft';
 
-    // Get form data
-    const customerId = parseInt(document.getElementById('serviceCustomer').value);
-    const type = document.getElementById('serviceType').value;
-    const brand = document.getElementById('serviceBrand').value.trim();
-    const model = document.getElementById('serviceModel').value.trim();
-    const dialColor = document.getElementById('serviceDialColor').value.trim();
-    const movementNo = document.getElementById('serviceMovementNo').value.trim(); // Now always visible
-    const gender = document.getElementById('serviceGender').value;
-    const caseType = document.getElementById('serviceCase').value;
-    const strapType = document.getElementById('serviceStrap').value;
-    const issue = document.getElementById('serviceIssue').value.trim();
-    const cost = parseFloat(document.getElementById('serviceCost').value); // Now always visible
-    
-    // Validate required fields - Movement No. and Cost are always required
-    if (!customerId || !type || !brand || !model || !movementNo || !issue || !cost) {
-        Utils.showNotification('Please fill in all required fields including Movement No. and Cost');
-        return;
-    }
-
-    // Type-specific validation (only for other watch-specific fields)
-    if (type === 'Watch') {
-        if (!dialColor || !gender || !caseType || !strapType) {
-            Utils.showNotification('Please fill in all watch-specific fields for watch services');
-            return;
-        }
-    }
-
-    if (cost < 0) {
-        Utils.showNotification('Service cost cannot be negative');
-        return;
-    }
-
-    // Get customer details
-    const customer = CustomerModule.getCustomerById(customerId);
-    if (!customer) {
-        Utils.showNotification('Selected customer not found');
-        return;
-    }
-
-    // Create service object
-    const now = new Date();
-    const newService = {
-        id: nextServiceId++,
-        date: Utils.formatDate(now),
-        time: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-        timestamp: Utils.getCurrentTimestamp(),
-        customerId: customerId,
-        customerName: customer.name,
-        type: type,
-        watchName: `${brand} ${model}`,
-        brand: brand,
-        model: model,
-        dialColor: dialColor || 'N/A',
-        movementNo: movementNo, // Always populated
-        gender: gender || 'N/A',
-        caseType: caseType || 'N/A',
-        strapType: strapType || 'N/A',
-        issue: issue,
-        cost: cost, // Always populated
-        status: 'pending',
-        createdBy: AuthModule.getCurrentUser().username,
-        estimatedDelivery: null,
-        actualDelivery: null,
-        completionImage: null,
-        completionDescription: null,
-        warrantyPeriod: null,
-        notes: [],
-        acknowledgementGenerated: false,
-        completionInvoiceGenerated: false,
-        acknowledgementInvoiceId: null,
-        completionInvoiceId: null
-    };
-
-    // Log action
-    if (window.logServiceAction) {
-        logServiceAction(`Created ${type} service request for ${customer.name}'s ${brand} ${model}. Estimated cost: ${Utils.formatCurrency(cost)}`, newService);
-    }
-
-    // Add to services array
-    services.push(newService);
-    
-    // Update customer service count
-    CustomerModule.incrementCustomerServices(customerId);
-    
-    // Generate Service Acknowledgement automatically
-    if (window.InvoiceModule) {
-        const acknowledgement = InvoiceModule.generateServiceAcknowledgement(newService);
-        if (acknowledgement) {
-            newService.acknowledgementGenerated = true;
-            newService.acknowledgementInvoiceId = acknowledgement.id;
-        }
-    }
-    
-    // Update displays
-    renderServiceTable();
-    updateDashboard();
-    
-    // Close modal and reset form
-    closeModal('newServiceModal');
-    event.target.reset();
-    
-    Utils.showNotification(`${type} service request created successfully! Request ID: ${newService.id}. Acknowledgement generated.`);
-}
-
-/**
- * FIXED: Toggle watch-specific fields - Movement No. and Cost always shown
- */
-function toggleWatchFields() {
-    const type = document.getElementById('serviceType')?.value;
-    const watchOnlyFields = document.querySelectorAll('.watch-only-field');
-    
-    watchOnlyFields.forEach(field => {
-        if (type === 'Watch') {
-            field.style.display = 'block';
-            // Make fields required for watches
-            const inputs = field.querySelectorAll('input, select');
-            inputs.forEach(input => input.required = true);
-        } else {
-            field.style.display = 'none';
-            // Remove required attribute for non-watch items
-            const inputs = field.querySelectorAll('input, select');
-            inputs.forEach(input => input.required = false);
-        }
-    });
-    
-    // Movement No. and Cost fields always visible and required
-    const movementField = document.getElementById('serviceMovementNo');
-    const costField = document.getElementById('serviceCost');
-    if (movementField) {
-        movementField.required = true;
-        movementField.closest('.form-group').style.display = 'block';
-    }
-    if (costField) {
-        costField.required = true;
-        costField.closest('.form-group').style.display = 'block';
-    }
-}
-
-/**
- * Update service status
- */
-function updateServiceStatus(serviceId, newStatus) {
-    const service = services.find(s => s.id === serviceId);
-    if (!service) {
-        Utils.showNotification('Service request not found.');
-        return;
-    }
-
-    const oldStatus = service.status;
-    
-    // Show confirmation BEFORE changing status
-    let confirmMessage = '';
-    if (newStatus === 'in-progress') {
-        confirmMessage = `Start working on ${service.type.toLowerCase()} service for ${service.customerName}'s ${service.watchName}?`;
-    } else if (newStatus === 'on-hold') {
-        confirmMessage = `Put ${service.type.toLowerCase()} service for ${service.customerName}'s ${service.watchName} on hold?`;
-    } else if (newStatus === 'completed' && oldStatus === 'in-progress') {
-        showServiceCompletionModal(service);
-        return;
-    }
-    
-    if (confirmMessage && !confirm(confirmMessage)) {
-        return;
-    }
-    
-    // Log action
-    if (window.logAction) {
-        logAction(`Changed ${service.type.toLowerCase()} service ${serviceId} status from ${oldStatus} to ${newStatus}`);
-    }
-    
-    service.status = newStatus;
-    
-    // Add timestamp for status changes
-    if (newStatus === 'in-progress' && oldStatus === 'pending') {
-        service.startedAt = Utils.getCurrentTimestamp();
-    } else if (newStatus === 'on-hold') {
-        service.heldAt = Utils.getCurrentTimestamp();
-    }
-    
-    renderServiceTable();
-    updateDashboard();
-    Utils.showNotification(`${service.type} service status updated to: ${newStatus}`);
-}
-
-/**
- * Show service completion modal with image upload and final service cost
- */
-function showServiceCompletionModal(service) {
-    const confirmMessage = `Complete ${service.type.toLowerCase()} service for ${service.customerName}'s ${service.watchName}?\n\nThis will require completion details and warranty information.`;
-    
-    if (!confirm(confirmMessage)) {
-        return;
-    }
-    
-    const completionModal = document.createElement('div');
-    completionModal.className = 'modal';
-    completionModal.id = 'serviceCompletionModal';
-    completionModal.style.display = 'block';
-    completionModal.innerHTML = `
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('serviceCompletionModal')">&times;</span>
-            <h2>Complete ${service.type} Service Request</h2>
-            <p><strong>Service ID:</strong> ${service.id} - ${service.watchName}</p>
-            <form onsubmit="ServiceModule.completeService(event, ${service.id})">
-                <div class="form-group">
-                    <label>Completion Image:</label>
-                    <input type="file" id="completionImage" accept="image/*" onchange="previewCompletionImage(event)">
-                    <small>Upload an image showing the completed work (optional)</small>
-                    <div id="imagePreview" style="margin-top: 10px; display: none;">
-                        <img id="previewImg" style="max-width: 200px; max-height: 200px; border-radius: 5px; border: 1px solid #ddd;">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Work Description:</label>
-                    <textarea id="completionDescription" rows="4" required 
-                        placeholder="Describe the work performed, parts replaced, etc."></textarea>
-                </div>
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Service Cost (₹):</label>
-                        <input type="number" id="finalServiceCost" min="0" step="0.01" value="${service.cost}" required>
-                        <small>Final billing amount for the service</small>
-                    </div>
-                    <div class="form-group">
-                        <label>Warranty Period (months):</label>
-                        <input type="number" id="warrantyPeriod" min="0" max="60" value="6" required>
-                        <small>Enter warranty period in months (0-60)</small>
-                    </div>
-                </div>
-                <div class="grid grid-2">
-                    <button type="button" class="btn btn-danger" onclick="closeModal('serviceCompletionModal')">Cancel</button>
-                    <button type="submit" class="btn btn-success">Complete Service</button>
-                </div>
-            </form>
-        </div>
-    `;
-    
-    document.body.appendChild(completionModal);
-}
-
-/**
- * Preview uploaded completion image
- */
-function previewCompletionImage(event) {
-    const file = event.target.files[0];
-    const preview = document.getElementById('imagePreview');
-    const previewImg = document.getElementById('previewImg');
-    
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            previewImg.src = e.target.result;
-            preview.style.display = 'block';
-        };
-        reader.readAsDataURL(file);
-    } else {
-        preview.style.display = 'none';
-    }
-}
-
-/**
- * Complete service with details including image and final cost
- */
-function completeService(event, serviceId) {
-    event.preventDefault();
-    
-    const service = services.find(s => s.id === serviceId);
-    if (!service) {
-        Utils.showNotification('Service not found.');
-        return;
-    }
-    
-    const imageFile = document.getElementById('completionImage').files[0];
-    const description = document.getElementById('completionDescription').value.trim();
-    const finalCost = parseFloat(document.getElementById('finalServiceCost').value);
-    const warranty = parseInt(document.getElementById('warrantyPeriod').value);
-    
-    if (!description) {
-        Utils.showNotification('Please provide a work description.');
-        return;
-    }
-    
-    if (finalCost < 0) {
-        Utils.showNotification('Service cost cannot be negative.');
-        return;
-    }
-    
-    if (warranty < 0 || warranty > 60) {
-        Utils.showNotification('Warranty period must be between 0 and 60 months.');
-        return;
-    }
-    
-    // Handle image upload (in a real app, this would upload to a server)
-    let imageDataUrl = null;
-    if (imageFile) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            imageDataUrl = e.target.result;
-            finishServiceCompletion(service, imageDataUrl, description, finalCost, warranty);
-        };
-        reader.readAsDataURL(imageFile);
-    } else {
-        finishServiceCompletion(service, null, description, finalCost, warranty);
-    }
-}
-
-/**
- * Finish service completion after image processing
- */
-function finishServiceCompletion(service, imageDataUrl, description, finalCost, warranty) {
-    // Log action
-    if (window.logAction) {
-        logAction(`Completed ${service.type.toLowerCase()} service ${service.id} for ${service.customerName}'s ${service.watchName}. Final cost: ${Utils.formatCurrency(finalCost)}`);
-    }
-    
-    // Update service
-    service.status = 'completed';
-    service.completedAt = Utils.getCurrentTimestamp();
-    service.actualDelivery = Utils.formatDate(new Date());
-    service.completionImage = imageDataUrl;
-    service.completionDescription = description;
-    service.cost = finalCost; // Update with final cost
-    service.warrantyPeriod = warranty;
-    
-    // Generate Service Completion Invoice automatically
-    if (window.InvoiceModule) {
-        const completionInvoice = InvoiceModule.generateServiceCompletionInvoice(service);
-        if (completionInvoice) {
-            service.completionInvoiceGenerated = true;
-            service.completionInvoiceId = completionInvoice.id;
-        }
-    }
-    
-    renderServiceTable();
-    updateDashboard();
-    closeModal('serviceCompletionModal');
-    document.getElementById('serviceCompletionModal').remove();
-    
-    Utils.showNotification(`${service.type} service completed successfully! Completion invoice generated.`);
-}
-
-/**
- * Edit service - FIXED: Movement No. and Cost always shown
- */
-function editService(serviceId) {
-    const currentUser = AuthModule.getCurrentUser();
-    const isStaff = currentUser && currentUser.role === 'staff';
-    
-    if (isStaff) {
-        Utils.showNotification('Staff users cannot edit service requests.');
-        return;
-    }
-    
-    if (!AuthModule.hasPermission('service')) {
-        Utils.showNotification('You do not have permission to edit service requests.');
-        return;
-    }
-
-    const service = services.find(s => s.id === serviceId);
-    if (!service) {
-        Utils.showNotification('Service request not found.');
-        return;
-    }
-
-    // Create edit modal with Movement No. and Cost always visible
-    const editModal = document.createElement('div');
-    editModal.className = 'modal';
-    editModal.id = 'editServiceModal';
-    editModal.style.display = 'block';
-    editModal.innerHTML = `
-        <div class="modal-content">
-            <span class="close" onclick="closeEditServiceModal()">&times;</span>
-            <h2>Edit Service Request</h2>
-            <form onsubmit="ServiceModule.updateService(event, ${serviceId})">
-                <div class="form-group">
-                    <label>Customer:</label>
-                    <select id="editServiceCustomer" required>
-                        <option value="">Select Customer</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Type:</label>
-                    <select id="editServiceType" required onchange="toggleEditWatchFields()">
-                        <option value="Watch" ${service.type === 'Watch' ? 'selected' : ''}>Watch</option>
-                        <option value="Clock" ${service.type === 'Clock' ? 'selected' : ''}>Clock</option>
-                        <option value="Others" ${service.type === 'Others' ? 'selected' : ''}>Others</option>
-                    </select>
-                </div>
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Brand:</label>
-                        <input type="text" id="editServiceBrand" value="${service.brand}" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Model:</label>
-                        <input type="text" id="editServiceModel" value="${service.model}" required>
-                    </div>
-                </div>
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Movement No. (Required):</label>
-                        <input type="text" id="editServiceMovementNo" value="${service.movementNo === 'N/A' ? '' : service.movementNo}" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Cost (₹) (Required):</label>
-                        <input type="number" id="editServiceCost" value="${service.cost}" required min="0" step="0.01">
-                    </div>
-                </div>
-                <div class="grid grid-2 watch-only-field">
-                    <div class="form-group">
-                        <label>Dial Colour:</label>
-                        <input type="text" id="editServiceDialColor" value="${service.dialColor === 'N/A' ? '' : service.dialColor}">
-                    </div>
-                    <div class="form-group">
-                        <label>Gender:</label>
-                        <select id="editServiceGender">
-                            <option value="">Select Gender</option>
-                            <option value="Male" ${service.gender === 'Male' ? 'selected' : ''}>Male</option>
-                            <option value="Female" ${service.gender === 'Female' ? 'selected' : ''}>Female</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="grid grid-2 watch-only-field">
-                    <div class="form-group">
-                        <label>Case Material:</label>
-                        <select id="editServiceCase">
-                            <option value="">Select Case</option>
-                            <option value="Steel" ${service.caseType === 'Steel' ? 'selected' : ''}>Steel</option>
-                            <option value="Gold Tone" ${service.caseType === 'Gold Tone' ? 'selected' : ''}>Gold Tone</option>
-                            <option value="Fiber" ${service.caseType === 'Fiber' ? 'selected' : ''}>Fiber</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Strap Material:</label>
-                        <select id="editServiceStrap">
-                            <option value="">Select Strap</option>
-                            <option value="Leather" ${service.strapType === 'Leather' ? 'selected' : ''}>Leather</option>
-                            <option value="Fiber" ${service.strapType === 'Fiber' ? 'selected' : ''}>Fiber</option>
-                            <option value="Steel" ${service.strapType === 'Steel' ? 'selected' : ''}>Steel</option>
-                            <option value="Gold Plated" ${service.strapType === 'Gold Plated' ? 'selected' : ''}>Gold Plated</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Issue Description:</label>
-                    <textarea id="editServiceIssue" rows="3" required>${service.issue}</textarea>
-                </div>
-                <button type="submit" class="btn">Update Service Request</button>
-                <button type="button" class="btn btn-danger" onclick="closeEditServiceModal()">Cancel</button>
-            </form>
-        </div>
-    `;
-    
-    document.body.appendChild(editModal);
-    
-    // Populate customer dropdown and set current customer
-    if (window.CustomerModule) {
-        CustomerModule.populateCustomerDropdown('editServiceCustomer');
-        setTimeout(() => {
-            const customerSelect = document.getElementById('editServiceCustomer');
-            if (customerSelect) {
-                customerSelect.value = service.customerId;
-            }
-            // Toggle watch fields based on current type
-            toggleEditWatchFields();
-        }, 50);
-    }
-}
-
-/**
- * FIXED: Toggle watch-specific fields in edit modal - Movement No. and Cost always shown
- */
-function toggleEditWatchFields() {
-    const type = document.getElementById('editServiceType')?.value;
-    const watchFields = document.querySelectorAll('.watch-only-field');
-    
-    watchFields.forEach(field => {
-        if (type === 'Watch') {
-            field.style.display = 'block';
-            // Make fields required for watches
-            const inputs = field.querySelectorAll('input, select');
-            inputs.forEach(input => input.required = true);
-        } else {
-            field.style.display = 'none';
-            // Remove required attribute for non-watch items
-            const inputs = field.querySelectorAll('input, select');
-            inputs.forEach(input => input.required = false);
-        }
-    });
-    
-    // Movement No. and Cost fields always visible and required
-    const movementField = document.getElementById('editServiceMovementNo');
-    const costField = document.getElementById('editServiceCost');
-    if (movementField) {
-        movementField.required = true;
-    }
-    if (costField) {
-        costField.required = true;
-    }
-}
-
-/**
- * Close edit service modal
- */
-function closeEditServiceModal() {
-    const modal = document.getElementById('editServiceModal');
-    if (modal) {
-        modal.remove();
-    }
-}
-
-/**
- * Update service - FIXED: Movement No. and Cost always required
- */
-function updateService(event, serviceId) {
-    event.preventDefault();
-    
-    const service = services.find(s => s.id === serviceId);
-    if (!service) {
-        Utils.showNotification('Service not found.');
-        return;
-    }
-
-    const customerId = parseInt(document.getElementById('editServiceCustomer').value);
-    const type = document.getElementById('editServiceType').value;
-    const brand = document.getElementById('editServiceBrand').value.trim();
-    const model = document.getElementById('editServiceModel').value.trim();
-    const dialColor = document.getElementById('editServiceDialColor').value.trim();
-    const movementNo = document.getElementById('editServiceMovementNo').value.trim(); // Always required
-    const gender = document.getElementById('editServiceGender').value;
-    const caseType = document.getElementById('editServiceCase').value;
-    const strapType = document.getElementById('editServiceStrap').value;
-    const issue = document.getElementById('editServiceIssue').value.trim();
-    const cost = parseFloat(document.getElementById('editServiceCost').value); // Always required
-
-    // Validate required fields - Movement No. and Cost always required
-    if (!customerId || !type || !brand || !model || !movementNo || !issue || cost < 0) {
-        Utils.showNotification('Please fill in all required fields correctly including Movement No. and Cost');
-        return;
-    }
-
-    // Type-specific validation (only for other watch-specific fields)
-    if (type === 'Watch') {
-        if (!dialColor || !gender || !caseType || !strapType) {
-            Utils.showNotification('Please fill in all watch-specific fields for watch services');
-            return;
-        }
-    }
-
-    const customer = CustomerModule.getCustomerById(customerId);
-    if (!customer) {
-        Utils.showNotification('Selected customer not found');
-        return;
-    }
-
-    // Update service
-    service.customerId = customerId;
-    service.customerName = customer.name;
-    service.type = type;
-    service.brand = brand;
-    service.model = model;
-    service.watchName = `${brand} ${model}`;
-    service.dialColor = dialColor || 'N/A';
-    service.movementNo = movementNo; // Always populated
-    service.gender = gender || 'N/A';
-    service.caseType = caseType || 'N/A';
-    service.strapType = strapType || 'N/A';
-    service.issue = issue;
-    service.cost = cost; // Always populated
-
-    renderServiceTable();
-    updateDashboard();
-    closeEditServiceModal();
-    Utils.showNotification('Service request updated successfully!');
-}
-
-/**
- * Delete service request
- */
-function deleteService(serviceId) {
-    const currentUser = AuthModule.getCurrentUser();
-    const isStaff = currentUser && currentUser.role === 'staff';
-    
-    if (isStaff) {
-        Utils.showNotification('Staff users cannot delete service requests.');
-        return;
-    }
-    
-    if (!AuthModule.hasPermission('service')) {
-        Utils.showNotification('You do not have permission to delete service requests.');
-        return;
-    }
-
-    const service = services.find(s => s.id === serviceId);
-    if (!service) {
-        Utils.showNotification('Service request not found.');
-        return;
-    }
-
-    if (confirm(`Are you sure you want to delete the ${service.type.toLowerCase()} service request for ${service.watchName}?`)) {
-        // Log action
-        if (window.logAction) {
-            logAction(`Deleted ${service.type.toLowerCase()} service request ${serviceId} for ${service.customerName}'s ${service.watchName}`);
-        }
-        
-        // Decrease customer service count
-        CustomerModule.decrementCustomerServices(service.customerId);
-        
-        // Remove from services array
-        services = services.filter(s => s.id !== serviceId);
-        
-        renderServiceTable();
-        updateDashboard();
-        Utils.showNotification('Service request deleted successfully!');
-    }
-}
-
-/**
- * View service acknowledgement
- */
-function viewServiceAcknowledgement(serviceId) {
-    if (!window.InvoiceModule) {
-        Utils.showNotification('Invoice module not available.');
-        return;
-    }
-    
-    InvoiceModule.viewServiceAcknowledgement(serviceId);
-}
-
-/**
- * View service completion invoice
- */
-function viewServiceCompletionInvoice(serviceId) {
-    if (!window.InvoiceModule) {
-        Utils.showNotification('Invoice module not available.');
-        return;
-    }
-    
-    const invoices = InvoiceModule.getInvoicesForTransaction(serviceId, 'service');
-    const completionInvoice = invoices.find(inv => inv.type === 'Service Completion');
-    
-    if (completionInvoice) {
-        InvoiceModule.viewInvoice(completionInvoice.id);
-    } else {
-        Utils.showNotification('No completion invoice found for this service.');
-    }
-}
-
-/**
- * Search services
- */
-function searchServices(query) {
-    const tbody = document.getElementById('serviceTableBody');
-    if (!tbody) return;
-    
-    const rows = tbody.querySelectorAll('tr');
-    
-    rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        if (text.includes(query.toLowerCase())) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
-    });
-}
-
-/**
- * Get service statistics
- */
-function getServiceStats() {
-    const totalServices = services.length;
-    const pendingServices = services.filter(s => s.status === 'pending').length;
-    const inProgressServices = services.filter(s => s.status === 'in-progress').length;
-    const onHoldServices = services.filter(s => s.status === 'on-hold').length;
-    const completedServices = services.filter(s => s.status === 'completed').length;
-    const incompleteServices = totalServices - completedServices;
-    const totalRevenue = services.filter(s => s.status === 'completed')
-        .reduce((sum, service) => sum + service.cost, 0);
-    const averageServiceCost = totalServices > 0 ? 
-        services.reduce((sum, service) => sum + service.cost, 0) / totalServices : 0;
-    
-    return {
-        totalServices,
-        pendingServices,
-        inProgressServices,
-        onHoldServices,
-        completedServices,
-        incompleteServices,
-        totalRevenue,
-        averageServiceCost
-    };
-}
-
-/**
- * Get incomplete services
- */
-function getIncompleteServices(limit = 5) {
-    return services
-        .filter(s => s.status !== 'completed')
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-        .slice(0, limit);
-}
-
-/**
- * Filter services by date range
- */
-function filterServicesByDateRange(fromDate, toDate) {
-    const from = new Date(fromDate);
-    const to = new Date(toDate);
-    
-    return services.filter(service => {
-        const serviceDate = new Date(service.timestamp);
-        return serviceDate >= from && serviceDate <= to;
-    });
-}
-
-/**
- * Filter services by month and year
- */
-function filterServicesByMonth(month, year) {
-    return services.filter(service => {
-        const serviceDate = new Date(service.timestamp);
-        return serviceDate.getMonth() === parseInt(month) && serviceDate.getFullYear() === parseInt(year);
-    });
-}
-
-/**
- * Render service table with updated action buttons and Type column
- */
-function renderServiceTable() {
-    const tbody = document.getElementById('serviceTableBody');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '';
-    
-    const currentUser = AuthModule.getCurrentUser();
-    const isStaff = currentUser && currentUser.role === 'staff';
-    
-    // Sort services by date (newest first)
-    const sortedServices = services.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    
-    sortedServices.forEach((service, index) => {
-        const row = document.createElement('tr');
-        
-        // Create action buttons based on status and user role
-        let actionButtons = '';
-        if (service.status === 'pending') {
-            actionButtons = `
-                <button class="btn" onclick="updateServiceStatus(${service.id}, 'in-progress')">Start</button>
-                <button class="btn" onclick="updateServiceStatus(${service.id}, 'on-hold')">Hold</button>
-            `;
-        } else if (service.status === 'in-progress') {
-            actionButtons = `
-                <button class="btn btn-success" onclick="updateServiceStatus(${service.id}, 'completed')">Complete</button>
-                <button class="btn" onclick="updateServiceStatus(${service.id}, 'on-hold')">Hold</button>
-            `;
-        } else if (service.status === 'on-hold') {
-            actionButtons = `
-                <button class="btn btn-success" onclick="updateServiceStatus(${service.id}, 'in-progress')">Resume</button>
-            `;
-        }
-        
-        // Add edit/delete buttons only for non-staff users
-        if (!isStaff) {
-            actionButtons += `
-                <button class="btn" onclick="editService(${service.id})" 
-                    ${!AuthModule.hasPermission('service') ? 'disabled' : ''}>Edit</button>
-                <button class="btn btn-danger" onclick="confirmTransaction('Are you sure you want to delete this service request?', () => deleteService(${service.id}))" 
-                    ${!AuthModule.hasPermission('service') ? 'disabled' : ''}>Delete</button>
-            `;
-        }
-        
-        // Add invoice view buttons
-        const hasAcknowledgement = service.acknowledgementGenerated;
-        const hasCompletionInvoice = window.InvoiceModule && 
-            InvoiceModule.getInvoicesForTransaction(service.id, 'service')
-                .some(inv => inv.type === 'Service Completion');
-        
-        if (hasAcknowledgement) {
-            actionButtons += `
-                <button class="btn btn-success" onclick="viewServiceAcknowledgement(${service.id})" title="View Acknowledgement">Receipt</button>
-            `;
-        }
-        
-        if (hasCompletionInvoice) {
-            actionButtons += `
-                <button class="btn btn-success" onclick="viewServiceCompletionInvoice(${service.id})" title="View Completion Invoice">Invoice</button>
-            `;
-        }
-        
-        // Get customer mobile number
-        const customer = window.CustomerModule ? CustomerModule.getCustomerById(service.customerId) : null;
-        const customerMobile = customer ? customer.phone : 'N/A';
-        
-        // Show specifications only for watches
-        let specificationsHtml = '';
-        if (service.type === 'Watch') {
-            specificationsHtml = `
-                <small>
-                    <strong>Dial:</strong> ${Utils.sanitizeHtml(service.dialColor)}<br>
-                    <strong>Movement:</strong> ${Utils.sanitizeHtml(service.movementNo)}<br>
-                    <strong>Gender:</strong> ${Utils.sanitizeHtml(service.gender)}<br>
-                    <strong>Case:</strong> ${Utils.sanitizeHtml(service.caseType)}<br>
-                    <strong>Strap:</strong> ${Utils.sanitizeHtml(service.strapType)}
-                </small>
-            `;
-        } else {
-            specificationsHtml = `
-                <small>
-                    <strong>Movement:</strong> ${Utils.sanitizeHtml(service.movementNo)}<br>
-                    <strong>Type:</strong> ${Utils.sanitizeHtml(service.type)}
-                </small>
-            `;
-        }
-        
-        row.innerHTML = `
-            <td class="serial-number">${index + 1}</td>
-            <td>${Utils.sanitizeHtml(service.date)}</td>
-            <td>${Utils.sanitizeHtml(service.time)}</td>
-            <td class="customer-info">
-                <div class="customer-name">${Utils.sanitizeHtml(service.customerName)}</div>
-                <div class="customer-mobile">${Utils.sanitizeHtml(customerMobile)}</div>
-            </td>
-            <td>
-                <strong>${Utils.sanitizeHtml(service.watchName)}</strong><br>
-                <small><span class="status ${service.type.toLowerCase()}">${Utils.sanitizeHtml(service.type)}</span></small><br>
-                <small>${Utils.sanitizeHtml(service.brand)} ${Utils.sanitizeHtml(service.model)}</small>
-            </td>
-            <td>
-                ${specificationsHtml}
-            </td>
-            <td>${Utils.sanitizeHtml(service.issue)}</td>
-            <td><span class="status ${service.status}">${service.status}</span></td>
-            <td>${Utils.formatCurrency(service.cost)}</td>
-            <td>${actionButtons}</td>
-        `;
-        tbody.appendChild(row);
-    });
-}
-
-/**
- * Initialize service module
- */
-function initializeServices() {
-    renderServiceTable();
-    console.log('Service module initialized');
-}
-
-/**
- * FIXED: Load modal template for services - Movement No. and Cost always visible
- */
-function loadServiceModal() {
-    const modalHtml = `
-        <!-- New Service Modal -->
-        <div id="newServiceModal" class="modal">
-            <div class="modal-content">
-                <span class="close" onclick="closeModal('newServiceModal')">&times;</span>
-                <h2>New Service Request</h2>
-                <form onsubmit="ServiceModule.addNewService(event)">
-                    <div class="grid grid-2">
-                        <div class="form-group">
-                            <label>Customer:</label>
-                            <select id="serviceCustomer" required>
-                                <option value="">Select Customer</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Type:</label>
-                            <select id="serviceType" required onchange="toggleWatchFields()">
-                                <option value="">Select Type</option>
-                                <option value="Watch">Watch</option>
-                                <option value="Clock">Clock</option>
-                                <option value="Others">Others</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="grid grid-2">
-                        <div class="form-group">
-                            <label>Brand:</label>
-                            <input type="text" id="serviceBrand" required placeholder="e.g., Rolex, Omega">
-                        </div>
-                        <div class="form-group">
-                            <label>Model:</label>
-                            <input type="text" id="serviceModel" required placeholder="e.g., Submariner, Speedmaster">
-                        </div>
-                    </div>
-                    <div class="grid grid-2">
-                        <div class="form-group">
-                            <label>Movement No. (Required):</label>
-                            <input type="text" id="serviceMovementNo" required placeholder="e.g., 3135, 1861, Serial No.">
-                        </div>
-                        <div class="form-group">
-                            <label>Estimated Cost (₹) (Required):</label>
-                            <input type="number" id="serviceCost" required min="0" step="0.01" placeholder="Enter cost">
-                        </div>
-                    </div>
-                    <div class="grid grid-2 watch-only-field" style="display: none;">
-                        <div class="form-group">
-                            <label>Dial Colour:</label>
-                            <input type="text" id="serviceDialColor" placeholder="e.g., Black, White, Blue">
-                        </div>
-                        <div class="form-group">
-                            <label>Gender:</label>
-                            <select id="serviceGender">
-                                <option value="">Select Gender</option>
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="grid grid-2 watch-only-field" style="display: none;">
-                        <div class="form-group">
-                            <label>Case Material:</label>
-                            <select id="serviceCase">
-                                <option value="">Select Case</option>
-                                <option value="Steel">Steel</option>
-                                <option value="Gold Tone">Gold Tone</option>
-                                <option value="Fiber">Fiber</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Strap Material:</label>
-                            <select id="serviceStrap">
-                                <option value="">Select Strap</option>
-                                <option value="Leather">Leather</option>
-                                <option value="Fiber">Fiber</option>
-                                <option value="Steel">Steel</option>
-                                <option value="Gold Plated">Gold Plated</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Issue Description:</label>
-                        <textarea id="serviceIssue" rows="3" required placeholder="Describe the problem with the item..."></textarea>
-                    </div>
-                    <button type="submit" class="btn">Create Service Request</button>
-                </form>
-            </div>
-        </div>
-    `;
-    
-    // Add to modals container if it exists
-    const modalsContainer = document.getElementById('modals-container');
-    if (modalsContainer) {
-        modalsContainer.innerHTML += modalHtml;
-    }
-}
-
-// Auto-load modal when module loads
-document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(() => {
-        loadServiceModal();
-        if (window.ServiceModule) {
-            ServiceModule.initializeServices();
-        }
-    }, 100);
+mongoose.connect(MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+})
+.then(() => {
+    console.log('✅ Connected to MongoDB');
+    initializeDefaultData();
+})
+.catch(err => {
+    console.error('❌ MongoDB connection error:', err);
 });
 
-// Make functions globally available
-window.previewCompletionImage = previewCompletionImage;
-window.closeEditServiceModal = closeEditServiceModal;
-window.toggleWatchFields = toggleWatchFields;
-window.toggleEditWatchFields = toggleEditWatchFields;
+// Auto-increment plugin
+const AutoIncrement = require('mongoose-sequence')(mongoose);
 
-window.viewServiceAcknowledgement = function(serviceId) {
-    if (window.ServiceModule) {
-        ServiceModule.viewServiceAcknowledgement(serviceId);
+// Schemas
+const userSchema = new mongoose.Schema({
+    username: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    role: { type: String, enum: ['admin', 'owner', 'staff'], required: true },
+    fullName: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    status: { type: String, enum: ['active', 'inactive'], default: 'active' },
+    lastLogin: { type: Date }
+}, { timestamps: true });
+
+const customerSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    phone: { type: String, required: true },
+    address: { type: String },
+    purchases: { type: Number, default: 0 },
+    serviceCount: { type: Number, default: 0 },
+    netValue: { type: Number, default: 0 },
+    addedBy: { type: String }
+}, { timestamps: true });
+
+const inventorySchema = new mongoose.Schema({
+    code: { type: String, required: true, unique: true },
+    type: { type: String, required: true },
+    brand: { type: String, required: true },
+    model: { type: String, required: true },
+    size: { type: String, default: '-' },
+    price: { type: Number, required: true },
+    quantity: { type: Number, required: true },
+    outlet: { type: String, required: true },
+    description: { type: String },
+    status: { type: String, enum: ['available', 'sold'], default: 'available' },
+    addedBy: { type: String }
+}, { timestamps: true });
+
+const salesSchema = new mongoose.Schema({
+    date: { type: String, required: true },
+    time: { type: String, required: true },
+    timestamp: { type: String, required: true },
+    customerId: { type: Number, required: true },
+    customerName: { type: String, required: true },
+    watchId: { type: Number, required: true },
+    watchName: { type: String, required: true },
+    watchCode: { type: String, required: true },
+    price: { type: Number, required: true },
+    quantity: { type: Number, required: true },
+    subtotal: { type: Number, required: true },
+    discountType: { type: String, default: '' },
+    discountValue: { type: Number, default: 0 },
+    discountAmount: { type: Number, default: 0 },
+    totalAmount: { type: Number, required: true },
+    paymentMethod: { type: String, required: true },
+    status: { type: String, default: 'completed' },
+    createdBy: { type: String }
+}, { timestamps: true });
+
+const serviceSchema = new mongoose.Schema({
+    date: { type: String, required: true },
+    time: { type: String, required: true },
+    timestamp: { type: String, required: true },
+    customerId: { type: Number, required: true },
+    customerName: { type: String, required: true },
+    type: { type: String, required: true },
+    watchName: { type: String, required: true },
+    brand: { type: String, required: true },
+    model: { type: String, required: true },
+    dialColor: { type: String, default: 'N/A' },
+    movementNo: { type: String, required: true },
+    gender: { type: String, default: 'N/A' },
+    caseType: { type: String, default: 'N/A' },
+    strapType: { type: String, default: 'N/A' },
+    issue: { type: String, required: true },
+    cost: { type: Number, required: true },
+    status: { type: String, enum: ['pending', 'in-progress', 'on-hold', 'completed'], default: 'pending' },
+    estimatedDelivery: { type: String },
+    actualDelivery: { type: String },
+    completionDescription: { type: String },
+    warrantyPeriod: { type: Number, default: 0 },
+    createdBy: { type: String }
+}, { timestamps: true });
+
+const expenseSchema = new mongoose.Schema({
+    date: { type: String, required: true },
+    formattedDate: { type: String, required: true },
+    description: { type: String, required: true },
+    amount: { type: Number, required: true },
+    timestamp: { type: String, required: true },
+    createdBy: { type: String }
+}, { timestamps: true });
+
+const invoiceSchema = new mongoose.Schema({
+    invoiceNo: { type: String, required: true, unique: true },
+    type: { type: String, required: true },
+    subType: { type: String, required: true },
+    date: { type: String, required: true },
+    timestamp: { type: String, required: true },
+    customerId: { type: Number, required: true },
+    customerName: { type: String, required: true },
+    relatedId: { type: Number, required: true },
+    relatedType: { type: String, required: true },
+    amount: { type: Number, required: true },
+    status: { type: String, default: 'generated' },
+    createdBy: { type: String }
+}, { timestamps: true });
+
+// Apply auto-increment
+customerSchema.plugin(AutoIncrement, {inc_field: 'id', id: 'customer_counter'});
+inventorySchema.plugin(AutoIncrement, {inc_field: 'id', id: 'inventory_counter'});
+salesSchema.plugin(AutoIncrement, {inc_field: 'id', id: 'sales_counter'});
+serviceSchema.plugin(AutoIncrement, {inc_field: 'id', id: 'service_counter'});
+expenseSchema.plugin(AutoIncrement, {inc_field: 'id', id: 'expense_counter'});
+invoiceSchema.plugin(AutoIncrement, {inc_field: 'id', id: 'invoice_counter'});
+
+// Models
+const User = mongoose.model('User', userSchema);
+const Customer = mongoose.model('Customer', customerSchema);
+const Inventory = mongoose.model('Inventory', inventorySchema);
+const Sales = mongoose.model('Sales', salesSchema);
+const Service = mongoose.model('Service', serviceSchema);
+const Expense = mongoose.model('Expense', expenseSchema);
+const Invoice = mongoose.model('Invoice', invoiceSchema);
+
+// Initialize default data
+async function initializeDefaultData() {
+    try {
+        // Check if admin user exists
+        const adminExists = await User.findOne({ username: 'admin' });
+        if (!adminExists) {
+            const hashedPassword = await bcrypt.hash('admin123', 10);
+            await User.create({
+                username: 'admin',
+                password: hashedPassword,
+                role: 'admin',
+                fullName: 'System Administrator',
+                email: 'admin@zedsonwatchcraft.com',
+                status: 'active'
+            });
+            console.log('✅ Default admin user created');
+        }
+
+        // Check if sample data exists
+        const customerCount = await Customer.countDocuments();
+        if (customerCount === 0) {
+            await Customer.insertMany([
+                {
+                    name: "Raj Kumar",
+                    email: "raj@email.com",
+                    phone: "+91-9876543210",
+                    address: "Chennai, Tamil Nadu",
+                    addedBy: "admin"
+                },
+                {
+                    name: "Priya Sharma",
+                    email: "priya@email.com",
+                    phone: "+91-9876543211",
+                    address: "Mumbai, Maharashtra",
+                    addedBy: "admin"
+                }
+            ]);
+
+            await Inventory.insertMany([
+                {
+                    code: "ROL001",
+                    type: "Watch",
+                    brand: "Rolex",
+                    model: "Submariner",
+                    size: "40mm",
+                    price: 850000,
+                    quantity: 2,
+                    outlet: "Semmancheri",
+                    description: "Luxury diving watch",
+                    addedBy: "admin"
+                },
+                {
+                    code: "OMG001",
+                    type: "Watch",
+                    brand: "Omega",
+                    model: "Speedmaster",
+                    size: "42mm",
+                    price: 450000,
+                    quantity: 1,
+                    outlet: "Navalur",
+                    description: "Professional chronograph",
+                    addedBy: "admin"
+                }
+            ]);
+            
+            console.log('✅ Sample data created');
+        }
+    } catch (error) {
+        console.error('Error initializing default data:', error);
     }
-};
+}
 
-window.viewServiceCompletionInvoice = function(serviceId) {
-    if (window.ServiceModule) {
-        ServiceModule.viewServiceCompletionInvoice(serviceId);
+// Middleware to verify JWT token
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ error: 'Access token required' });
     }
+
+    jwt.verify(token, process.env.JWT_SECRET || 'zedson_secret', (err, user) => {
+        if (err) {
+            return res.status(403).json({ error: 'Invalid token' });
+        }
+        req.user = user;
+        next();
+    });
 };
 
-// Export functions for global use
-window.ServiceModule = {
-    openNewServiceModal,
-    addNewService,
-    updateServiceStatus,
-    editService,
-    updateService,
-    showServiceCompletionModal,
-    completeService,
-    deleteService,
-    viewServiceAcknowledgement,
-    viewServiceCompletionInvoice,
-    searchServices,
-    renderServiceTable,
-    getServiceStats,
-    getIncompleteServices,
-    filterServicesByDateRange,
-    filterServicesByMonth,
-    initializeServices,
-    services // For access by other modules
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'OK',
+        message: 'ZEDSON WATCHCRAFT Backend - MongoDB Connected',
+        timestamp: new Date().toISOString(),
+        database: 'MongoDB Local'
+    });
+});
+
+// Authentication routes
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        const user = await User.findOne({ username });
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        const isValidPassword = await bcrypt.compare(password, user.password);
+        if (!isValidPassword) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        // Update last login
+        user.lastLogin = new Date();
+        await user.save();
+
+        const token = jwt.sign(
+            { id: user._id, username: user.username, role: user.role },
+            process.env.JWT_SECRET || 'zedson_secret',
+            { expiresIn: '24h' }
+        );
+
+        res.json({
+            success: true,
+            token,
+            user: {
+                username: user.username,
+                role: user.role,
+                fullName: user.fullName,
+                email: user.email
+            }
+        });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Generic CRUD routes for all collections
+const createCRUDRoutes = (path, Model) => {
+    // Get all
+    app.get(`/api/${path}`, async (req, res) => {
+        try {
+            const documents = await Model.find({}).sort({ createdAt: -1 });
+            res.json({ success: true, data: documents });
+        } catch (error) {
+            console.error(`Error fetching ${path}:`, error);
+            res.status(500).json({ error: 'Internal server error' });
+        }
+    });
+
+    // Create
+    app.post(`/api/${path}`, async (req, res) => {
+        try {
+            const document = new Model(req.body);
+            const saved = await document.save();
+            res.status(201).json({ success: true, data: saved });
+        } catch (error) {
+            console.error(`Error creating ${path}:`, error);
+            if (error.code === 11000) {
+                res.status(400).json({ error: 'Duplicate entry found' });
+            } else {
+                res.status(500).json({ error: 'Internal server error' });
+            }
+        }
+    });
+
+    // Update by ID
+    app.put(`/api/${path}/:id`, async (req, res) => {
+        try {
+            const { id } = req.params;
+            const updateData = req.body;
+            
+            const result = await Model.updateOne({ id: parseInt(id) }, updateData);
+            
+            if (result.matchedCount === 0) {
+                return res.status(404).json({ error: `${path} not found` });
+            }
+            
+            res.json({ success: true, data: result });
+        } catch (error) {
+            console.error(`Error updating ${path}:`, error);
+            res.status(500).json({ error: 'Internal server error' });
+        }
+    });
+
+    // Delete by ID
+    app.delete(`/api/${path}/:id`, async (req, res) => {
+        try {
+            const { id } = req.params;
+            const result = await Model.deleteOne({ id: parseInt(id) });
+            
+            if (result.deletedCount === 0) {
+                return res.status(404).json({ error: `${path} not found` });
+            }
+            
+            res.json({ success: true, data: result });
+        } catch (error) {
+            console.error(`Error deleting ${path}:`, error);
+            res.status(500).json({ error: 'Internal server error' });
+        }
+    });
 };
+
+// Create CRUD routes for all models
+createCRUDRoutes('customers', Customer);
+createCRUDRoutes('inventory', Inventory);
+createCRUDRoutes('sales', Sales);
+createCRUDRoutes('services', Service);
+createCRUDRoutes('expenses', Expense);
+createCRUDRoutes('invoices', Invoice);
+
+// Dashboard statistics
+app.get('/api/dashboard/stats', async (req, res) => {
+    try {
+        const totalWatches = await Inventory.countDocuments();
+        const totalCustomers = await Customer.countDocuments();
+        const totalSales = await Sales.countDocuments();
+        const totalServices = await Service.countDocuments();
+        const incompleteServices = await Service.countDocuments({ status: { $ne: 'completed' } });
+        const totalInvoices = await Invoice.countDocuments();
+        
+        // Today's revenue
+        const today = new Date().toLocaleDateString('en-IN');
+        const todaySales = await Sales.find({ date: today });
+        const todayServices = await Service.find({
+            status: 'completed',
+            actualDelivery: today
+        });
+        
+        const todayRevenue = 
+            todaySales.reduce((sum, sale) => sum + sale.totalAmount, 0) +
+            todayServices.reduce((sum, service) => sum + service.cost, 0);
+        
+        res.json({
+            success: true,
+            data: {
+                totalWatches,
+                totalCustomers,
+                totalSales,
+                totalServices,
+                incompleteServices,
+                totalInvoices,
+                todayRevenue
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching dashboard stats:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Error handling
+app.use((error, req, res, next) => {
+    console.error('Global error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+});
+
+// Start server
+app.listen(PORT, () => {
+    console.log(`🚀 ZEDSON WATCHCRAFT Backend Server Started`);
+    console.log(`💝 Developed by PULSEWARE with ❤️`);
+    console.log(`🔗 Server running on: http://localhost:${PORT}`);
+    console.log(`🏥 Health Check: http://localhost:${PORT}/health`);
+    console.log(`📡 API Base URL: http://localhost:${PORT}/api`);
+    console.log('════════════════════════════════════════════════════');
+});
+
+module.exports = app;
