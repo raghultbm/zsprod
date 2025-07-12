@@ -1,11 +1,13 @@
 // File: js/api-service.js
-// ZEDSON WATCHCRAFT - Fixed API Service Module
+// ZEDSON WATCHCRAFT - Offline API Service Module
 // Developed by PULSEWARE❤️
 
 /**
- * API Service for communicating with MongoDB backend
- * Enhanced with better error handling and connection testing
+ * Offline API Service - NO INTERNET REQUIRED
+ * All operations work locally using localStorage
  */
+
+console.log('🔧 OFFLINE API SERVICE LOADED - No internet required!');
 
 class APIService {
     constructor() {
@@ -14,6 +16,9 @@ class APIService {
         this.token = localStorage.getItem('authToken');
         this.connectionTested = false;
         this.isConnected = false;
+        this.offlineMode = true; // Always start in offline mode
+        
+        console.log('🏠 API Service initialized in OFFLINE mode');
     }
 
     // Set authentication token
@@ -39,389 +44,294 @@ class APIService {
         return headers;
     }
 
-    // Test backend connection
+    // Test connection - Always returns false in offline mode
     async testConnection() {
-        try {
-            console.log('🔄 Testing backend connection...');
-            
-            // Test both health endpoint and API endpoint
-            const healthResponse = await fetch(this.healthURL, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            if (!healthResponse.ok) {
-                throw new Error(`Health check failed: ${healthResponse.status}`);
-            }
-            
-            const healthData = await healthResponse.json();
-            console.log('✅ Backend health check passed:', healthData.message);
-            
-            // Test API endpoint
-            const testResponse = await fetch(`${this.baseURL}/test`, {
-                method: 'GET',
-                headers: this.getHeaders()
-            });
-            
-            if (!testResponse.ok) {
-                throw new Error(`API test failed: ${testResponse.status}`);
-            }
-            
-            const testData = await testResponse.json();
-            console.log('✅ API test passed:', testData.message);
-            
-            this.connectionTested = true;
-            this.isConnected = true;
-            
-            return {
-                success: true,
-                message: 'Backend connection successful',
-                health: healthData,
-                api: testData
-            };
-            
-        } catch (error) {
-            console.error('❌ Backend connection test failed:', error);
-            this.connectionTested = true;
-            this.isConnected = false;
-            
-            // Provide helpful error messages
-            let userMessage = 'Backend connection failed. ';
-            if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
-                userMessage += 'Please ensure the backend server is running on port 5000. Run "npm run dev" in the backend folder.';
-            } else if (error.message.includes('Health check failed')) {
-                userMessage += 'Backend server is running but not responding correctly.';
-            } else {
-                userMessage += error.message;
-            }
-            
-            throw new Error(userMessage);
-        }
+        console.log('🔌 Skipping connection test - running in offline mode');
+        this.connectionTested = true;
+        this.isConnected = false;
+        return {
+            success: false,
+            message: 'Running in offline mode',
+            offline: true
+        };
     }
 
-    // Generic API request method with enhanced error handling
+    // Generic API request method - OFFLINE VERSION
     async request(endpoint, options = {}) {
-        try {
-            // Test connection if not done yet
-            if (!this.connectionTested) {
-                await this.testConnection();
-            }
-            
-            if (!this.isConnected) {
-                throw new Error('Backend server is not available. Please start the backend server.');
-            }
-            
-            const url = `${this.baseURL}${endpoint}`;
-            const config = {
-                headers: this.getHeaders(),
-                ...options
-            };
-
-            console.log(`🔄 API Request: ${config.method || 'GET'} ${endpoint}`);
-            
-            const response = await fetch(url, config);
-            
-            // Handle different response types
-            let data;
-            const contentType = response.headers.get('content-type');
-            
-            if (contentType && contentType.includes('application/json')) {
-                data = await response.json();
-            } else {
-                data = { message: await response.text() };
-            }
-
-            if (!response.ok) {
-                // Handle specific error codes
-                if (response.status === 401) {
-                    // Unauthorized - clear token and redirect to login
-                    this.setToken(null);
-                    throw new Error('Session expired. Please login again.');
-                } else if (response.status === 403) {
-                    throw new Error('Access denied. Insufficient permissions.');
-                } else if (response.status === 404) {
-                    throw new Error('API endpoint not found.');
-                } else if (response.status === 500) {
-                    throw new Error('Server error. Please try again later.');
-                } else {
-                    throw new Error(data.error || `HTTP error! status: ${response.status}`);
-                }
-            }
-
-            console.log(`✅ API Response: ${endpoint}`, data);
-            return data;
-            
-        } catch (error) {
-            console.error('❌ API Request Error:', error);
-            
-            // Mark connection as failed if it's a network error
-            if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
-                this.isConnected = false;
-                throw new Error('Backend server is not available. Please ensure the server is running on port 5000.');
-            }
-            
-            throw error;
-        }
+        console.log(`🏠 Offline API Request: ${options.method || 'GET'} ${endpoint}`);
+        
+        // All requests return offline mode message
+        return {
+            success: false,
+            error: 'Running in offline mode. All data stored locally.',
+            offline: true
+        };
     }
 
-    // Authentication methods
+    // Authentication methods - OFFLINE VERSION
     async login(credentials) {
-        try {
-            const data = await this.request('/auth/login', {
-                method: 'POST',
-                body: JSON.stringify(credentials)
-            });
-            
-            if (data.success && data.token) {
-                this.setToken(data.token);
-                console.log('✅ Login successful');
-            }
-            
-            return data;
-        } catch (error) {
-            console.error('❌ Login failed:', error);
-            throw error;
-        }
+        console.log('🔐 Offline login attempt');
+        
+        // Return offline message - actual authentication handled by auth.js
+        return {
+            success: false,
+            error: 'Using offline authentication',
+            offline: true
+        };
     }
 
     async logout() {
         this.setToken(null);
-        console.log('✅ Logout successful');
+        console.log('🚪 Offline logout');
+        return { success: true, offline: true };
     }
 
-    // Generic CRUD methods with better error handling
+    // Generic CRUD methods - ALL RETURN OFFLINE MESSAGES
     async getAll(collection) {
-        try {
-            return await this.request(`/${collection}`);
-        } catch (error) {
-            console.error(`Error fetching ${collection}:`, error);
-            throw new Error(`Failed to load ${collection}: ${error.message}`);
-        }
+        console.log(`📁 Offline mode: ${collection} data managed locally`);
+        return {
+            success: false,
+            error: `${collection} managed locally in offline mode`,
+            offline: true,
+            data: []
+        };
     }
 
     async getById(collection, id) {
-        try {
-            return await this.request(`/${collection}/${id}`);
-        } catch (error) {
-            console.error(`Error fetching ${collection} by ID:`, error);
-            throw new Error(`Failed to load ${collection}: ${error.message}`);
-        }
+        console.log(`📁 Offline mode: ${collection}/${id} managed locally`);
+        return {
+            success: false,
+            error: `${collection} managed locally in offline mode`,
+            offline: true,
+            data: null
+        };
     }
 
     async getOne(collection, query = {}) {
-        try {
-            const queryString = new URLSearchParams(query).toString();
-            return await this.request(`/${collection}/one?${queryString}`);
-        } catch (error) {
-            console.error(`Error fetching ${collection}:`, error);
-            throw new Error(`Failed to load ${collection}: ${error.message}`);
-        }
+        console.log(`📁 Offline mode: ${collection} query managed locally`);
+        return {
+            success: false,
+            error: `${collection} managed locally in offline mode`,
+            offline: true,
+            data: null
+        };
     }
 
     async create(collection, data) {
-        try {
-            return await this.request(`/${collection}`, {
-                method: 'POST',
-                body: JSON.stringify(data)
-            });
-        } catch (error) {
-            console.error(`Error creating ${collection}:`, error);
-            throw new Error(`Failed to create ${collection}: ${error.message}`);
-        }
+        console.log(`📁 Offline mode: Create ${collection} managed locally`);
+        return {
+            success: false,
+            error: `${collection} creation managed locally in offline mode`,
+            offline: true,
+            data: null
+        };
     }
 
     async createMany(collection, documents) {
-        try {
-            return await this.request(`/${collection}/batch`, {
-                method: 'POST',
-                body: JSON.stringify({ documents })
-            });
-        } catch (error) {
-            console.error(`Error creating multiple ${collection}:`, error);
-            throw new Error(`Failed to create ${collection}: ${error.message}`);
-        }
+        console.log(`📁 Offline mode: Create multiple ${collection} managed locally`);
+        return {
+            success: false,
+            error: `${collection} creation managed locally in offline mode`,
+            offline: true,
+            data: []
+        };
     }
 
     async updateById(collection, id, data) {
-        try {
-            return await this.request(`/${collection}/${id}`, {
-                method: 'PUT',
-                body: JSON.stringify(data)
-            });
-        } catch (error) {
-            console.error(`Error updating ${collection}:`, error);
-            throw new Error(`Failed to update ${collection}: ${error.message}`);
-        }
+        console.log(`📁 Offline mode: Update ${collection}/${id} managed locally`);
+        return {
+            success: false,
+            error: `${collection} updates managed locally in offline mode`,
+            offline: true,
+            data: null
+        };
     }
 
     async updateOne(collection, query, update) {
-        try {
-            return await this.request(`/${collection}/one`, {
-                method: 'PUT',
-                body: JSON.stringify({ query, update })
-            });
-        } catch (error) {
-            console.error(`Error updating ${collection}:`, error);
-            throw new Error(`Failed to update ${collection}: ${error.message}`);
-        }
+        console.log(`📁 Offline mode: Update ${collection} managed locally`);
+        return {
+            success: false,
+            error: `${collection} updates managed locally in offline mode`,
+            offline: true,
+            data: null
+        };
     }
 
     async updateMany(collection, query, update) {
-        try {
-            return await this.request(`/${collection}`, {
-                method: 'PUT',
-                body: JSON.stringify({ query, update })
-            });
-        } catch (error) {
-            console.error(`Error updating multiple ${collection}:`, error);
-            throw new Error(`Failed to update ${collection}: ${error.message}`);
-        }
+        console.log(`📁 Offline mode: Update multiple ${collection} managed locally`);
+        return {
+            success: false,
+            error: `${collection} updates managed locally in offline mode`,
+            offline: true,
+            data: null
+        };
     }
 
     async deleteById(collection, id) {
-        try {
-            return await this.request(`/${collection}/${id}`, {
-                method: 'DELETE'
-            });
-        } catch (error) {
-            console.error(`Error deleting ${collection}:`, error);
-            throw new Error(`Failed to delete ${collection}: ${error.message}`);
-        }
+        console.log(`📁 Offline mode: Delete ${collection}/${id} managed locally`);
+        return {
+            success: false,
+            error: `${collection} deletion managed locally in offline mode`,
+            offline: true,
+            data: null
+        };
     }
 
     async deleteOne(collection, query) {
-        try {
-            return await this.request(`/${collection}/one`, {
-                method: 'DELETE',
-                body: JSON.stringify({ query })
-            });
-        } catch (error) {
-            console.error(`Error deleting ${collection}:`, error);
-            throw new Error(`Failed to delete ${collection}: ${error.message}`);
-        }
+        console.log(`📁 Offline mode: Delete ${collection} managed locally`);
+        return {
+            success: false,
+            error: `${collection} deletion managed locally in offline mode`,
+            offline: true,
+            data: null
+        };
     }
 
     async deleteMany(collection, query) {
-        try {
-            return await this.request(`/${collection}`, {
-                method: 'DELETE',
-                body: JSON.stringify({ query })
-            });
-        } catch (error) {
-            console.error(`Error deleting multiple ${collection}:`, error);
-            throw new Error(`Failed to delete ${collection}: ${error.message}`);
-        }
+        console.log(`📁 Offline mode: Delete multiple ${collection} managed locally`);
+        return {
+            success: false,
+            error: `${collection} deletion managed locally in offline mode`,
+            offline: true,
+            data: null
+        };
     }
 
     async search(collection, searchTerm, field = null, limit = 50) {
-        try {
-            const params = new URLSearchParams({ q: searchTerm, limit });
-            if (field) params.append('field', field);
-            
-            return await this.request(`/${collection}/search?${params}`);
-        } catch (error) {
-            console.error(`Error searching ${collection}:`, error);
-            throw new Error(`Failed to search ${collection}: ${error.message}`);
-        }
+        console.log(`📁 Offline mode: Search ${collection} managed locally`);
+        return {
+            success: false,
+            error: `${collection} search managed locally in offline mode`,
+            offline: true,
+            data: []
+        };
     }
 
-    // Special endpoints
+    // Special endpoints - OFFLINE VERSION
     async getDashboardStats() {
-        try {
-            return await this.request('/dashboard/stats');
-        } catch (error) {
-            console.error('Error fetching dashboard stats:', error);
-            throw new Error(`Failed to load dashboard stats: ${error.message}`);
-        }
+        console.log('📊 Offline mode: Dashboard stats calculated locally');
+        return {
+            success: false,
+            error: 'Dashboard stats calculated locally in offline mode',
+            offline: true,
+            data: {
+                totalWatches: 0,
+                totalCustomers: 0,
+                totalSales: 0,
+                totalServices: 0,
+                incompleteServices: 0,
+                totalInvoices: 0,
+                todayRevenue: 0
+            }
+        };
     }
 
     async exportAllData() {
-        try {
-            return await this.request('/export/all');
-        } catch (error) {
-            console.error('Error exporting data:', error);
-            throw new Error(`Failed to export data: ${error.message}`);
-        }
+        console.log('📦 Offline mode: Export managed locally');
+        return {
+            success: false,
+            error: 'Data export managed locally in offline mode',
+            offline: true,
+            data: null
+        };
     }
 
     async initializeAdmin() {
-        try {
-            return await this.request('/init/admin', {
-                method: 'POST'
-            });
-        } catch (error) {
-            console.error('Error initializing admin:', error);
-            throw new Error(`Failed to initialize admin: ${error.message}`);
-        }
+        console.log('👤 Offline mode: Admin initialization not needed');
+        return {
+            success: false,
+            error: 'Admin management in offline mode',
+            offline: true
+        };
     }
 
     async initializeSampleData() {
-        try {
-            return await this.request('/init/sample-data', {
-                method: 'POST'
-            });
-        } catch (error) {
-            console.error('Error initializing sample data:', error);
-            throw new Error(`Failed to initialize sample data: ${error.message}`);
-        }
+        console.log('🌱 Offline mode: Sample data managed locally');
+        return {
+            success: false,
+            error: 'Sample data managed locally in offline mode',
+            offline: true
+        };
     }
 
     async getRevenueAnalytics(params = {}) {
-        try {
-            const queryString = new URLSearchParams(params).toString();
-            return await this.request(`/analytics/revenue?${queryString}`);
-        } catch (error) {
-            console.error('Error fetching revenue analytics:', error);
-            throw new Error(`Failed to load revenue analytics: ${error.message}`);
-        }
+        console.log('💰 Offline mode: Revenue analytics calculated locally');
+        return {
+            success: false,
+            error: 'Revenue analytics calculated locally in offline mode',
+            offline: true,
+            data: {
+                sales: [],
+                services: [],
+                expenses: [],
+                analytics: {
+                    salesRevenue: 0,
+                    servicesRevenue: 0,
+                    totalRevenue: 0,
+                    expensesAmount: 0,
+                    netAmount: 0,
+                    totalTransactions: 0
+                }
+            }
+        };
     }
 
     async getCustomerAnalytics() {
-        try {
-            return await this.request('/analytics/customers');
-        } catch (error) {
-            console.error('Error fetching customer analytics:', error);
-            throw new Error(`Failed to load customer analytics: ${error.message}`);
-        }
+        console.log('👥 Offline mode: Customer analytics calculated locally');
+        return {
+            success: false,
+            error: 'Customer analytics calculated locally in offline mode',
+            offline: true,
+            data: {
+                customers: [],
+                topCustomers: [],
+                totalCustomers: 0,
+                activeCustomers: 0
+            }
+        };
     }
 
     async getInventoryAnalytics() {
-        try {
-            return await this.request('/analytics/inventory');
-        } catch (error) {
-            console.error('Error fetching inventory analytics:', error);
-            throw new Error(`Failed to load inventory analytics: ${error.message}`);
-        }
+        console.log('📦 Offline mode: Inventory analytics calculated locally');
+        return {
+            success: false,
+            error: 'Inventory analytics calculated locally in offline mode',
+            offline: true,
+            data: {
+                summary: {
+                    totalItems: 0,
+                    totalValue: 0,
+                    availableItems: 0,
+                    soldItems: 0,
+                    lowStockItems: 0
+                },
+                brandAnalytics: {},
+                outletAnalytics: {},
+                lowStockItems: []
+            }
+        };
     }
 
-    // Backup and restore methods
+    // Backup and restore methods - OFFLINE VERSION
     async backupCollection(collection, data) {
-        try {
-            return await this.request(`/${collection}/backup`, {
-                method: 'POST',
-                body: JSON.stringify({ data })
-            });
-        } catch (error) {
-            console.error(`Error backing up ${collection}:`, error);
-            throw new Error(`Failed to backup ${collection}: ${error.message}`);
-        }
+        console.log(`💾 Offline mode: ${collection} backup managed locally`);
+        return {
+            success: false,
+            error: `${collection} backup managed locally in offline mode`,
+            offline: true
+        };
     }
 
     async importCollection(collection, data) {
-        try {
-            return await this.request(`/${collection}/import`, {
-                method: 'POST',
-                body: JSON.stringify({ data })
-            });
-        } catch (error) {
-            console.error(`Error importing ${collection}:`, error);
-            throw new Error(`Failed to import ${collection}: ${error.message}`);
-        }
+        console.log(`📥 Offline mode: ${collection} import managed locally`);
+        return {
+            success: false,
+            error: `${collection} import managed locally in offline mode`,
+            offline: true
+        };
     }
 
-    // Collection-specific methods
+    // Collection-specific methods - ALL OFFLINE VERSIONS
     
     // Users
     async getUsers() {
@@ -575,11 +485,12 @@ class APIService {
         return await this.create('logs', logData);
     }
 
-    // Connection status
+    // Connection status - ALWAYS OFFLINE
     getConnectionStatus() {
         return {
-            tested: this.connectionTested,
-            connected: this.isConnected
+            tested: true,
+            connected: false,
+            offline: true
         };
     }
 }
@@ -590,4 +501,4 @@ window.apiService = new APIService();
 // Export for use in other modules
 window.APIService = APIService;
 
-console.log('✅ API Service initialized with enhanced error handling');
+console.log('✅ Offline API Service initialized - no internet required!');
