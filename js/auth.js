@@ -2,7 +2,7 @@
 // Developed by PULSEWARE❤️
 
 /**
- * FIXED Authentication System - No Login Loop
+ * FIXED Authentication System - No Reference Data, MongoDB Only
  */
 
 // Current logged-in user
@@ -52,7 +52,7 @@ async function handleLogin(event) {
         console.log('⚠️ API authentication failed, trying offline mode');
     }
     
-    // Fallback to offline authentication
+    // Fallback to offline authentication (demo mode only)
     const user = authenticateOffline(username, password);
     if (user) {
         console.log('✅ Offline authentication successful');
@@ -70,7 +70,7 @@ async function handleLogin(event) {
 }
 
 /**
- * Authenticate user offline with demo credentials
+ * Authenticate user offline with demo credentials (fallback only)
  */
 function authenticateOffline(username, password) {
     const demoUsers = {
@@ -126,7 +126,7 @@ function completeLogin(user) {
     // Setup navigation based on user role
     setupNavigation();
     
-    // Load initial data
+    // Load initial data from MongoDB only
     loadInitialData();
     
     // Clear login form
@@ -139,14 +139,21 @@ function completeLogin(user) {
 }
 
 /**
- * Load initial data
+ * Load initial data from MongoDB ONLY - NO REFERENCE DATA
  */
 async function loadInitialData() {
     try {
-        console.log('📥 Loading application data...');
+        console.log('📥 Loading application data from MongoDB...');
         
-        // Initialize sample data if none exists
-        initializeSampleData();
+        // Load data through API service only - NO fallback to sample data
+        if (window.AppCoreModule && window.AppCoreModule.loadModuleData) {
+            await window.AppCoreModule.loadModuleData('customers');
+            await window.AppCoreModule.loadModuleData('inventory');
+            await window.AppCoreModule.loadModuleData('sales');
+            await window.AppCoreModule.loadModuleData('services');
+            await window.AppCoreModule.loadModuleData('expenses');
+            await window.AppCoreModule.loadModuleData('invoices');
+        }
         
         // Update dashboard
         if (window.updateDashboard) {
@@ -155,94 +162,13 @@ async function loadInitialData() {
             }, 500);
         }
         
-        console.log('✅ Application data loaded successfully');
+        console.log('✅ Application data loaded successfully from MongoDB');
         
     } catch (error) {
         console.error('❌ Error loading initial data:', error);
+        // NO fallback to sample data - just log error
+        Utils.showNotification('Could not load data from database. Please check connection.');
     }
-}
-
-/**
- * Initialize with sample data
- */
-function initializeSampleData() {
-    console.log('🌱 Initializing with sample data...');
-    
-    // Sample customers
-    const sampleCustomers = [
-        {
-            id: 1,
-            name: "Raj Kumar",
-            email: "raj@email.com",
-            phone: "+91-9876543210",
-            address: "Chennai, Tamil Nadu",
-            purchases: 0,
-            serviceCount: 0,
-            netValue: 0,
-            addedBy: "admin"
-        },
-        {
-            id: 2,
-            name: "Priya Sharma",
-            email: "priya@email.com",
-            phone: "+91-9876543211",
-            address: "Mumbai, Maharashtra",
-            purchases: 0,
-            serviceCount: 0,
-            netValue: 0,
-            addedBy: "admin"
-        }
-    ];
-    
-    // Sample inventory
-    const sampleInventory = [
-        {
-            id: 1,
-            code: "ROL001",
-            type: "Watch",
-            brand: "Rolex",
-            model: "Submariner",
-            size: "40mm",
-            price: 850000,
-            quantity: 2,
-            outlet: "Semmancheri",
-            description: "Luxury diving watch",
-            status: "available",
-            addedBy: "admin"
-        },
-        {
-            id: 2,
-            code: "OMG001",
-            type: "Watch",
-            brand: "Omega",
-            model: "Speedmaster",
-            size: "42mm",
-            price: 450000,
-            quantity: 1,
-            outlet: "Navalur",
-            description: "Professional chronograph",
-            status: "available",
-            addedBy: "admin"
-        }
-    ];
-    
-    // Store in localStorage and set global data
-    localStorage.setItem('zedson_customers', JSON.stringify(sampleCustomers));
-    localStorage.setItem('zedson_inventory', JSON.stringify(sampleInventory));
-    localStorage.setItem('zedson_sales', JSON.stringify([]));
-    localStorage.setItem('zedson_services', JSON.stringify([]));
-    localStorage.setItem('zedson_expenses', JSON.stringify([]));
-    localStorage.setItem('zedson_invoices', JSON.stringify([]));
-    
-    // Set module data
-    if (window.CustomerModule) {
-        window.CustomerModule.customers = sampleCustomers;
-    }
-    if (window.InventoryModule) {
-        window.InventoryModule.watches = sampleInventory;
-    }
-    
-    console.log('✅ Sample data initialized');
 }
 
 /**
@@ -375,5 +301,5 @@ window.AuthModule = {
     isLoggedIn,
     isStaffUser,
     canEditDelete,
-    initializeSampleData
+    loadInitialData
 };

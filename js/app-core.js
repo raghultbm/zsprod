@@ -2,7 +2,7 @@
 // Developed by PULSEWARE❤️
 
 /**
- * Main Application Controller - Simplified and Optimized
+ * Main Application Controller - MongoDB Only, No Reference Data
  */
 
 console.log('🔧 SIMPLIFIED APP CORE LOADED');
@@ -41,7 +41,7 @@ function showSection(sectionId, button) {
 }
 
 /**
- * Update data when switching sections
+ * Update data when switching sections - MongoDB only
  */
 async function updateSectionData(sectionId) {
     try {
@@ -52,51 +52,39 @@ async function updateSectionData(sectionId) {
                 await updateDashboard();
                 break;
             case 'inventory':
-                if (window.InventoryModule) {
-                    await loadModuleData('inventory');
-                    if (window.InventoryModule.renderWatchTable) {
-                        window.InventoryModule.renderWatchTable();
-                    }
+                await loadModuleData('inventory');
+                if (window.InventoryModule && window.InventoryModule.renderWatchTable) {
+                    window.InventoryModule.renderWatchTable();
                 }
                 break;
             case 'customers':
-                if (window.CustomerModule) {
-                    await loadModuleData('customers');
-                    if (window.CustomerModule.renderCustomerTable) {
-                        window.CustomerModule.renderCustomerTable();
-                    }
+                await loadModuleData('customers');
+                if (window.CustomerModule && window.CustomerModule.renderCustomerTable) {
+                    window.CustomerModule.renderCustomerTable();
                 }
                 break;
             case 'sales':
-                if (window.SalesModule) {
-                    await loadModuleData('sales');
-                    if (window.SalesModule.renderSalesTable) {
-                        window.SalesModule.renderSalesTable();
-                    }
+                await loadModuleData('sales');
+                if (window.SalesModule && window.SalesModule.renderSalesTable) {
+                    window.SalesModule.renderSalesTable();
                 }
                 break;
             case 'service':
-                if (window.ServiceModule) {
-                    await loadModuleData('services');
-                    if (window.ServiceModule.renderServiceTable) {
-                        window.ServiceModule.renderServiceTable();
-                    }
+                await loadModuleData('services');
+                if (window.ServiceModule && window.ServiceModule.renderServiceTable) {
+                    window.ServiceModule.renderServiceTable();
                 }
                 break;
             case 'expenses':
-                if (window.ExpenseModule) {
-                    await loadModuleData('expenses');
-                    if (window.ExpenseModule.renderExpenseTable) {
-                        window.ExpenseModule.renderExpenseTable();
-                    }
+                await loadModuleData('expenses');
+                if (window.ExpenseModule && window.ExpenseModule.renderExpenseTable) {
+                    window.ExpenseModule.renderExpenseTable();
                 }
                 break;
             case 'invoices':
-                if (window.InvoiceModule) {
-                    await loadModuleData('invoices');
-                    if (window.InvoiceModule.renderInvoiceTable) {
-                        window.InvoiceModule.renderInvoiceTable();
-                    }
+                await loadModuleData('invoices');
+                if (window.InvoiceModule && window.InvoiceModule.renderInvoiceTable) {
+                    window.InvoiceModule.renderInvoiceTable();
                 }
                 break;
         }
@@ -109,7 +97,7 @@ async function updateSectionData(sectionId) {
 }
 
 /**
- * Load module data from API or localStorage
+ * Load module data from MongoDB ONLY - NO reference data fallback
  */
 async function loadModuleData(type) {
     try {
@@ -119,58 +107,68 @@ async function loadModuleData(type) {
             case 'customers':
                 response = await window.apiService.getCustomers();
                 if (response.success && window.CustomerModule) {
-                    window.CustomerModule.customers = response.data;
+                    window.CustomerModule.customers = response.data || [];
+                    console.log(`📥 Loaded ${response.data.length} customers from MongoDB`);
                 }
                 break;
             case 'inventory':
                 response = await window.apiService.getInventory();
                 if (response.success && window.InventoryModule) {
-                    window.InventoryModule.watches = response.data;
+                    window.InventoryModule.watches = response.data || [];
+                    console.log(`📥 Loaded ${response.data.length} inventory items from MongoDB`);
                 }
                 break;
             case 'sales':
                 response = await window.apiService.getSales();
                 if (response.success && window.SalesModule) {
-                    window.SalesModule.sales = response.data;
+                    window.SalesModule.sales = response.data || [];
+                    console.log(`📥 Loaded ${response.data.length} sales from MongoDB`);
                 }
                 break;
             case 'services':
                 response = await window.apiService.getServices();
                 if (response.success && window.ServiceModule) {
-                    window.ServiceModule.services = response.data;
+                    window.ServiceModule.services = response.data || [];
+                    console.log(`📥 Loaded ${response.data.length} services from MongoDB`);
                 }
                 break;
             case 'expenses':
                 response = await window.apiService.getExpenses();
                 if (response.success && window.ExpenseModule) {
-                    window.ExpenseModule.expenses = response.data;
+                    window.ExpenseModule.expenses = response.data || [];
+                    console.log(`📥 Loaded ${response.data.length} expenses from MongoDB`);
                 }
                 break;
             case 'invoices':
                 response = await window.apiService.getInvoices();
                 if (response.success && window.InvoiceModule) {
-                    window.InvoiceModule.invoices = response.data;
+                    window.InvoiceModule.invoices = response.data || [];
+                    console.log(`📥 Loaded ${response.data.length} invoices from MongoDB`);
                 }
                 break;
         }
         
-        // Also save to localStorage for offline access
+        // Save to localStorage for offline access
         if (response && response.success) {
             localStorage.setItem(`zedson_${type}`, JSON.stringify(response.data));
         }
         
     } catch (error) {
-        console.error(`Error loading ${type} data:`, error);
-        // Try loading from localStorage as fallback
+        console.error(`Error loading ${type} data from MongoDB:`, error);
+        // Try loading from localStorage as fallback only
         try {
             const stored = localStorage.getItem(`zedson_${type}`);
             if (stored) {
                 const data = JSON.parse(stored);
-                console.log(`Using localStorage data for ${type}`);
+                console.log(`📁 Using cached data for ${type}`);
                 setModuleData(type, data);
+            } else {
+                console.log(`⚠️ No cached data available for ${type}`);
+                setModuleData(type, []); // Empty array, no reference data
             }
         } catch (storageError) {
             console.error(`Error loading from localStorage:`, storageError);
+            setModuleData(type, []); // Empty array, no reference data
         }
     }
 }
@@ -202,26 +200,26 @@ function setModuleData(type, data) {
 }
 
 /**
- * Update dashboard statistics
+ * Update dashboard statistics from MongoDB
  */
 async function updateDashboard() {
     try {
-        console.log('📊 Updating dashboard...');
+        console.log('📊 Updating dashboard from MongoDB...');
         
         const currentUser = AuthModule.getCurrentUser();
         const isStaff = currentUser && currentUser.role === 'staff';
         
-        // Get stats from API or calculate locally
+        // Get stats from MongoDB
         let stats;
         try {
             const response = await window.apiService.getDashboardStats();
             stats = response.success ? response.data : null;
         } catch (error) {
-            console.log('Using local calculation for dashboard stats');
+            console.log('⚠️ API stats failed, calculating from cached data');
             stats = null;
         }
         
-        // If API fails, calculate from localStorage
+        // If MongoDB fails, calculate from localStorage (cached data only)
         if (!stats) {
             stats = calculateLocalStats();
         }
@@ -242,7 +240,7 @@ async function updateDashboard() {
         // Update recent activities
         await updateRecentActivities();
         
-        console.log('✅ Dashboard updated successfully');
+        console.log('✅ Dashboard updated successfully from MongoDB');
         
     } catch (error) {
         console.error('Error updating dashboard:', error);
@@ -250,7 +248,7 @@ async function updateDashboard() {
 }
 
 /**
- * Calculate statistics from localStorage
+ * Calculate statistics from localStorage (cached data only)
  */
 function calculateLocalStats() {
     try {
@@ -337,7 +335,7 @@ function updateDashboardVisibility() {
 }
 
 /**
- * Update recent activities
+ * Update recent activities from cached data only
  */
 async function updateRecentActivities() {
     try {
@@ -445,7 +443,7 @@ function closeModal(modalId) {
 }
 
 /**
- * Initialize application
+ * Initialize application - MongoDB only
  */
 async function initializeApp() {
     console.log('🚀 Initializing ZEDSON WATCHCRAFT Management System...');
