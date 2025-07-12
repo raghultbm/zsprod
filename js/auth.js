@@ -1,4 +1,4 @@
-// ZEDSON WATCHCRAFT - Authentication Module with Pure MongoDB Integration
+// ZEDSON WATCHCRAFT - Fixed Authentication Module with MongoDB Integration
 // Developed by PULSEWARE❤️
 
 /**
@@ -38,13 +38,24 @@ async function handleLogin(event) {
         loginBtn.textContent = 'Connecting to MongoDB...';
         loginBtn.disabled = true;
         
-        // Call MongoDB API
+        // Test backend connectivity first
+        const testResponse = await testBackendConnection();
+        if (!testResponse) {
+            throw new Error('Cannot connect to backend server. Please ensure the backend is running on port 5000.');
+        }
+        
+        // Update database status
+        if (window.AppCoreModule?.updateDatabaseStatus) {
+            window.AppCoreModule.updateDatabaseStatus('connecting', 'Authenticating...');
+        }
+        
+        // Call MongoDB API for login
         const response = await window.apiService.login({ username, password });
         
         if (response.success) {
             completeLogin(response.user);
         } else {
-            Utils.showNotification(response.error || 'Login failed');
+            throw new Error(response.error || 'Login failed');
         }
     } catch (error) {
         console.error('Login error:', error);
@@ -52,13 +63,28 @@ async function handleLogin(event) {
         
         // Update database status
         if (window.AppCoreModule?.updateDatabaseStatus) {
-            window.AppCoreModule.updateDatabaseStatus('disconnected', '✗ MongoDB Connection Failed');
+            window.AppCoreModule.updateDatabaseStatus('disconnected', '✗ Connection Failed');
         }
     } finally {
         // Reset button state
         const loginBtn = event.target.querySelector('button[type="submit"]');
-        loginBtn.textContent = 'Login';
-        loginBtn.disabled = false;
+        if (loginBtn) {
+            loginBtn.textContent = 'Login';
+            loginBtn.disabled = false;
+        }
+    }
+}
+
+/**
+ * Test backend connection
+ */
+async function testBackendConnection() {
+    try {
+        const response = await fetch('http://localhost:5000/api/test');
+        return response.ok;
+    } catch (error) {
+        console.error('Backend connection test failed:', error);
+        return false;
     }
 }
 
@@ -223,11 +249,6 @@ async function loadInitialData() {
         }
         
         console.log('✅ All initial data loaded from MongoDB successfully');
-        
-        // Validate no reference data is being used
-        if (window.dataManager?.validateNoReferenceData) {
-            window.dataManager.validateNoReferenceData();
-        }
         
     } catch (error) {
         console.error('❌ Error loading initial data from MongoDB:', error);
@@ -664,7 +685,18 @@ async function initializeAuth() {
     try {
         console.log('🔄 Initializing Authentication with MongoDB...');
         
-        // Test connection to backend
+        // Update database status
+        if (window.AppCoreModule?.updateDatabaseStatus) {
+            window.AppCoreModule.updateDatabaseStatus('connecting', 'Testing Connection...');
+        }
+        
+        // Test connection to backend first
+        const isBackendAvailable = await testBackendConnection();
+        if (!isBackendAvailable) {
+            throw new Error('Backend server not available');
+        }
+        
+        // Test connection to MongoDB through backend
         await window.apiService.testConnection();
         console.log('✅ Connected to MongoDB backend successfully');
         
@@ -681,11 +713,20 @@ async function initializeAuth() {
         
     } catch (error) {
         console.error('❌ MongoDB backend connection failed:', error);
-        Utils.showNotification('Warning: Could not connect to MongoDB server. Please check your connection.');
+        
+        // Show helpful error message
+        let errorMessage = 'Could not connect to MongoDB server. ';
+        if (error.message.includes('Backend server not available')) {
+            errorMessage += 'Please start the backend server by running "npm run dev" in the backend folder.';
+        } else {
+            errorMessage += 'Please check your connection and ensure MongoDB is running.';
+        }
+        
+        Utils.showNotification('Warning: ' + errorMessage);
         
         // Update database status
         if (window.AppCoreModule?.updateDatabaseStatus) {
-            window.AppCoreModule.updateDatabaseStatus('disconnected', '✗ MongoDB Connection Failed');
+            window.AppCoreModule.updateDatabaseStatus('disconnected', '✗ Backend Not Available');
         }
     }
 }
@@ -721,5 +762,6 @@ window.AuthModule = {
     canEditDelete,
     loadUsers,
     loadInitialData,
-    closeModal
+    closeModal,
+    testBackendConnection
 };

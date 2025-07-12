@@ -10,7 +10,8 @@
     "seed": "node scripts/seed.js",
     "db:seed": "node scripts/seed.js seed",
     "db:clear": "node scripts/seed.js clear",
-    "db:status": "node scripts/seed.js status"
+    "db:status": "node scripts/seed.js status",
+    "db:reset": "node scripts/reset-and-seed.js"
   },
   "keywords": [
     "mongodb",

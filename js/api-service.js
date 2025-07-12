@@ -1,15 +1,19 @@
 // File: js/api-service.js
-// ZEDSON WATCHCRAFT - API Service Module
+// ZEDSON WATCHCRAFT - Fixed API Service Module
 // Developed by PULSEWARE❤️
 
 /**
  * API Service for communicating with MongoDB backend
+ * Enhanced with better error handling and connection testing
  */
 
 class APIService {
     constructor() {
         this.baseURL = 'http://localhost:5000/api';
+        this.healthURL = 'http://localhost:5000/health';
         this.token = localStorage.getItem('authToken');
+        this.connectionTested = false;
+        this.isConnected = false;
     }
 
     // Set authentication token
@@ -35,170 +39,386 @@ class APIService {
         return headers;
     }
 
-    // Generic API request method
+    // Test backend connection
+    async testConnection() {
+        try {
+            console.log('🔄 Testing backend connection...');
+            
+            // Test both health endpoint and API endpoint
+            const healthResponse = await fetch(this.healthURL, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!healthResponse.ok) {
+                throw new Error(`Health check failed: ${healthResponse.status}`);
+            }
+            
+            const healthData = await healthResponse.json();
+            console.log('✅ Backend health check passed:', healthData.message);
+            
+            // Test API endpoint
+            const testResponse = await fetch(`${this.baseURL}/test`, {
+                method: 'GET',
+                headers: this.getHeaders()
+            });
+            
+            if (!testResponse.ok) {
+                throw new Error(`API test failed: ${testResponse.status}`);
+            }
+            
+            const testData = await testResponse.json();
+            console.log('✅ API test passed:', testData.message);
+            
+            this.connectionTested = true;
+            this.isConnected = true;
+            
+            return {
+                success: true,
+                message: 'Backend connection successful',
+                health: healthData,
+                api: testData
+            };
+            
+        } catch (error) {
+            console.error('❌ Backend connection test failed:', error);
+            this.connectionTested = true;
+            this.isConnected = false;
+            
+            // Provide helpful error messages
+            let userMessage = 'Backend connection failed. ';
+            if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
+                userMessage += 'Please ensure the backend server is running on port 5000. Run "npm run dev" in the backend folder.';
+            } else if (error.message.includes('Health check failed')) {
+                userMessage += 'Backend server is running but not responding correctly.';
+            } else {
+                userMessage += error.message;
+            }
+            
+            throw new Error(userMessage);
+        }
+    }
+
+    // Generic API request method with enhanced error handling
     async request(endpoint, options = {}) {
         try {
+            // Test connection if not done yet
+            if (!this.connectionTested) {
+                await this.testConnection();
+            }
+            
+            if (!this.isConnected) {
+                throw new Error('Backend server is not available. Please start the backend server.');
+            }
+            
             const url = `${this.baseURL}${endpoint}`;
             const config = {
                 headers: this.getHeaders(),
                 ...options
             };
 
+            console.log(`🔄 API Request: ${config.method || 'GET'} ${endpoint}`);
+            
             const response = await fetch(url, config);
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || `HTTP error! status: ${response.status}`);
+            
+            // Handle different response types
+            let data;
+            const contentType = response.headers.get('content-type');
+            
+            if (contentType && contentType.includes('application/json')) {
+                data = await response.json();
+            } else {
+                data = { message: await response.text() };
             }
 
+            if (!response.ok) {
+                // Handle specific error codes
+                if (response.status === 401) {
+                    // Unauthorized - clear token and redirect to login
+                    this.setToken(null);
+                    throw new Error('Session expired. Please login again.');
+                } else if (response.status === 403) {
+                    throw new Error('Access denied. Insufficient permissions.');
+                } else if (response.status === 404) {
+                    throw new Error('API endpoint not found.');
+                } else if (response.status === 500) {
+                    throw new Error('Server error. Please try again later.');
+                } else {
+                    throw new Error(data.error || `HTTP error! status: ${response.status}`);
+                }
+            }
+
+            console.log(`✅ API Response: ${endpoint}`, data);
             return data;
+            
         } catch (error) {
-            console.error('API Request Error:', error);
+            console.error('❌ API Request Error:', error);
+            
+            // Mark connection as failed if it's a network error
+            if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
+                this.isConnected = false;
+                throw new Error('Backend server is not available. Please ensure the server is running on port 5000.');
+            }
+            
             throw error;
         }
     }
 
     // Authentication methods
     async login(credentials) {
-        const data = await this.request('/auth/login', {
-            method: 'POST',
-            body: JSON.stringify(credentials)
-        });
-        
-        if (data.success && data.token) {
-            this.setToken(data.token);
+        try {
+            const data = await this.request('/auth/login', {
+                method: 'POST',
+                body: JSON.stringify(credentials)
+            });
+            
+            if (data.success && data.token) {
+                this.setToken(data.token);
+                console.log('✅ Login successful');
+            }
+            
+            return data;
+        } catch (error) {
+            console.error('❌ Login failed:', error);
+            throw error;
         }
-        
-        return data;
     }
 
     async logout() {
         this.setToken(null);
+        console.log('✅ Logout successful');
     }
 
-    // Generic CRUD methods
+    // Generic CRUD methods with better error handling
     async getAll(collection) {
-        return await this.request(`/${collection}`);
+        try {
+            return await this.request(`/${collection}`);
+        } catch (error) {
+            console.error(`Error fetching ${collection}:`, error);
+            throw new Error(`Failed to load ${collection}: ${error.message}`);
+        }
     }
 
     async getById(collection, id) {
-        return await this.request(`/${collection}/${id}`);
+        try {
+            return await this.request(`/${collection}/${id}`);
+        } catch (error) {
+            console.error(`Error fetching ${collection} by ID:`, error);
+            throw new Error(`Failed to load ${collection}: ${error.message}`);
+        }
     }
 
     async getOne(collection, query = {}) {
-        const queryString = new URLSearchParams(query).toString();
-        return await this.request(`/${collection}/one?${queryString}`);
+        try {
+            const queryString = new URLSearchParams(query).toString();
+            return await this.request(`/${collection}/one?${queryString}`);
+        } catch (error) {
+            console.error(`Error fetching ${collection}:`, error);
+            throw new Error(`Failed to load ${collection}: ${error.message}`);
+        }
     }
 
     async create(collection, data) {
-        return await this.request(`/${collection}`, {
-            method: 'POST',
-            body: JSON.stringify(data)
-        });
+        try {
+            return await this.request(`/${collection}`, {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+        } catch (error) {
+            console.error(`Error creating ${collection}:`, error);
+            throw new Error(`Failed to create ${collection}: ${error.message}`);
+        }
     }
 
     async createMany(collection, documents) {
-        return await this.request(`/${collection}/batch`, {
-            method: 'POST',
-            body: JSON.stringify({ documents })
-        });
+        try {
+            return await this.request(`/${collection}/batch`, {
+                method: 'POST',
+                body: JSON.stringify({ documents })
+            });
+        } catch (error) {
+            console.error(`Error creating multiple ${collection}:`, error);
+            throw new Error(`Failed to create ${collection}: ${error.message}`);
+        }
     }
 
     async updateById(collection, id, data) {
-        return await this.request(`/${collection}/${id}`, {
-            method: 'PUT',
-            body: JSON.stringify(data)
-        });
+        try {
+            return await this.request(`/${collection}/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify(data)
+            });
+        } catch (error) {
+            console.error(`Error updating ${collection}:`, error);
+            throw new Error(`Failed to update ${collection}: ${error.message}`);
+        }
     }
 
     async updateOne(collection, query, update) {
-        return await this.request(`/${collection}/one`, {
-            method: 'PUT',
-            body: JSON.stringify({ query, update })
-        });
+        try {
+            return await this.request(`/${collection}/one`, {
+                method: 'PUT',
+                body: JSON.stringify({ query, update })
+            });
+        } catch (error) {
+            console.error(`Error updating ${collection}:`, error);
+            throw new Error(`Failed to update ${collection}: ${error.message}`);
+        }
     }
 
     async updateMany(collection, query, update) {
-        return await this.request(`/${collection}`, {
-            method: 'PUT',
-            body: JSON.stringify({ query, update })
-        });
+        try {
+            return await this.request(`/${collection}`, {
+                method: 'PUT',
+                body: JSON.stringify({ query, update })
+            });
+        } catch (error) {
+            console.error(`Error updating multiple ${collection}:`, error);
+            throw new Error(`Failed to update ${collection}: ${error.message}`);
+        }
     }
 
     async deleteById(collection, id) {
-        return await this.request(`/${collection}/${id}`, {
-            method: 'DELETE'
-        });
+        try {
+            return await this.request(`/${collection}/${id}`, {
+                method: 'DELETE'
+            });
+        } catch (error) {
+            console.error(`Error deleting ${collection}:`, error);
+            throw new Error(`Failed to delete ${collection}: ${error.message}`);
+        }
     }
 
     async deleteOne(collection, query) {
-        return await this.request(`/${collection}/one`, {
-            method: 'DELETE',
-            body: JSON.stringify({ query })
-        });
+        try {
+            return await this.request(`/${collection}/one`, {
+                method: 'DELETE',
+                body: JSON.stringify({ query })
+            });
+        } catch (error) {
+            console.error(`Error deleting ${collection}:`, error);
+            throw new Error(`Failed to delete ${collection}: ${error.message}`);
+        }
     }
 
     async deleteMany(collection, query) {
-        return await this.request(`/${collection}`, {
-            method: 'DELETE',
-            body: JSON.stringify({ query })
-        });
+        try {
+            return await this.request(`/${collection}`, {
+                method: 'DELETE',
+                body: JSON.stringify({ query })
+            });
+        } catch (error) {
+            console.error(`Error deleting multiple ${collection}:`, error);
+            throw new Error(`Failed to delete ${collection}: ${error.message}`);
+        }
     }
 
     async search(collection, searchTerm, field = null, limit = 50) {
-        const params = new URLSearchParams({ q: searchTerm, limit });
-        if (field) params.append('field', field);
-        
-        return await this.request(`/${collection}/search?${params}`);
+        try {
+            const params = new URLSearchParams({ q: searchTerm, limit });
+            if (field) params.append('field', field);
+            
+            return await this.request(`/${collection}/search?${params}`);
+        } catch (error) {
+            console.error(`Error searching ${collection}:`, error);
+            throw new Error(`Failed to search ${collection}: ${error.message}`);
+        }
     }
 
     // Special endpoints
     async getDashboardStats() {
-        return await this.request('/dashboard/stats');
+        try {
+            return await this.request('/dashboard/stats');
+        } catch (error) {
+            console.error('Error fetching dashboard stats:', error);
+            throw new Error(`Failed to load dashboard stats: ${error.message}`);
+        }
     }
 
     async exportAllData() {
-        return await this.request('/export/all');
+        try {
+            return await this.request('/export/all');
+        } catch (error) {
+            console.error('Error exporting data:', error);
+            throw new Error(`Failed to export data: ${error.message}`);
+        }
     }
 
     async initializeAdmin() {
-        return await this.request('/init/admin', {
-            method: 'POST'
-        });
+        try {
+            return await this.request('/init/admin', {
+                method: 'POST'
+            });
+        } catch (error) {
+            console.error('Error initializing admin:', error);
+            throw new Error(`Failed to initialize admin: ${error.message}`);
+        }
     }
 
     async initializeSampleData() {
-        return await this.request('/init/sample-data', {
-            method: 'POST'
-        });
+        try {
+            return await this.request('/init/sample-data', {
+                method: 'POST'
+            });
+        } catch (error) {
+            console.error('Error initializing sample data:', error);
+            throw new Error(`Failed to initialize sample data: ${error.message}`);
+        }
     }
 
     async getRevenueAnalytics(params = {}) {
-        const queryString = new URLSearchParams(params).toString();
-        return await this.request(`/analytics/revenue?${queryString}`);
+        try {
+            const queryString = new URLSearchParams(params).toString();
+            return await this.request(`/analytics/revenue?${queryString}`);
+        } catch (error) {
+            console.error('Error fetching revenue analytics:', error);
+            throw new Error(`Failed to load revenue analytics: ${error.message}`);
+        }
     }
 
     async getCustomerAnalytics() {
-        return await this.request('/analytics/customers');
+        try {
+            return await this.request('/analytics/customers');
+        } catch (error) {
+            console.error('Error fetching customer analytics:', error);
+            throw new Error(`Failed to load customer analytics: ${error.message}`);
+        }
     }
 
     async getInventoryAnalytics() {
-        return await this.request('/analytics/inventory');
+        try {
+            return await this.request('/analytics/inventory');
+        } catch (error) {
+            console.error('Error fetching inventory analytics:', error);
+            throw new Error(`Failed to load inventory analytics: ${error.message}`);
+        }
     }
 
     // Backup and restore methods
     async backupCollection(collection, data) {
-        return await this.request(`/${collection}/backup`, {
-            method: 'POST',
-            body: JSON.stringify({ data })
-        });
+        try {
+            return await this.request(`/${collection}/backup`, {
+                method: 'POST',
+                body: JSON.stringify({ data })
+            });
+        } catch (error) {
+            console.error(`Error backing up ${collection}:`, error);
+            throw new Error(`Failed to backup ${collection}: ${error.message}`);
+        }
     }
 
     async importCollection(collection, data) {
-        return await this.request(`/${collection}/import`, {
-            method: 'POST',
-            body: JSON.stringify({ data })
-        });
+        try {
+            return await this.request(`/${collection}/import`, {
+                method: 'POST',
+                body: JSON.stringify({ data })
+            });
+        } catch (error) {
+            console.error(`Error importing ${collection}:`, error);
+            throw new Error(`Failed to import ${collection}: ${error.message}`);
+        }
     }
 
     // Collection-specific methods
@@ -355,15 +575,12 @@ class APIService {
         return await this.create('logs', logData);
     }
 
-    // Connection test
-    async testConnection() {
-        try {
-            const response = await fetch(`${this.baseURL.replace('/api', '')}/health`);
-            return await response.json();
-        } catch (error) {
-            console.error('Connection test failed:', error);
-            throw error;
-        }
+    // Connection status
+    getConnectionStatus() {
+        return {
+            tested: this.connectionTested,
+            connected: this.isConnected
+        };
     }
 }
 
@@ -372,3 +589,5 @@ window.apiService = new APIService();
 
 // Export for use in other modules
 window.APIService = APIService;
+
+console.log('✅ API Service initialized with enhanced error handling');
