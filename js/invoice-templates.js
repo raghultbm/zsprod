@@ -1,17 +1,13 @@
-// ZEDSON WATCHCRAFT - Invoice Templates Module (FIXED)
+// ZEDSON WATCHCRAFT - Invoice Templates Module with Logo Integration
 
 /**
- * Professional Invoice Templates with Logo Integration and Contact Details
+ * Professional Invoice Templates with Logo and Updated Design
  */
 
 /**
- * Create Sales Invoice HTML - UNCHANGED (already has proper contact details)
+ * Create Sales Invoice HTML with updated design - removed Invoice Amount, added Discount column, simplified summary
  */
 function createSalesInvoiceHTML(invoice) {
-    // Get customer mobile number from CustomerModule
-    const customer = window.CustomerModule ? CustomerModule.getCustomerById(invoice.customerId) : null;
-    const customerMobile = customer ? customer.phone : invoice.customerPhone || 'N/A';
-    
     return `
         <div style="max-width: 800px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif; background: white; color: #333;">
             <!-- Header Section with Logo -->
@@ -31,11 +27,11 @@ function createSalesInvoiceHTML(invoice) {
                 </div>
             </div>
 
-            <!-- Company Info Bar -->
+            <!-- Company Info Bar (removed Invoice Amount) -->
             <div style="background: #f8f9fa; padding: 15px; border-left: 5px solid #ffd700; margin-bottom: 20px;">
                 <div style="font-size: 0.9em; color: #666;">
-                    <strong>Shop A2A, No.137/2B, Express Food Street</strong><br>
-                    Semmancheri, Chennai - 600119
+                    <strong>14B, Northern Street, Greater South Avenue</strong><br>
+                    New York 10001, U.S.A
                 </div>
             </div>
 
@@ -45,8 +41,8 @@ function createSalesInvoiceHTML(invoice) {
                     <h3 style="color: #1a237e; margin-bottom: 10px; border-bottom: 2px solid #ffd700; padding-bottom: 5px;">Bill To</h3>
                     <div style="background: #f8f9fa; padding: 15px; border-radius: 5px;">
                         <strong style="font-size: 1.1em;">${Utils.sanitizeHtml(invoice.customerName)}</strong><br>
-                        <span style="color: #666;">Mobile: ${Utils.sanitizeHtml(customerMobile)}</span><br>
-                        <span style="color: #666;">${Utils.sanitizeHtml(invoice.customerAddress || 'Address not provided')}</span>
+                        <span style="color: #666;">${Utils.sanitizeHtml(invoice.customerPhone)}</span><br>
+                        <span style="color: #666;">${Utils.sanitizeHtml(invoice.customerAddress)}</span>
                     </div>
                 </div>
                 <div>
@@ -68,7 +64,7 @@ function createSalesInvoiceHTML(invoice) {
                 </div>
             </div>
 
-            <!-- Items Table -->
+            <!-- Items Table (added Discount column) -->
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
                 <thead>
                     <tr style="background: #1a237e; color: white;">
@@ -95,7 +91,7 @@ function createSalesInvoiceHTML(invoice) {
                 </tbody>
             </table>
 
-            <!-- Summary Section -->
+            <!-- Summary Section (simplified - only Total) -->
             <div style="display: flex; justify-content: flex-end; margin-bottom: 30px;">
                 <div style="width: 300px;">
                     <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; border: 2px solid #1a237e;">
@@ -107,25 +103,20 @@ function createSalesInvoiceHTML(invoice) {
                 </div>
             </div>
 
-            <!-- Footer with Contact Details -->
+            <!-- Footer -->
             <div style="text-align: center; margin-top: 30px; padding: 20px; background: linear-gradient(135deg, #1a237e, #283593); color: white; border-radius: 0 0 10px 10px;">
                 <p style="margin: 5px 0; font-size: 1.1em; font-weight: 600;">Thank you for your business!</p>
                 <p style="margin: 5px 0; font-size: 0.9em;">ZEDSON WATCHCRAFT - Your trusted watch partner</p>
-                <p style="margin: 5px 0; font-size: 0.85em;">Mobile: +91-9345667717 | +91-9500661769 | Email: zedsonwatchcraft@gmail.com</p>
+                <p style="margin: 5px 0; font-size: 0.85em;">Contact: +91-9345667717 | Email: zedsonwatchcraft@gmail.com</p>
             </div>
         </div>
     `;
 }
 
 /**
- * FIXED: Create Service Completion Invoice HTML with logo and contact details
+ * Create Service Completion Invoice HTML with logo and updated design (unchanged)
  */
 function createServiceCompletionHTML(invoice) {
-    // Get customer mobile number from CustomerModule
-    const customer = window.CustomerModule ? CustomerModule.getCustomerById(invoice.customerId) : null;
-    const customerMobile = customer ? customer.phone : invoice.customerPhone || 'N/A';
-    const customerEmail = customer ? customer.email : 'N/A';
-    
     return `
         <div style="max-width: 800px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif; background: white; color: #333;">
             <!-- Header Section with Logo -->
@@ -149,8 +140,8 @@ function createServiceCompletionHTML(invoice) {
             <div style="background: #f8f9fa; padding: 15px; border-left: 5px solid #ffd700; margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9em; color: #666;">
                     <div>
-                        <strong>Shop A2A, No.137/2B, Express Food Street</strong><br>
-                        Semmancheri, Chennai - 600119
+                        <strong>14B, Northern Street, Greater South Avenue</strong><br>
+                        New York 10001, U.S.A
                     </div>
                     <div style="text-align: right;">
                         <strong>Service Amount</strong><br>
@@ -165,9 +156,8 @@ function createServiceCompletionHTML(invoice) {
                     <h3 style="color: #1a237e; margin-bottom: 10px; border-bottom: 2px solid #ffd700; padding-bottom: 5px;">Bill To</h3>
                     <div style="background: #f8f9fa; padding: 15px; border-radius: 5px;">
                         <strong style="font-size: 1.1em;">${Utils.sanitizeHtml(invoice.customerName)}</strong><br>
-                        <span style="color: #666;">Mobile: ${Utils.sanitizeHtml(customerMobile)}</span><br>
-                        <span style="color: #666;">Email: ${Utils.sanitizeHtml(customerEmail)}</span><br>
-                        <span style="color: #666;">${Utils.sanitizeHtml(invoice.customerAddress || 'Address not provided')}</span>
+                        <span style="color: #666;">${Utils.sanitizeHtml(invoice.customerPhone)}</span><br>
+                        <span style="color: #666;">${Utils.sanitizeHtml(invoice.customerAddress)}</span>
                     </div>
                 </div>
                 <div>
@@ -191,28 +181,22 @@ function createServiceCompletionHTML(invoice) {
 
             <!-- Watch Details Section -->
             <div style="background: linear-gradient(135deg, #f0f4ff 0%, #e1f5fe 100%); padding: 20px; border-radius: 10px; border: 2px solid #1a237e; margin-bottom: 30px;">
-                <h3 style="color: #1a237e; margin-top: 0; text-align: center; border-bottom: 2px solid #ffd700; padding-bottom: 10px;">${invoice.type ? invoice.type.toUpperCase() : 'ITEM'} SERVICE DETAILS</h3>
+                <h3 style="color: #1a237e; margin-top: 0; text-align: center; border-bottom: 2px solid #ffd700; padding-bottom: 10px;">WATCH SERVICE DETAILS</h3>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                     <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                        <div style="margin-bottom: 10px;"><strong style="color: #1a237e;">${invoice.type || 'Item'}:</strong> ${Utils.sanitizeHtml(invoice.watchName)}</div>
-                        <div style="margin-bottom: 10px;"><strong style="color: #1a237e;">Brand:</strong> ${Utils.sanitizeHtml(invoice.brand)}</div>
-                        <div><strong style="color: #1a237e;">Model:</strong> ${Utils.sanitizeHtml(invoice.model)}</div>
+                        <div style="margin-bottom: 10px;"><strong style="color: #1a237e;">Watch:</strong> ${Utils.sanitizeHtml(invoice.watchName)}</div>
+                        <div style="margin-bottom: 10px;"><strong style="color: #1a237e;">Dial Color:</strong> ${Utils.sanitizeHtml(invoice.dialColor)}</div>
+                        <div><strong style="color: #1a237e;">Movement No:</strong> ${Utils.sanitizeHtml(invoice.movementNo)}</div>
                     </div>
                     <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                        ${invoice.type === 'Watch' ? `
-                        <div style="margin-bottom: 10px;"><strong style="color: #1a237e;">Dial Color:</strong> ${Utils.sanitizeHtml(invoice.dialColor)}</div>
                         <div style="margin-bottom: 10px;"><strong style="color: #1a237e;">Gender:</strong> ${Utils.sanitizeHtml(invoice.gender)}</div>
-                        <div><strong style="color: #1a237e;">Case:</strong> ${Utils.sanitizeHtml(invoice.caseType)}</div>
-                        ` : `
-                        <div style="margin-bottom: 10px;"><strong style="color: #1a237e;">Type:</strong> ${Utils.sanitizeHtml(invoice.type || 'Service Item')}</div>
-                        <div style="margin-bottom: 10px;"><strong style="color: #1a237e;">Movement No:</strong> ${Utils.sanitizeHtml(invoice.movementNo || 'N/A')}</div>
-                        <div><strong style="color: #1a237e;">Service Cost:</strong> ${Utils.formatCurrency(invoice.amount)}</div>
-                        `}
+                        <div style="margin-bottom: 10px;"><strong style="color: #1a237e;">Case:</strong> ${Utils.sanitizeHtml(invoice.caseType)}</div>
+                        <div><strong style="color: #1a237e;">Strap:</strong> ${Utils.sanitizeHtml(invoice.strapType)}</div>
                     </div>
                 </div>
                 <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                     <div style="margin-bottom: 10px;"><strong style="color: #1a237e;">Work Performed:</strong></div>
-                    <div style="padding: 10px; background: #f8f9fa; border-left: 4px solid #28a745; border-radius: 4px;">${Utils.sanitizeHtml(invoice.workPerformed || 'Service completed as requested')}</div>
+                    <div style="padding: 10px; background: #f8f9fa; border-left: 4px solid #28a745; border-radius: 4px;">${Utils.sanitizeHtml(invoice.workPerformed)}</div>
                 </div>
             </div>
 
@@ -231,7 +215,7 @@ function createServiceCompletionHTML(invoice) {
                     <tr style="background: #f9f9f9;">
                         <td style="padding: 15px; border: 1px solid #ddd; text-align: center;">1</td>
                         <td style="padding: 15px; border: 1px solid #ddd;">
-                            <strong style="color: #1a237e;">${invoice.type || 'Item'} Service & Repair</strong><br>
+                            <strong style="color: #1a237e;">Watch Service & Repair</strong><br>
                             <small style="color: #666;">${Utils.sanitizeHtml(invoice.brand)} ${Utils.sanitizeHtml(invoice.model)}</small>
                         </td>
                         <td style="padding: 15px; border: 1px solid #ddd; text-align: center;">1</td>
@@ -276,21 +260,16 @@ function createServiceCompletionHTML(invoice) {
             <div style="text-align: center; margin-top: 30px; padding: 20px; background: linear-gradient(135deg, #1a237e, #283593); color: white; border-radius: 0 0 10px 10px;">
                 <p style="margin: 5px 0; font-size: 1.1em; font-weight: 600;">Thank you for choosing our service!</p>
                 <p style="margin: 5px 0; font-size: 0.9em;">ZEDSON WATCHCRAFT - Expert watch servicing</p>
-                <p style="margin: 5px 0; font-size: 0.85em;">Mobile: +91-9345667717 | +91-9500661769 | Email: zedsonwatchcraft@gmail.com</p>
+                <p style="margin: 5px 0; font-size: 0.85em;">Contact: +91-9345667717 | Email: zedsonwatchcraft@gmail.com</p>
             </div>
         </div>
     `;
 }
 
 /**
- * FIXED: Create Service Acknowledgement HTML with logo and contact details
+ * Create Service Acknowledgement HTML with logo (unchanged)
  */
 function createServiceAcknowledgementHTML(acknowledgement) {
-    // Get customer mobile number from CustomerModule
-    const customer = window.CustomerModule ? CustomerModule.getCustomerById(acknowledgement.customerId) : null;
-    const customerMobile = customer ? customer.phone : acknowledgement.customerPhone || 'N/A';
-    const customerEmail = customer ? customer.email : 'N/A';
-    
     return `
         <div style="max-width: 800px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif; background: white; color: #333;">
             <!-- Header Section with Logo -->
@@ -312,43 +291,35 @@ function createServiceAcknowledgementHTML(acknowledgement) {
 
             <!-- Service Receipt Content -->
             <div style="background: #f8f9fa; padding: 20px; margin-bottom: 20px;">
-                <h3 style="color: #1a237e; text-align: center; margin-bottom: 20px;">${acknowledgement.type ? acknowledgement.type.toUpperCase() : 'ITEM'} RECEIVED FOR SERVICE</h3>
+                <h3 style="color: #1a237e; text-align: center; margin-bottom: 20px;">WATCH RECEIVED FOR SERVICE</h3>
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                     <div>
                         <h4 style="color: #1a237e;">Customer Details</h4>
                         <p><strong>Name:</strong> ${Utils.sanitizeHtml(acknowledgement.customerName)}</p>
-                        <p><strong>Mobile:</strong> ${Utils.sanitizeHtml(customerMobile)}</p>
-                        <p><strong>Email:</strong> ${Utils.sanitizeHtml(customerEmail)}</p>
-                        <p><strong>Address:</strong> ${Utils.sanitizeHtml(acknowledgement.customerAddress || 'Address not provided')}</p>
+                        <p><strong>Phone:</strong> ${Utils.sanitizeHtml(acknowledgement.customerPhone)}</p>
+                        <p><strong>Address:</strong> ${Utils.sanitizeHtml(acknowledgement.customerAddress)}</p>
                     </div>
                     <div>
                         <h4 style="color: #1a237e;">Receipt Details</h4>
                         <p><strong>Receipt No:</strong> ${Utils.sanitizeHtml(acknowledgement.invoiceNo)}</p>
                         <p><strong>Date:</strong> ${Utils.sanitizeHtml(acknowledgement.date)}</p>
                         <p><strong>Estimated Cost:</strong> ${Utils.formatCurrency(acknowledgement.estimatedCost)}</p>
-                        <p><strong>Type:</strong> ${Utils.sanitizeHtml(acknowledgement.type || 'Service Item')}</p>
                     </div>
                 </div>
                 
                 <div style="background: white; padding: 15px; border-radius: 5px; border: 2px solid #1a237e;">
-                    <h4 style="color: #1a237e; text-align: center;">${acknowledgement.type ? acknowledgement.type.toUpperCase() : 'ITEM'} DETAILS</h4>
+                    <h4 style="color: #1a237e; text-align: center;">WATCH DETAILS</h4>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                         <div>
-                            <p><strong>${acknowledgement.type || 'Item'}:</strong> ${Utils.sanitizeHtml(acknowledgement.watchName)}</p>
-                            <p><strong>Brand:</strong> ${Utils.sanitizeHtml(acknowledgement.brand)}</p>
-                            <p><strong>Model:</strong> ${Utils.sanitizeHtml(acknowledgement.model)}</p>
-                        </div>
-                        <div>
-                            ${acknowledgement.type === 'Watch' ? `
+                            <p><strong>Watch:</strong> ${Utils.sanitizeHtml(acknowledgement.watchName)}</p>
                             <p><strong>Dial Color:</strong> ${Utils.sanitizeHtml(acknowledgement.dialColor)}</p>
                             <p><strong>Movement:</strong> ${Utils.sanitizeHtml(acknowledgement.movementNo)}</p>
+                        </div>
+                        <div>
                             <p><strong>Gender:</strong> ${Utils.sanitizeHtml(acknowledgement.gender)}</p>
-                            ` : `
-                            <p><strong>Type:</strong> ${Utils.sanitizeHtml(acknowledgement.type || 'Service Item')}</p>
-                            <p><strong>Movement No:</strong> ${Utils.sanitizeHtml(acknowledgement.movementNo || 'N/A')}</p>
-                            <p><strong>Estimated Cost:</strong> ${Utils.formatCurrency(acknowledgement.estimatedCost)}</p>
-                            `}
+                            <p><strong>Case:</strong> ${Utils.sanitizeHtml(acknowledgement.caseType)}</p>
+                            <p><strong>Strap:</strong> ${Utils.sanitizeHtml(acknowledgement.strapType)}</p>
                         </div>
                     </div>
                     <div style="margin-top: 15px;">
@@ -360,14 +331,14 @@ function createServiceAcknowledgementHTML(acknowledgement) {
             <!-- Important Note -->
             <div style="background: #fff3cd; border: 1px solid #ffd700; border-radius: 5px; padding: 15px; margin-bottom: 20px;">
                 <h4 style="margin-top: 0; color: #856404;">IMPORTANT</h4>
-                <p style="margin-bottom: 0; color: #856404;">Please keep this receipt safe. You will need it when collecting your ${acknowledgement.type ? acknowledgement.type.toLowerCase() : 'item'}.</p>
+                <p style="margin-bottom: 0; color: #856404;">Please keep this receipt safe. You will need it when collecting your watch.</p>
             </div>
 
             <!-- Footer with Contact Details -->
             <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #1a237e, #283593); color: white; border-radius: 0 0 10px 10px;">
                 <p style="margin: 5px 0;">Thank you for trusting us with your timepiece!</p>
                 <p style="margin: 5px 0; font-size: 0.9em;">ZEDSON WATCHCRAFT - Expert watch servicing</p>
-                <p style="margin: 5px 0; font-size: 0.85em;">Mobile: +91-9345667717 | +91-9500661769 | Email: zedsonwatchcraft@gmail.com</p>
+                <p style="margin: 5px 0; font-size: 0.85em;">Contact: +91-9345667717 | Email: zedsonwatchcraft@gmail.com</p>
             </div>
         </div>
     `;

@@ -32,29 +32,33 @@
                 </div>
                 <button type="submit" class="login-btn">Login</button>
             </form>
-            
-            <!-- Demo Account Info -->
-            <div style="margin-top: 20px; text-align: center; color: #666; font-size: 12px;">
-                <p><strong>Demo Accounts:</strong></p>
-                <p>Admin: admin / admin123</p>
-                <p>Owner: owner / owner123</p>
-                <p>Staff: staff / staff123</p>
-            </div>
+        </div>
+    </div>
+
+    <!-- First Login Password Setup Modal -->
+    <div id="firstLoginModal" class="modal" style="z-index: 3000;">
+        <div class="modal-content">
+            <h2>First Time Login - Set Your Password</h2>
+            <p>Please set your new password for security purposes.</p>
+            <form onsubmit="handleFirstTimePasswordSetup(event)">
+                <div class="form-group">
+                    <label>New Password:</label>
+                    <input type="password" id="newPasswordSetup" required placeholder="Enter new password" minlength="6">
+                </div>
+                <div class="form-group">
+                    <label>Confirm Password:</label>
+                    <input type="password" id="confirmPasswordSetup" required placeholder="Confirm new password" minlength="6">
+                </div>
+                <button type="submit" class="btn">Set Password</button>
+            </form>
         </div>
     </div>
 
     <!-- Main Application -->
     <div id="mainApp" class="app-container">
         <div class="container">
-            <!-- Header -->
+            <!-- Header with Logo and Navigation -->
             <div class="header">
-                <!-- Database Connection Status -->
-                <div style="position: absolute; top: 10px; left: 20px; font-size: 12px; color: #666;">
-                    <span id="dbStatus" class="db-status">
-                        <span id="dbStatusText">Initializing...</span>
-                    </span>
-                </div>
-                
                 <!-- User Info Bar -->
                 <div class="user-info">
                     <span id="currentUser">Welcome, User</span>
@@ -62,36 +66,26 @@
                     <button class="logout-btn" onclick="logout()">Logout</button>
                 </div>
                 
-                <!-- Header Layout -->
-                <div class="header-main">
-                    <!-- Logo Section -->
-                    <div class="logo-section">
-                        <img src="assets/zedson-logo.png" alt="ZEDSON WATCHCRAFT" class="header-logo-main">
-                        <!-- Fallback to original design if image fails to load -->
-                        <div class="logo-fallback" style="display: none;">
-                            <div class="logo-circle-main">
-                                <div class="logo-watch"></div>
-                            </div>
-                            <div class="logo-text">
-                                <h1>ZEDSON</h1>
-                                <div class="subtitle">WATCHCRAFT</div>
-                            </div>
-                        </div>
+                <div class="logo-container">
+                    <img src="assets/zedson-logo.png" alt="ZEDSON WATCHCRAFT" class="header-logo-image-large">
+                    <!-- Fallback to original design if image fails to load -->
+                    <div class="logo-circle" style="display: none;">
+                        <div class="logo-watch"></div>
                     </div>
-                    
-                    <!-- Navigation Section -->
-                    <div class="nav-section">
-                        <div class="nav" id="mainNavigation">
-                            <button class="nav-btn active" onclick="showSection('dashboard', this)">Dashboard</button>
-                            <button class="nav-btn" onclick="showSection('customers', this)">Customers</button>
-                            <button class="nav-btn" onclick="showSection('inventory', this)">Inventory</button>
-                            <button class="nav-btn" onclick="showSection('sales', this)">Sales</button>
-                            <button class="nav-btn" onclick="showSection('service', this)">Service</button>
-                            <button class="nav-btn" onclick="showSection('expenses', this)">Expenses</button>
-                            <button class="nav-btn" onclick="showSection('invoices', this)">Invoices</button>
-                            <button class="nav-btn" id="userManagementBtn" onclick="showSection('users', this)" style="display: none;">User Management</button>
-                        </div>
+                    <div style="display: none;">
+                        <h1>ZEDSON</h1>
+                        <div class="subtitle">WATCHCRAFT</div>
                     </div>
+                </div>
+                <div class="nav" id="mainNavigation">
+                    <button class="nav-btn active" onclick="showSection('dashboard', this)">Dashboard</button>
+                    <button class="nav-btn" onclick="showSection('customers', this)">Customers</button>
+                    <button class="nav-btn" onclick="showSection('inventory', this)">Inventory</button>
+                    <button class="nav-btn" onclick="showSection('sales', this)">Sales</button>
+                    <button class="nav-btn" onclick="showSection('service', this)">Service</button>
+                    <button class="nav-btn" onclick="showSection('expenses', this)">Expenses</button>
+                    <button class="nav-btn" onclick="showSection('invoices', this)">Invoices</button>
+                    <button class="nav-btn" id="userManagementBtn" onclick="showSection('users', this)" style="display: none;">User Management</button>
                 </div>
             </div>
 
@@ -101,7 +95,7 @@
                     <h2>Dashboard Overview</h2>
                     <div class="stats">
                         <div class="stat-card">
-                            <h3 id="totalWatches">-</h3>
+                            <h3 id="totalWatches">3</h3>
                             <p>Total Items</p>
                         </div>
                         <div class="stat-card clickable-stat" onclick="openRevenueAnalytics()">
@@ -109,15 +103,15 @@
                             <p>Today's Sales</p>
                         </div>
                         <div class="stat-card">
-                            <h3 id="incompleteServices">-</h3>
+                            <h3 id="incompleteServices">0</h3>
                             <p>Incomplete Services</p>
                         </div>
                         <div class="stat-card">
-                            <h3 id="totalCustomers">-</h3>
+                            <h3 id="totalCustomers">2</h3>
                             <p>Total Customers</p>
                         </div>
                         <div class="stat-card">
-                            <h3 id="totalInvoices">-</h3>
+                            <h3 id="totalInvoices">0</h3>
                             <p>Total Invoices</p>
                         </div>
                     </div>
@@ -125,11 +119,11 @@
                     <div class="grid grid-2">
                         <div class="card">
                             <h3>Recent Sales</h3>
-                            <div id="recentSales">Loading...</div>
+                            <div id="recentSales">No sales yet</div>
                         </div>
                         <div class="card">
                             <h3>Incomplete Service Requests</h3>
-                            <div id="incompleteServicesList">Loading...</div>
+                            <div id="incompleteServicesList">No incomplete services</div>
                         </div>
                     </div>
                 </div>
@@ -159,7 +153,7 @@
                             </tr>
                         </thead>
                         <tbody id="watchTableBody">
-                            <tr><td colspan="11" style="text-align: center; padding: 20px;">Loading inventory...</td></tr>
+                            <!-- Sample data will be loaded by JavaScript -->
                         </tbody>
                     </table>
                 </div>
@@ -186,7 +180,7 @@
                             </tr>
                         </thead>
                         <tbody id="salesTableBody">
-                            <tr><td colspan="8" style="text-align: center; padding: 20px;">Loading sales...</td></tr>
+                            <!-- Sales data will be loaded by JavaScript -->
                         </tbody>
                     </table>
                 </div>
@@ -215,7 +209,7 @@
                             </tr>
                         </thead>
                         <tbody id="serviceTableBody">
-                            <tr><td colspan="10" style="text-align: center; padding: 20px;">Loading services...</td></tr>
+                            <!-- Service data will be loaded by JavaScript -->
                         </tbody>
                     </table>
                 </div>
@@ -239,7 +233,7 @@
                             </tr>
                         </thead>
                         <tbody id="expenseTableBody">
-                            <tr><td colspan="5" style="text-align: center; padding: 20px;">Loading expenses...</td></tr>
+                            <!-- Expense data will be loaded by JavaScript -->
                         </tbody>
                     </table>
                 </div>
@@ -271,12 +265,12 @@
                             </tr>
                         </thead>
                         <tbody id="invoiceTableBody">
-                            <tr><td colspan="9" style="text-align: center; padding: 20px;">Loading invoices...</td></tr>
+                            <!-- Invoice data will be loaded by JavaScript -->
                         </tbody>
                     </table>
                 </div>
 
-                <!-- Customers Section -->
+                <!-- Customers Section with Net Value column -->
                 <div id="customers" class="section">
                     <h2>Customer Management</h2>
                     <div style="margin-bottom: 20px;">
@@ -298,7 +292,7 @@
                             </tr>
                         </thead>
                         <tbody id="customerTableBody">
-                            <tr><td colspan="8" style="text-align: center; padding: 20px;">Loading customers...</td></tr>
+                            <!-- Customer data will be loaded by JavaScript -->
                         </tbody>
                     </table>
                 </div>
@@ -322,7 +316,7 @@
                             </tr>
                         </thead>
                         <tbody id="userTableBody">
-                            <tr><td colspan="7" style="text-align: center; padding: 20px;">Loading users...</td></tr>
+                            <!-- User data will be loaded by JavaScript -->
                         </tbody>
                     </table>
                 </div>
@@ -330,7 +324,7 @@
         </div>
     </div>
 
-    <!-- Revenue Analytics Modal -->
+    <!-- UPDATED Revenue Analytics Modal -->
     <div id="revenueAnalyticsModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeModal('revenueAnalyticsModal')">&times;</span>
@@ -339,7 +333,7 @@
                 <div class="grid grid-2">
                     <div class="form-group">
                         <label>Filter Type:</label>
-                        <select id="revenueFilterType">
+                        <select id="revenueFilterType" onchange="toggleRevenueFilterInputs()">
                             <option value="all">All Transactions</option>
                             <option value="dateRange">Date Range</option>
                             <option value="monthly">Monthly</option>
@@ -347,7 +341,7 @@
                     </div>
                     <div class="form-group">
                         <label>Revenue Type:</label>
-                        <select id="revenueTypeFilter">
+                        <select id="revenueTypeFilter" onchange="applyRevenueFilter()">
                             <option value="all">All Revenue</option>
                             <option value="sales">Sales Only</option>
                             <option value="services">Services Only</option>
@@ -387,8 +381,8 @@
                 </div>
                 <div class="form-group">
                     <label>
-                        <input type="checkbox" id="includeExpenses">
-                        Include Expenses
+                        <input type="checkbox" id="includeExpenses" onchange="applyRevenueFilter()">
+                        Include Expenses (subtract from revenue)
                     </label>
                 </div>
                 <button class="btn" onclick="applyRevenueFilter()">Apply Filter</button>
@@ -411,1090 +405,47 @@
         </div>
     </div>
 
-    <!-- ========================================= -->
-    <!-- MODALS SECTION - Add after Invoice Preview Modal -->
-    <!-- ========================================= -->
+    <!-- Include all modal templates -->
+    <div id="modals-container"></div>
 
-    <!-- Customer Management Modal -->
-    <div id="addCustomerModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('addCustomerModal')">&times;</span>
-            <h2>Add New Customer</h2>
-            <form onsubmit="CustomerModule.addNewCustomer(event)">
-                <div class="form-group">
-                    <label>Name:</label>
-                    <input type="text" id="customerName" required>
-                </div>
-                <div class="form-group">
-                    <label>Email:</label>
-                    <input type="email" id="customerEmail" required>
-                </div>
-                <div class="form-group">
-                    <label>Phone:</label>
-                    <input type="tel" id="customerPhone" required>
-                </div>
-                <div class="form-group">
-                    <label>Address:</label>
-                    <textarea id="customerAddress" rows="3"></textarea>
-                </div>
-                <button type="submit" class="btn">Add Customer</button>
-                <button type="button" class="btn btn-danger" onclick="closeModal('addCustomerModal')">Cancel</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Inventory Management Modal -->
-    <div id="addWatchModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('addWatchModal')">&times;</span>
-            <h2>Add New Item</h2>
-            <form onsubmit="InventoryModule.addNewWatch(event)">
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Code:</label>
-                        <input type="text" id="watchCode" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Type:</label>
-                        <select id="watchType" required>
-                            <option value="">Select Type</option>
-                            <option value="Watch">Watch</option>
-                            <option value="Clock">Clock</option>
-                            <option value="Timepiece">Timepiece</option>
-                            <option value="Strap">Strap</option>
-                            <option value="Battery">Battery</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Brand:</label>
-                        <input type="text" id="watchBrand" required onkeyup="InventoryModule.updateWatchCode()">
-                    </div>
-                    <div class="form-group">
-                        <label>Model:</label>
-                        <input type="text" id="watchModel" required>
-                    </div>
-                </div>
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Size (Optional):</label>
-                        <input type="text" id="watchSize" placeholder="e.g., 40mm, 42mm">
-                    </div>
-                    <div class="form-group">
-                        <label>Price (₹):</label>
-                        <input type="number" id="watchPrice" required min="0" step="0.01">
-                    </div>
-                </div>
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Quantity:</label>
-                        <input type="number" id="watchQuantity" required min="1">
-                    </div>
-                    <div class="form-group">
-                        <label>Outlet:</label>
-                        <select id="watchOutlet" required>
-                            <option value="">Select Outlet</option>
-                            <option value="Semmancheri">Semmancheri</option>
-                            <option value="Navalur">Navalur</option>
-                            <option value="Padur">Padur</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Description:</label>
-                    <textarea id="watchDescription" rows="3"></textarea>
-                </div>
-                <button type="submit" class="btn">Add Item</button>
-                <button type="button" class="btn btn-danger" onclick="closeModal('addWatchModal')">Cancel</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Sales Modal -->
-    <div id="newSaleModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('newSaleModal')">&times;</span>
-            <h2>New Sale</h2>
-            <form onsubmit="SalesCoreModule.addNewSale(event)">
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Customer:</label>
-                        <select id="saleCustomer" required>
-                            <option value="">Select Customer</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Search by Code:</label>
-                        <input type="text" id="saleWatchCode" placeholder="Enter watch code" onkeyup="SalesCoreModule.searchWatchByCode()">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Select Item:</label>
-                    <select id="saleWatch" required onchange="SalesCoreModule.updateSalePrice()">
-                        <option value="">Select Item</option>
-                    </select>
-                </div>
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Price (₹):</label>
-                        <input type="number" id="salePrice" required min="0" step="0.01" readonly>
-                    </div>
-                    <div class="form-group">
-                        <label>Quantity:</label>
-                        <input type="number" id="saleQuantity" value="1" required min="1" onchange="SalesCoreModule.updateCalculationDisplay()">
-                    </div>
-                </div>
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Discount Type:</label>
-                        <select id="saleDiscountType" onchange="SalesCoreModule.updateCalculationDisplay()">
-                            <option value="">No Discount</option>
-                            <option value="percentage">Percentage (%)</option>
-                            <option value="amount">Fixed Amount (₹)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Discount Value:</label>
-                        <input type="number" id="saleDiscountValue" min="0" step="0.01" onchange="SalesCoreModule.updateCalculationDisplay()">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Payment Method:</label>
-                    <select id="salePaymentMethod" required>
-                        <option value="">Select Payment Method</option>
-                        <option value="Cash">Cash</option>
-                        <option value="Card">Card</option>
-                        <option value="UPI">UPI</option>
-                        <option value="Net Banking">Net Banking</option>
-                        <option value="Cheque">Cheque</option>
-                    </select>
-                </div>
-                
-                <!-- Calculation Display -->
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                    <h4>Sale Summary:</h4>
-                    <div style="display: flex; justify-content: space-between; margin: 5px 0;">
-                        <span>Subtotal:</span>
-                        <span id="saleSubtotal">₹0</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin: 5px 0;">
-                        <span>Discount:</span>
-                        <span id="saleDiscountAmount" style="color: #dc3545;">₹0</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin: 5px 0; font-weight: bold; font-size: 1.2em;">
-                        <span>Total Amount:</span>
-                        <span id="saleTotalAmount" style="color: #1a237e;">₹0</span>
-                    </div>
-                </div>
-                
-                <button type="submit" class="btn">Complete Sale</button>
-                <button type="button" class="btn btn-danger" onclick="closeModal('newSaleModal')">Cancel</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Service Modal -->
-    <div id="newServiceModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('newServiceModal')">&times;</span>
-            <h2>New Service Request</h2>
-            <form onsubmit="ServiceModule.addNewService(event)">
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Customer:</label>
-                        <select id="serviceCustomer" required>
-                            <option value="">Select Customer</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Service Type:</label>
-                        <select id="serviceType" required>
-                            <option value="">Select Type</option>
-                            <option value="Watch">Watch Service</option>
-                            <option value="Clock">Clock Service</option>
-                            <option value="Repair">General Repair</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Watch/Item Name:</label>
-                        <input type="text" id="serviceWatchName" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Brand:</label>
-                        <input type="text" id="serviceBrand" required>
-                    </div>
-                </div>
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Model:</label>
-                        <input type="text" id="serviceModel" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Movement No:</label>
-                        <input type="text" id="serviceMovementNo" required>
-                    </div>
-                </div>
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Dial Color:</label>
-                        <input type="text" id="serviceDialColor" value="N/A">
-                    </div>
-                    <div class="form-group">
-                        <label>Gender:</label>
-                        <select id="serviceGender">
-                            <option value="N/A">Not Applicable</option>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                            <option value="Unisex">Unisex</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Case Type:</label>
-                        <input type="text" id="serviceCaseType" value="N/A">
-                    </div>
-                    <div class="form-group">
-                        <label>Strap Type:</label>
-                        <input type="text" id="serviceStrapType" value="N/A">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Issue Description:</label>
-                    <textarea id="serviceIssue" rows="3" required placeholder="Describe the problem..."></textarea>
-                </div>
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Estimated Cost (₹):</label>
-                        <input type="number" id="serviceCost" required min="0" step="0.01">
-                    </div>
-                    <div class="form-group">
-                        <label>Estimated Delivery:</label>
-                        <input type="date" id="serviceEstimatedDelivery">
-                    </div>
-                </div>
-                <button type="submit" class="btn">Create Service Request</button>
-                <button type="button" class="btn btn-danger" onclick="closeModal('newServiceModal')">Cancel</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- User Management Modal (Admin Only) -->
-    <div id="addUserModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('addUserModal')">&times;</span>
-            <h2>Add New User</h2>
-            <form onsubmit="UserModule.addNewUser(event)">
-                <div class="form-group">
-                    <label>Username:</label>
-                    <input type="text" id="newUsername" required>
-                </div>
-                <div class="form-group">
-                    <label>Full Name:</label>
-                    <input type="text" id="newUserFullName" required>
-                </div>
-                <div class="form-group">
-                    <label>Email:</label>
-                    <input type="email" id="newUserEmail" required>
-                </div>
-                <div class="form-group">
-                    <label>Role:</label>
-                    <select id="newUserRole" required>
-                        <option value="">Select Role</option>
-                        <option value="admin">Admin</option>
-                        <option value="owner">Owner</option>
-                        <option value="staff">Staff</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Password:</label>
-                    <input type="password" id="newUserPassword" required>
-                </div>
-                <button type="submit" class="btn">Add User</button>
-                <button type="button" class="btn btn-danger" onclick="closeModal('addUserModal')">Cancel</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- CSS for Status Indicators -->
-    <style>
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .db-status {
-            padding: 5px 10px;
-            border-radius: 15px;
-            font-size: 11px;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        .db-status.connecting {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
-        .db-status.connected {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .db-status.disconnected {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        
-        .db-status::before {
-            content: '';
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        
-        .db-status.connecting::before {
-            background: #856404;
-            animation: pulse 1.5s infinite;
-        }
-        
-        .db-status.connected::before {
-            background: #155724;
-        }
-        
-        .db-status.disconnected::before {
-            background: #721c24;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-    </style>
-
-    <!-- ========================================= -->
-    <!-- JAVASCRIPT SECTION -->
-    <!-- ========================================= -->
-
-    <!-- Core JavaScript Files -->
+    <!-- JavaScript Files -->
     <script src="js/utils.js"></script>
-    <script src="js/api-service.js"></script>
+    <script src="js/logging.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/inventory.js"></script>
+    <script src="js/sales-core.js"></script>
+    <script src="js/sales-extended.js"></script>
+    <script src="js/service.js"></script>
+    <script src="js/expenses.js"></script>
+    <script src="js/customers.js"></script>
+    <script src="js/invoice-templates.js"></script>
+    <script src="js/invoices.js"></script>
     <script src="js/app-core.js"></script>
+    <script src="js/app-extended.js"></script>
 
-    <!-- Module Loading Script -->
-    <script>
-        // Load additional modules dynamically
-        function loadModule(moduleName) {
-            return new Promise((resolve) => {
-                const script = document.createElement('script');
-                script.src = `js/${moduleName}.js`;
-                script.onload = () => {
-                    console.log(`✅ ${moduleName} module loaded`);
-                    resolve();
-                };
-                script.onerror = () => {
-                    console.log(`⚠️ ${moduleName} module not found, using fallback`);
-                    resolve(); // Don't reject, continue with fallbacks
-                };
-                document.head.appendChild(script);
-            });
-        }
+    <script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
 
-        // Auto-load modules when DOM is ready
-        document.addEventListener('DOMContentLoaded', function() {
-            const modules = [
-                'customers',
-                'inventory', 
-                'sales-core',
-                'service',
-                'expenses',
-                'invoices',
-                'invoice-templates',
-                'logging'
-            ];
-            
-            modules.forEach(module => {
-                loadModule(module).catch(() => {
-                    console.log(`Failed to load ${module}, using built-in fallback`);
-                });
-            });
-        });
-    </script>
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyAoxPLdv7yFr_a7BwUKIJ7BNkVl7MzqaxY",
+    authDomain: "zedsonwatchcraft-93d67.firebaseapp.com",
+    projectId: "zedsonwatchcraft-93d67",
+    storageBucket: "zedsonwatchcraft-93d67.firebasestorage.app",
+    messagingSenderId: "20067888601",
+    appId: "1:20067888601:web:b96f6580e0e2aa7ccb3dc8",
+    measurementId: "G-0DGDMVLLWC"
+  };
 
-    <!-- Global Functions and Event Handlers -->
-    <script>
-        // =========================
-        // GLOBAL FUNCTION DEFINITIONS
-        // =========================
-
-        // Main authentication functions
-        window.handleLogin = function(event) {
-            if (window.AuthModule && AuthModule.handleLogin) {
-                AuthModule.handleLogin(event);
-            } else {
-                event.preventDefault();
-                console.log('⚠️ AuthModule not loaded, using emergency login');
-                emergencyLogin();
-            }
-        };
-
-        window.logout = function() {
-            if (window.AuthModule && AuthModule.logout) {
-                AuthModule.logout();
-            } else {
-                if (confirm('Are you sure you want to logout?')) {
-                    localStorage.clear();
-                    location.reload();
-                }
-            }
-        };
-
-        // Enhanced modal functions with fallbacks
-        window.openAddCustomerModal = function() {
-            if (window.CustomerModule && CustomerModule.openAddCustomerModal) {
-                CustomerModule.openAddCustomerModal();
-            } else {
-                const modal = document.getElementById('addCustomerModal');
-                if (modal) {
-                    // Ensure the form has proper event handler
-                    const form = modal.querySelector('form');
-                    if (form && !form.onsubmit) {
-                        form.onsubmit = function(event) {
-                            event.preventDefault();
-                            const name = document.getElementById('customerName').value.trim();
-                            const email = document.getElementById('customerEmail').value.trim();
-                            const phone = document.getElementById('customerPhone').value.trim();
-                            
-                            if (name && email && phone) {
-                                const customer = {
-                                    id: Date.now(),
-                                    name, email, phone,
-                                    address: document.getElementById('customerAddress').value.trim(),
-                                    purchases: 0, serviceCount: 0, netValue: 0
-                                };
-                                
-                                const customers = JSON.parse(localStorage.getItem('zedson_customers') || '[]');
-                                customers.push(customer);
-                                localStorage.setItem('zedson_customers', JSON.stringify(customers));
-                                
-                                closeModal('addCustomerModal');
-                                form.reset();
-                                alert('Customer added successfully!');
-                                
-                                if (window.CustomerModule && CustomerModule.renderCustomerTable) {
-                                    CustomerModule.renderCustomerTable();
-                                }
-                            } else {
-                                alert('Please fill in all required fields');
-                            }
-                        };
-                    }
-                    modal.style.display = 'block';
-                } else {
-                    alert('Customer modal not found. Please refresh the page.');
-                }
-            }
-        };
-
-        window.openAddWatchModal = function() {
-            if (window.InventoryModule && InventoryModule.openAddWatchModal) {
-                InventoryModule.openAddWatchModal();
-            } else {
-                const modal = document.getElementById('addWatchModal');
-                if (modal) {
-                    // Ensure the form has proper event handler
-                    const form = modal.querySelector('form');
-                    if (form && !form.onsubmit) {
-                        form.onsubmit = function(event) {
-                            event.preventDefault();
-                            const code = document.getElementById('watchCode').value.trim();
-                            const type = document.getElementById('watchType').value;
-                            const brand = document.getElementById('watchBrand').value.trim();
-                            const model = document.getElementById('watchModel').value.trim();
-                            const price = parseFloat(document.getElementById('watchPrice').value);
-                            const quantity = parseInt(document.getElementById('watchQuantity').value);
-                            const outlet = document.getElementById('watchOutlet').value;
-                            
-                            if (code && type && brand && model && price && quantity && outlet) {
-                                const watch = {
-                                    id: Date.now(),
-                                    code, type, brand, model, outlet,
-                                    size: document.getElementById('watchSize').value.trim() || '-',
-                                    price, quantity,
-                                    description: document.getElementById('watchDescription').value.trim(),
-                                    status: 'available'
-                                };
-                                
-                                const watches = JSON.parse(localStorage.getItem('zedson_inventory') || '[]');
-                                watches.push(watch);
-                                localStorage.setItem('zedson_inventory', JSON.stringify(watches));
-                                
-                                closeModal('addWatchModal');
-                                form.reset();
-                                alert('Item added successfully!');
-                                
-                                if (window.InventoryModule && InventoryModule.renderWatchTable) {
-                                    InventoryModule.renderWatchTable();
-                                }
-                            } else {
-                                alert('Please fill in all required fields');
-                            }
-                        };
-                    }
-                    modal.style.display = 'block';
-                } else {
-                    alert('Inventory modal not found. Please refresh the page.');
-                }
-            }
-        };
-
-        window.openNewSaleModal = function() {
-            if (window.SalesCoreModule && SalesCoreModule.openNewSaleModal) {
-                SalesCoreModule.openNewSaleModal();
-            } else {
-                const modal = document.getElementById('newSaleModal');
-                if (modal) {
-                    // Populate customer dropdown
-                    const customerSelect = document.getElementById('saleCustomer');
-                    if (customerSelect) {
-                        const customers = JSON.parse(localStorage.getItem('zedson_customers') || '[]');
-                        customerSelect.innerHTML = '<option value="">Select Customer</option>';
-                        customers.forEach(customer => {
-                            customerSelect.innerHTML += `<option value="${customer.id}">${customer.name}</option>`;
-                        });
-                    }
-                    
-                    // Populate watch dropdown
-                    const watchSelect = document.getElementById('saleWatch');
-                    if (watchSelect) {
-                        const watches = JSON.parse(localStorage.getItem('zedson_inventory') || '[]');
-                        watchSelect.innerHTML = '<option value="">Select Item</option>';
-                        watches.filter(w => w.quantity > 0).forEach(watch => {
-                            watchSelect.innerHTML += `<option value="${watch.id}" data-price="${watch.price}">${watch.code} - ${watch.brand} ${watch.model} (₹${watch.price})</option>`;
-                        });
-                    }
-                    
-                    modal.style.display = 'block';
-                } else {
-                    alert('Sales modal not found. Please refresh the page.');
-                }
-            }
-        };
-
-        window.openNewServiceModal = function() {
-            if (window.ServiceModule && ServiceModule.openNewServiceModal) {
-                ServiceModule.openNewServiceModal();
-            } else {
-                const modal = document.getElementById('newServiceModal');
-                if (modal) {
-                    // Populate customer dropdown
-                    const customerSelect = document.getElementById('serviceCustomer');
-                    if (customerSelect) {
-                        const customers = JSON.parse(localStorage.getItem('zedson_customers') || '[]');
-                        customerSelect.innerHTML = '<option value="">Select Customer</option>';
-                        customers.forEach(customer => {
-                            customerSelect.innerHTML += `<option value="${customer.id}">${customer.name}</option>`;
-                        });
-                    }
-                    modal.style.display = 'block';
-                } else {
-                    alert('Service modal not found. Please refresh the page.');
-                }
-            }
-        };
-
-        window.openAddExpenseModal = function() {
-            if (window.ExpenseModule && ExpenseModule.openAddExpenseModal) {
-                ExpenseModule.openAddExpenseModal();
-            } else {
-                alert('Expense functionality will be available once the module loads.');
-            }
-        };
-
-        window.openAddUserModal = function() {
-            const currentUser = window.AuthModule?.getCurrentUser();
-            if (!currentUser || currentUser.role !== 'admin') {
-                alert('Only administrators can add users.');
-                return;
-            }
-            
-            const modal = document.getElementById('addUserModal');
-            if (modal) {
-                modal.style.display = 'block';
-            } else {
-                alert('User management modal not found. Please refresh the page.');
-            }
-        };
-
-        // Search functions
-        window.searchWatches = function(query) {
-            if (window.InventoryModule && InventoryModule.searchWatches) {
-                InventoryModule.searchWatches(query);
-            } else {
-                console.log('Search watches:', query);
-            }
-        };
-
-        window.searchCustomers = function(query) {
-            if (window.CustomerModule && CustomerModule.searchCustomers) {
-                CustomerModule.searchCustomers(query);
-            } else {
-                console.log('Search customers:', query);
-            }
-        };
-
-        window.searchSales = function(query) {
-            if (window.SalesCoreModule && SalesCoreModule.searchSales) {
-                SalesCoreModule.searchSales(query);
-            } else {
-                console.log('Search sales:', query);
-            }
-        };
-
-        window.searchServices = function(query) {
-            if (window.ServiceModule && ServiceModule.searchServices) {
-                ServiceModule.searchServices(query);
-            } else {
-                console.log('Search services:', query);
-            }
-        };
-
-        window.searchExpenses = function(query) {
-            if (window.ExpenseModule && ExpenseModule.searchExpenses) {
-                ExpenseModule.searchExpenses(query);
-            } else {
-                console.log('Search expenses:', query);
-            }
-        };
-
-        window.searchInvoices = function(query) {
-            if (window.InvoiceModule && InvoiceModule.searchInvoices) {
-                InvoiceModule.searchInvoices(query);
-            } else {
-                console.log('Search invoices:', query);
-            }
-        };
-
-        window.filterInvoicesByType = function() {
-            if (window.InvoiceModule && InvoiceModule.filterInvoicesByType) {
-                InvoiceModule.filterInvoicesByType();
-            } else {
-                console.log('Filter invoices by type');
-            }
-        };
-
-        // Analytics functions
-        window.openRevenueAnalytics = function() {
-            const currentUser = window.AuthModule?.getCurrentUser();
-            if (currentUser && currentUser.role === 'staff') {
-                alert('Revenue analytics not available for staff users');
-                return;
-            }
-            
-            const modal = document.getElementById('revenueAnalyticsModal');
-            if (modal) {
-                modal.style.display = 'block';
-            }
-        };
-
-        window.applyRevenueFilter = function() {
-            alert('Revenue analytics functionality will be available once the module loads.');
-        };
-
-        window.resetRevenueFilter = function() {
-            alert('Revenue analytics functionality will be available once the module loads.');
-        };
-
-        window.printInvoice = function() {
-            if (window.InvoiceModule && InvoiceModule.printInvoice) {
-                InvoiceModule.printInvoice();
-            } else {
-                window.print();
-            }
-        };
-
-        // Modal control functions
-        window.closeModal = function(modalId) {
-            const modal = document.getElementById(modalId);
-            if (modal) {
-                modal.style.display = 'none';
-            }
-        };
-
-        // Navigation function
-        window.showSection = function(sectionId, button) {
-            if (window.AppCoreModule && AppCoreModule.showSection) {
-                AppCoreModule.showSection(sectionId, button);
-            } else {
-                // Fallback navigation
-                const sections = document.querySelectorAll('.section');
-                sections.forEach(section => section.classList.remove('active'));
-                
-                const navButtons = document.querySelectorAll('.nav-btn');
-                navButtons.forEach(btn => btn.classList.remove('active'));
-                
-                const targetSection = document.getElementById(sectionId);
-                if (targetSection) {
-                    targetSection.classList.add('active');
-                }
-                
-                if (button) {
-                    button.classList.add('active');
-                }
-                
-                console.log('Navigated to section:', sectionId);
-            }
-        };
-
-        // Confirmation helper
-        window.confirmTransaction = function(message, callback) {
-            if (confirm(message)) {
-                if (typeof callback === 'function') {
-                    callback();
-                }
-            }
-        };
-
-        // =========================
-        // MODULE COMPLETIONS
-        // =========================
-
-        // Complete missing global action functions
-        window.editCustomer = function(customerId) {
-            if (window.CustomerModule && CustomerModule.editCustomer) {
-                CustomerModule.editCustomer(customerId);
-            } else {
-                alert('Customer editing functionality loading...');
-            }
-        };
-
-        window.deleteCustomer = function(customerId) {
-            if (window.CustomerModule && CustomerModule.deleteCustomer) {
-                CustomerModule.deleteCustomer(customerId);
-            } else {
-                if (confirm('Are you sure you want to delete this customer?')) {
-                    const customers = JSON.parse(localStorage.getItem('zedson_customers') || '[]');
-                    const filtered = customers.filter(c => c.id !== customerId);
-                    localStorage.setItem('zedson_customers', JSON.stringify(filtered));
-                    alert('Customer deleted successfully!');
-                    location.reload();
-                }
-            }
-        };
-
-        window.editWatch = function(watchId) {
-            if (window.InventoryModule && InventoryModule.editWatch) {
-                InventoryModule.editWatch(watchId);
-            } else {
-                alert('Inventory editing functionality loading...');
-            }
-        };
-
-        window.deleteWatch = function(watchId) {
-            if (window.InventoryModule && InventoryModule.deleteWatch) {
-                InventoryModule.deleteWatch(watchId);
-            } else {
-                if (confirm('Are you sure you want to delete this item?')) {
-                    const watches = JSON.parse(localStorage.getItem('zedson_inventory') || '[]');
-                    const filtered = watches.filter(w => w.id !== watchId);
-                    localStorage.setItem('zedson_inventory', JSON.stringify(filtered));
-                    alert('Item deleted successfully!');
-                    location.reload();
-                }
-            }
-        };
-
-        window.initiateSaleFromCustomer = function(customerId) {
-            if (window.CustomerModule && CustomerModule.initiateSaleFromCustomer) {
-                CustomerModule.initiateSaleFromCustomer(customerId);
-            } else {
-                showSection('sales');
-                setTimeout(() => openNewSaleModal(), 100);
-            }
-        };
-
-        window.initiateServiceFromCustomer = function(customerId) {
-            if (window.CustomerModule && CustomerModule.initiateServiceFromCustomer) {
-                CustomerModule.initiateServiceFromCustomer(customerId);
-            } else {
-                showSection('service');
-                setTimeout(() => openNewServiceModal(), 100);
-            }
-        };
-
-        // Sales module completions
-        window.SalesModule = window.SalesCoreModule || {};
-        Object.assign(window.SalesModule, {
-            editSale: function(saleId) {
-                alert('Edit sale functionality available in full version.');
-            },
-            deleteSale: function(saleId) {
-                if (confirm('Are you sure you want to delete this sale?')) {
-                    const sales = JSON.parse(localStorage.getItem('zedson_sales') || '[]');
-                    const filtered = sales.filter(s => s.id !== saleId);
-                    localStorage.setItem('zedson_sales', JSON.stringify(filtered));
-                    alert('Sale deleted successfully!');
-                    location.reload();
-                }
-            },
-            viewSaleInvoice: function(saleId) {
-                alert('Invoice viewing functionality loading...');
-            }
-        });
-
-        // =========================
-        // DEBUG FUNCTIONS
-        // =========================
-
-        window.emergencyLogin = function(username = 'admin', password = 'admin123') {
-            console.log('🚨 Emergency login triggered');
-            
-            const usernameField = document.getElementById('loginUsername');
-            const passwordField = document.getElementById('loginPassword');
-            
-            if (usernameField && passwordField) {
-                usernameField.value = username;
-                passwordField.value = password;
-                
-                // Create user object for offline mode
-                const user = {
-                    username: username,
-                    role: username === 'admin' ? 'admin' : username === 'owner' ? 'owner' : 'staff',
-                    fullName: username === 'admin' ? 'System Administrator' : 
-                             username === 'owner' ? 'Shop Owner' : 'Staff Member',
-                    email: `${username}@zedsonwatchcraft.com`
-                };
-                
-                // Set token and user
-                const token = `emergency_${username}_${Date.now()}`;
-                localStorage.setItem('authToken', token);
-                localStorage.setItem('currentUser', JSON.stringify(user));
-                
-                // Hide login, show app
-                const loginScreen = document.getElementById('loginScreen');
-                const mainApp = document.getElementById('mainApp');
-                
-                if (loginScreen) loginScreen.style.display = 'none';
-                if (mainApp) {
-                    mainApp.classList.add('logged-in');
-                    mainApp.style.display = 'block';
-                }
-                
-                // Update user display
-                const currentUserElement = document.getElementById('currentUser');
-                const currentUserRoleElement = document.getElementById('currentUserRole');
-                
-                if (currentUserElement) currentUserElement.textContent = `Welcome, ${user.fullName}`;
-                if (currentUserRoleElement) currentUserRoleElement.textContent = user.role.toUpperCase();
-                
-                // Update status
-                const statusElement = document.getElementById('dbStatus');
-                const statusText = document.getElementById('dbStatusText');
-                if (statusElement && statusText) {
-                    statusElement.className = 'db-status disconnected';
-                    statusText.textContent = '📁 Emergency Mode';
-                }
-                
-                alert(`Emergency login successful! Welcome, ${user.fullName}`);
-                console.log('✅ Emergency login completed');
-            }
-        };
-
-        window.forceOfflineMode = function() {
-            console.log('🔧 Forcing offline mode...');
-            
-            if (window.apiService) {
-                window.apiService.isConnected = false;
-                window.apiService.updateConnectionStatus('disconnected', '📁 Forced Offline');
-            }
-            
-            alert('Switched to offline mode. All features will work with local data.');
-        };
-
-        window.debugInfo = function() {
-            console.log('🔍 DEBUG INFORMATION:');
-            console.log('1. Utils Module:', typeof window.Utils);
-            console.log('2. AuthModule:', typeof window.AuthModule);
-            console.log('3. AppCoreModule:', typeof window.AppCoreModule);
-            console.log('4. apiService:', typeof window.apiService, window.apiService?.isConnected);
-            console.log('5. CustomerModule:', typeof window.CustomerModule);
-            console.log('6. InventoryModule:', typeof window.InventoryModule);
-            console.log('7. SalesCoreModule:', typeof window.SalesCoreModule);
-            console.log('8. ServiceModule:', typeof window.ServiceModule);
-            console.log('9. ExpenseModule:', typeof window.ExpenseModule);
-            console.log('10. InvoiceModule:', typeof window.InvoiceModule);
-            console.log('11. Current User:', window.AuthModule?.getCurrentUser());
-            console.log('12. Auth Token:', localStorage.getItem('authToken') ? 'EXISTS' : 'NONE');
-            
-            const modals = [
-                'addCustomerModal',
-                'addWatchModal', 
-                'newSaleModal',
-                'newServiceModal',
-                'addUserModal'
-            ];
-            
-            console.log('13. Modals:', modals.map(id => `${id}: ${document.getElementById(id) ? 'EXISTS' : 'MISSING'}`));
-            
-            // Check localStorage data
-            const storageKeys = [
-                'zedson_customers',
-                'zedson_inventory',
-                'zedson_sales',
-                'zedson_services',
-                'zedson_expenses'
-            ];
-            
-            console.log('14. Storage Data:');
-            storageKeys.forEach(key => {
-                const data = localStorage.getItem(key);
-                const count = data ? JSON.parse(data).length : 0;
-                console.log(`    ${key}: ${count} records`);
-            });
-        };
-
-        window.resetSystem = function() {
-            if (confirm('Are you sure you want to reset the entire system? This will clear all data!')) {
-                localStorage.clear();
-                location.reload();
-            }
-        };
-
-        window.createSampleData = function() {
-            console.log('🌱 Creating sample data...');
-            
-            // Sample customers
-            const customers = [
-                { id: 1, name: "Raj Kumar", email: "raj@email.com", phone: "+91-9876543210", address: "Chennai, Tamil Nadu", purchases: 0, serviceCount: 0, netValue: 0 },
-                { id: 2, name: "Priya Sharma", email: "priya@email.com", phone: "+91-9876543211", address: "Mumbai, Maharashtra", purchases: 0, serviceCount: 0, netValue: 0 },
-                { id: 3, name: "Amit Patel", email: "amit@email.com", phone: "+91-9876543212", address: "Ahmedabad, Gujarat", purchases: 0, serviceCount: 0, netValue: 0 }
-            ];
-            
-            // Sample inventory
-            const inventory = [
-                { id: 1, code: "ROL001", type: "Watch", brand: "Rolex", model: "Submariner", size: "40mm", price: 850000, quantity: 2, outlet: "Semmancheri", description: "Luxury diving watch", status: "available" },
-                { id: 2, code: "OMG001", type: "Watch", brand: "Omega", model: "Speedmaster", size: "42mm", price: 450000, quantity: 1, outlet: "Navalur", description: "Professional chronograph", status: "available" },
-                { id: 3, code: "CAS001", type: "Watch", brand: "Casio", model: "G-Shock", size: "44mm", price: 15000, quantity: 5, outlet: "Padur", description: "Sports watch", status: "available" }
-            ];
-            
-            localStorage.setItem('zedson_customers', JSON.stringify(customers));
-            localStorage.setItem('zedson_inventory', JSON.stringify(inventory));
-            localStorage.setItem('zedson_sales', JSON.stringify([]));
-            localStorage.setItem('zedson_services', JSON.stringify([]));
-            localStorage.setItem('zedson_expenses', JSON.stringify([]));
-            
-            alert('Sample data created successfully!');
-            location.reload();
-        };
-
-        // =========================
-        // ENHANCED ERROR HANDLING
-        // =========================
-
-        window.addEventListener('error', function(event) {
-            console.error('Global error caught:', event.error);
-            // Don't show errors to users in production
-        });
-
-        window.addEventListener('unhandledrejection', function(event) {
-            console.error('Unhandled promise rejection:', event.reason);
-            event.preventDefault(); // Prevent default browser error handling
-        });
-
-        // =========================
-        // INITIALIZATION AND SETUP
-        // =========================
-
-        // Enhanced initialization
-        function enhancedInitialization() {
-            console.log('🚀 Enhanced initialization starting...');
-            
-            // Check if all critical elements exist
-            const criticalElements = [
-                'loginScreen',
-                'mainApp',
-                'loginUsername', 
-                'loginPassword'
-            ];
-            
-            const missingElements = criticalElements.filter(id => !document.getElementById(id));
-            
-            if (missingElements.length > 0) {
-                console.error('❌ Critical elements missing:', missingElements);
-                return false;
-            }
-            
-            // Set up login form handler
-            const loginForm = document.querySelector('.login-form');
-            if (loginForm && !loginForm.onsubmit) {
-                loginForm.onsubmit = handleLogin;
-                console.log('✅ Login form handler attached');
-            }
-            
-            // Set up modal click-outside-to-close
-            document.addEventListener('click', function(event) {
-                if (event.target.classList.contains('modal')) {
-                    event.target.style.display = 'none';
-                }
-            });
-            
-            // Set up keyboard shortcuts
-            document.addEventListener('keydown', function(event) {
-                // Escape key closes modals
-                if (event.key === 'Escape') {
-                    const openModals = document.querySelectorAll('.modal[style*="block"]');
-                    openModals.forEach(modal => modal.style.display = 'none');
-                }
-                
-                // Ctrl+L for emergency login (debug)
-                if (event.ctrlKey && event.key === 'l') {
-                    event.preventDefault();
-                    emergencyLogin();
-                }
-            });
-            
-            console.log('✅ Enhanced initialization completed');
-            return true;
-        }
-
-        // Auto-initialize when DOM is ready
-        document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(() => {
-                enhancedInitialization();
-                
-                // Initialize core app if available
-                if (window.AppCoreModule && AppCoreModule.initializeApp) {
-                    AppCoreModule.initializeApp();
-                }
-            }, 100);
-        });
-
-        // Make debug functions globally available
-        Object.assign(window, {
-            emergencyLogin,
-            forceOfflineMode,
-            debugInfo,
-            resetSystem,
-            createSampleData,
-            enhancedInitialization
-        });
-
-        console.log('✅ Complete index.html Part 2 loaded successfully');
-        console.log('🔧 Debug functions available:');
-        console.log('   - emergencyLogin() - Bypass login issues');
-        console.log('   - debugInfo() - System status check');
-        console.log('   - forceOfflineMode() - Switch to offline');
-        console.log('   - resetSystem() - Clear all data');
-        console.log('   - createSampleData() - Add demo data');
-        console.log('🎯 Ready for use!');
-    </script>
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+</script>
 
 </body>
 </html>

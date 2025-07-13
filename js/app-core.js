@@ -1,20 +1,22 @@
-// ZEDSON WATCHCRAFT - Simplified Application Core
-// Developed by PULSEWARE❤️
+// ZEDSON WATCHCRAFT - App Core Module with Logging Integration
 
 /**
- * Main Application Controller - MongoDB Only, No Reference Data
+ * Main Application Controller - Core Functions with Action Logging and Revenue Analytics
  */
 
-console.log('🔧 SIMPLIFIED APP CORE LOADED');
-
 /**
- * Navigation function
+ * Navigation function with logging
  */
 function showSection(sectionId, button) {
     // Check permissions
     if (!AuthModule.hasPermission(sectionId)) {
-        console.log('Permission denied for section:', sectionId);
+        Utils.showNotification('You do not have permission to access this section.');
         return;
+    }
+
+    // Log navigation
+    if (window.logNavigationAction) {
+        logNavigationAction(sectionId);
     }
 
     // Hide all sections
@@ -41,261 +43,147 @@ function showSection(sectionId, button) {
 }
 
 /**
- * Update data when switching sections - MongoDB only
+ * Update data when switching sections
  */
-async function updateSectionData(sectionId) {
-    try {
-        console.log(`🔄 Loading section: ${sectionId}`);
-        
-        switch (sectionId) {
-            case 'dashboard':
-                await updateDashboard();
-                break;
-            case 'inventory':
-                await loadModuleData('inventory');
-                if (window.InventoryModule && window.InventoryModule.renderWatchTable) {
-                    window.InventoryModule.renderWatchTable();
-                }
-                break;
-            case 'customers':
-                await loadModuleData('customers');
-                if (window.CustomerModule && window.CustomerModule.renderCustomerTable) {
-                    window.CustomerModule.renderCustomerTable();
-                }
-                break;
-            case 'sales':
-                await loadModuleData('sales');
-                if (window.SalesModule && window.SalesModule.renderSalesTable) {
-                    window.SalesModule.renderSalesTable();
-                }
-                break;
-            case 'service':
-                await loadModuleData('services');
-                if (window.ServiceModule && window.ServiceModule.renderServiceTable) {
-                    window.ServiceModule.renderServiceTable();
-                }
-                break;
-            case 'expenses':
-                await loadModuleData('expenses');
-                if (window.ExpenseModule && window.ExpenseModule.renderExpenseTable) {
-                    window.ExpenseModule.renderExpenseTable();
-                }
-                break;
-            case 'invoices':
-                await loadModuleData('invoices');
-                if (window.InvoiceModule && window.InvoiceModule.renderInvoiceTable) {
-                    window.InvoiceModule.renderInvoiceTable();
-                }
-                break;
-        }
-        
-        console.log(`✅ Section loaded: ${sectionId}`);
-        
-    } catch (error) {
-        console.error('Error updating section data:', error);
-    }
-}
-
-/**
- * Load module data from MongoDB ONLY - NO reference data fallback
- */
-async function loadModuleData(type) {
-    try {
-        let response;
-        
-        switch (type) {
-            case 'customers':
-                response = await window.apiService.getCustomers();
-                if (response.success && window.CustomerModule) {
-                    window.CustomerModule.customers = response.data || [];
-                    console.log(`📥 Loaded ${response.data.length} customers from MongoDB`);
-                }
-                break;
-            case 'inventory':
-                response = await window.apiService.getInventory();
-                if (response.success && window.InventoryModule) {
-                    window.InventoryModule.watches = response.data || [];
-                    console.log(`📥 Loaded ${response.data.length} inventory items from MongoDB`);
-                }
-                break;
-            case 'sales':
-                response = await window.apiService.getSales();
-                if (response.success && window.SalesModule) {
-                    window.SalesModule.sales = response.data || [];
-                    console.log(`📥 Loaded ${response.data.length} sales from MongoDB`);
-                }
-                break;
-            case 'services':
-                response = await window.apiService.getServices();
-                if (response.success && window.ServiceModule) {
-                    window.ServiceModule.services = response.data || [];
-                    console.log(`📥 Loaded ${response.data.length} services from MongoDB`);
-                }
-                break;
-            case 'expenses':
-                response = await window.apiService.getExpenses();
-                if (response.success && window.ExpenseModule) {
-                    window.ExpenseModule.expenses = response.data || [];
-                    console.log(`📥 Loaded ${response.data.length} expenses from MongoDB`);
-                }
-                break;
-            case 'invoices':
-                response = await window.apiService.getInvoices();
-                if (response.success && window.InvoiceModule) {
-                    window.InvoiceModule.invoices = response.data || [];
-                    console.log(`📥 Loaded ${response.data.length} invoices from MongoDB`);
-                }
-                break;
-        }
-        
-        // Save to localStorage for offline access
-        if (response && response.success) {
-            localStorage.setItem(`zedson_${type}`, JSON.stringify(response.data));
-        }
-        
-    } catch (error) {
-        console.error(`Error loading ${type} data from MongoDB:`, error);
-        // Try loading from localStorage as fallback only
-        try {
-            const stored = localStorage.getItem(`zedson_${type}`);
-            if (stored) {
-                const data = JSON.parse(stored);
-                console.log(`📁 Using cached data for ${type}`);
-                setModuleData(type, data);
-            } else {
-                console.log(`⚠️ No cached data available for ${type}`);
-                setModuleData(type, []); // Empty array, no reference data
-            }
-        } catch (storageError) {
-            console.error(`Error loading from localStorage:`, storageError);
-            setModuleData(type, []); // Empty array, no reference data
-        }
-    }
-}
-
-/**
- * Set module data
- */
-function setModuleData(type, data) {
-    switch (type) {
-        case 'customers':
-            if (window.CustomerModule) window.CustomerModule.customers = data;
+function updateSectionData(sectionId) {
+    switch (sectionId) {
+        case 'dashboard':
+            updateDashboard();
             break;
         case 'inventory':
-            if (window.InventoryModule) window.InventoryModule.watches = data;
+            if (window.InventoryModule) {
+                InventoryModule.renderWatchTable();
+            }
+            break;
+        case 'customers':
+            if (window.CustomerModule) {
+                CustomerModule.renderCustomerTable();
+            }
+            break;
+        case 'users':
+            if (AuthModule.getCurrentUser()?.role === 'admin') {
+                AuthModule.updateUserTable();
+            }
             break;
         case 'sales':
-            if (window.SalesModule) window.SalesModule.sales = data;
+            if (window.SalesModule) {
+                SalesModule.renderSalesTable();
+            }
             break;
-        case 'services':
-            if (window.ServiceModule) window.ServiceModule.services = data;
+        case 'service':
+            if (window.ServiceModule) {
+                ServiceModule.renderServiceTable();
+            }
             break;
         case 'expenses':
-            if (window.ExpenseModule) window.ExpenseModule.expenses = data;
+            if (window.ExpenseModule) {
+                ExpenseModule.renderExpenseTable();
+            }
             break;
         case 'invoices':
-            if (window.InvoiceModule) window.InvoiceModule.invoices = data;
+            if (window.InvoiceModule) {
+                InvoiceModule.renderInvoiceTable();
+            }
             break;
     }
 }
 
 /**
- * Update dashboard statistics from MongoDB
+ * Get today's date in YYYY-MM-DD format
  */
-async function updateDashboard() {
-    try {
-        console.log('📊 Updating dashboard from MongoDB...');
-        
-        const currentUser = AuthModule.getCurrentUser();
-        const isStaff = currentUser && currentUser.role === 'staff';
-        
-        // Get stats from MongoDB
-        let stats;
-        try {
-            const response = await window.apiService.getDashboardStats();
-            stats = response.success ? response.data : null;
-        } catch (error) {
-            console.log('⚠️ API stats failed, calculating from cached data');
-            stats = null;
-        }
-        
-        // If MongoDB fails, calculate from localStorage (cached data only)
-        if (!stats) {
-            stats = calculateLocalStats();
-        }
-        
-        // Update statistics cards
-        if (!isStaff) {
-            updateElement('totalWatches', stats.totalWatches || 0);
-            updateElement('totalCustomers', stats.totalCustomers || 0);
-            updateElement('totalInvoices', stats.totalInvoices || 0);
-        }
-        
-        updateElement('todayRevenue', Utils.formatCurrency(stats.todayRevenue || 0));
-        updateElement('incompleteServices', stats.incompleteServices || 0);
-
-        // Update dashboard visibility based on user role
-        updateDashboardVisibility();
-        
-        // Update recent activities
-        await updateRecentActivities();
-        
-        console.log('✅ Dashboard updated successfully from MongoDB');
-        
-    } catch (error) {
-        console.error('Error updating dashboard:', error);
-    }
+function getTodayDate() {
+    return new Date().toISOString().split('T')[0];
 }
 
 /**
- * Calculate statistics from localStorage (cached data only)
+ * Get today's sales and services revenue
  */
-function calculateLocalStats() {
-    try {
-        const customers = JSON.parse(localStorage.getItem('zedson_customers') || '[]');
-        const inventory = JSON.parse(localStorage.getItem('zedson_inventory') || '[]');
-        const sales = JSON.parse(localStorage.getItem('zedson_sales') || '[]');
-        const services = JSON.parse(localStorage.getItem('zedson_services') || '[]');
-        const invoices = JSON.parse(localStorage.getItem('zedson_invoices') || '[]');
-
-        const today = new Date().toLocaleDateString('en-IN');
-        const todayRevenue = sales
+function getTodayRevenue() {
+    const today = Utils.formatDate(new Date());
+    let salesRevenue = 0;
+    let servicesRevenue = 0;
+    
+    // Get today's sales
+    if (window.SalesModule && SalesModule.sales) {
+        salesRevenue = SalesModule.sales
             .filter(sale => sale.date === today)
-            .reduce((sum, sale) => sum + (sale.totalAmount || 0), 0);
-
-        const incompleteServices = services.filter(s => s.status !== 'completed').length;
-
-        return {
-            totalWatches: inventory.length,
-            totalCustomers: customers.length,
-            totalSales: sales.length,
-            totalServices: services.length,
-            incompleteServices,
-            totalInvoices: invoices.length,
-            todayRevenue
-        };
-    } catch (error) {
-        console.error('Error calculating local stats:', error);
-        return {
-            totalWatches: 0,
-            totalCustomers: 0,
-            totalSales: 0,
-            totalServices: 0,
-            incompleteServices: 0,
-            totalInvoices: 0,
-            todayRevenue: 0
-        };
+            .reduce((sum, sale) => sum + sale.totalAmount, 0);
     }
+    
+    // Get today's completed services
+    if (window.ServiceModule && ServiceModule.services) {
+        servicesRevenue = ServiceModule.services
+            .filter(service => service.status === 'completed' && 
+                     service.actualDelivery === today)
+            .reduce((sum, service) => sum + service.cost, 0);
+    }
+    
+    return {
+        salesRevenue,
+        servicesRevenue,
+        totalRevenue: salesRevenue + servicesRevenue
+    };
 }
 
 /**
- * Update element safely
+ * Update dashboard statistics with role-based restrictions
  */
-function updateElement(elementId, value) {
-    const element = document.getElementById(elementId);
-    if (element) {
-        element.textContent = value;
+function updateDashboard() {
+    const currentUser = AuthModule.getCurrentUser();
+    const isStaff = currentUser && currentUser.role === 'staff';
+    
+    // Update statistics cards with safe checks
+    if (window.InventoryModule && !isStaff) {
+        const inventoryStats = InventoryModule.getInventoryStats();
+        const totalWatchesElement = document.getElementById('totalWatches');
+        if (totalWatchesElement) {
+            totalWatchesElement.textContent = inventoryStats.totalWatches;
+        }
     }
+    
+    if (window.CustomerModule && !isStaff) {
+        const customerStats = CustomerModule.getCustomerStats();
+        const totalCustomersElement = document.getElementById('totalCustomers');
+        if (totalCustomersElement) {
+            totalCustomersElement.textContent = customerStats.totalCustomers;
+        }
+    }
+    
+    // Update combined today's sales (Sales + Services) - Change label to "Today's Sales"
+    const todaySales = getTodayRevenue();
+    const todaySalesElement = document.getElementById('todayRevenue');
+    if (todaySalesElement) {
+        todaySalesElement.textContent = Utils.formatCurrency(todaySales.totalRevenue);
+        // Update the label to "Today's Sales"
+        const labelElement = todaySalesElement.nextElementSibling;
+        if (labelElement && labelElement.tagName === 'P') {
+            labelElement.textContent = "Today's Sales";
+        }
+    }
+    
+    // Update incomplete services - visible for both staff and others
+    if (window.ServiceModule) {
+        const serviceStats = ServiceModule.getServiceStats();
+        const incompleteServicesElement = document.getElementById('incompleteServices');
+        if (incompleteServicesElement) {
+            incompleteServicesElement.textContent = serviceStats.incompleteServices;
+        }
+    }
+
+    // Hide invoices stat for staff
+    if (window.InvoiceModule && !isStaff) {
+        const invoiceStats = InvoiceModule.getInvoiceStats();
+        const totalInvoicesElement = document.getElementById('totalInvoices');
+        if (totalInvoicesElement) {
+            totalInvoicesElement.textContent = invoiceStats.totalInvoices;
+        }
+    }
+
+    // Update dashboard visibility based on user role
+    updateDashboardVisibility();
+    
+    // Update recent activities
+    updateRecentActivities();
 }
 
 /**
@@ -305,6 +193,7 @@ function updateDashboardVisibility() {
     const currentUser = AuthModule.getCurrentUser();
     const isStaff = currentUser && currentUser.role === 'staff';
     
+    // Get all stat cards
     const statCards = document.querySelectorAll('.stat-card');
     
     if (isStaff) {
@@ -313,6 +202,7 @@ function updateDashboardVisibility() {
             const cardText = card.querySelector('p')?.textContent;
             if (cardText === "Today's Sales" || cardText === "Incomplete Services") {
                 card.style.display = 'block';
+                // Remove clickable functionality for staff
                 card.classList.remove('clickable-stat');
                 card.onclick = null;
             } else {
@@ -325,7 +215,7 @@ function updateDashboardVisibility() {
             card.style.display = 'block';
         });
         
-        // Re-enable clickable functionality for Today's Sales
+        // Re-enable clickable functionality for Today's Sales (non-staff only)
         const todaySalesCard = document.getElementById('todayRevenue')?.closest('.stat-card');
         if (todaySalesCard) {
             todaySalesCard.classList.add('clickable-stat');
@@ -335,81 +225,64 @@ function updateDashboardVisibility() {
 }
 
 /**
- * Update recent activities from cached data only
+ * Update recent activities on dashboard
  */
-async function updateRecentActivities() {
-    try {
-        // Update recent sales
-        const recentSalesDiv = document.getElementById('recentSales');
-        if (recentSalesDiv) {
-            const salesData = localStorage.getItem('zedson_sales');
-            if (salesData) {
-                const sales = JSON.parse(salesData);
-                const recentSales = sales
-                    .sort((a, b) => new Date(b.timestamp || b.date) - new Date(a.timestamp || a.date))
-                    .slice(0, 3);
-                
-                if (recentSales.length > 0) {
-                    recentSalesDiv.innerHTML = recentSales.map(sale => 
-                        `<div style="padding: 10px; border-left: 3px solid #ffd700; margin-bottom: 10px;">
-                            <strong>${Utils.sanitizeHtml(sale.customerName)}</strong> - ${Utils.sanitizeHtml(sale.watchName)}<br>
-                            <span style="color: #1a237e;">${Utils.formatCurrency(sale.totalAmount)}</span>
-                        </div>`
-                    ).join('');
-                } else {
-                    recentSalesDiv.innerHTML = '<p style="color: #666; padding: 10px;">No sales yet</p>';
-                }
-            } else {
-                recentSalesDiv.innerHTML = '<p style="color: #666; padding: 10px;">No sales data</p>';
-            }
+function updateRecentActivities() {
+    // Update recent sales
+    const recentSalesDiv = document.getElementById('recentSales');
+    if (recentSalesDiv && window.SalesModule) {
+        const recentSales = SalesModule.getRecentSales(3);
+        if (recentSales.length > 0) {
+            recentSalesDiv.innerHTML = recentSales.map(sale => 
+                `<div style="padding: 10px; border-left: 3px solid #ffd700; margin-bottom: 10px;">
+                    <strong>${Utils.sanitizeHtml(sale.customerName)}</strong> - ${Utils.sanitizeHtml(sale.watchName)}<br>
+                    <span style="color: #1a237e;">${Utils.formatCurrency(sale.totalAmount)}</span>
+                </div>`
+            ).join('');
+        } else {
+            recentSalesDiv.innerHTML = 'No sales yet';
         }
+    }
 
-        // Update incomplete services
-        const incompleteServicesDiv = document.getElementById('incompleteServicesList');
-        if (incompleteServicesDiv) {
-            const servicesData = localStorage.getItem('zedson_services');
-            if (servicesData) {
-                const services = JSON.parse(servicesData);
-                const incompleteServices = services
-                    .filter(service => service.status !== 'completed')
-                    .sort((a, b) => new Date(b.timestamp || b.date) - new Date(a.timestamp || a.date))
-                    .slice(0, 3);
-                
-                if (incompleteServices.length > 0) {
-                    incompleteServicesDiv.innerHTML = incompleteServices.map(service => 
-                        `<div style="padding: 10px; border-left: 3px solid #ffd700; margin-bottom: 10px;">
-                            <strong>${Utils.sanitizeHtml(service.customerName)}</strong> - ${Utils.sanitizeHtml(service.brand)} ${Utils.sanitizeHtml(service.model)}<br>
-                            <span style="color: #1a237e;">${Utils.sanitizeHtml(service.issue)} (${Utils.sanitizeHtml(service.status)})</span>
-                        </div>`
-                    ).join('');
-                } else {
-                    incompleteServicesDiv.innerHTML = '<p style="color: #666; padding: 10px;">No incomplete services</p>';
-                }
-            } else {
-                incompleteServicesDiv.innerHTML = '<p style="color: #666; padding: 10px;">No services data</p>';
-            }
+    // Update incomplete services
+    const incompleteServicesDiv = document.getElementById('incompleteServicesList');
+    if (incompleteServicesDiv && window.ServiceModule) {
+        const incompleteServices = ServiceModule.getIncompleteServices(3);
+        if (incompleteServices.length > 0) {
+            incompleteServicesDiv.innerHTML = incompleteServices.map(service => 
+                `<div style="padding: 10px; border-left: 3px solid #ffd700; margin-bottom: 10px;">
+                    <strong>${Utils.sanitizeHtml(service.customerName)}</strong> - ${Utils.sanitizeHtml(service.brand)} ${Utils.sanitizeHtml(service.model)}<br>
+                    <span style="color: #1a237e;">${Utils.sanitizeHtml(service.issue)} (${Utils.sanitizeHtml(service.status)})</span>
+                </div>`
+            ).join('');
+        } else {
+            incompleteServicesDiv.innerHTML = 'No incomplete services';
         }
-    } catch (error) {
-        console.error('Error updating recent activities:', error);
     }
 }
 
 /**
- * Open Revenue Analytics Modal
+ * Open Revenue Analytics Modal with staff restrictions
  */
 function openRevenueAnalytics() {
     const currentUser = AuthModule.getCurrentUser();
     const isStaff = currentUser && currentUser.role === 'staff';
     
+    // Staff users cannot access analytics
     if (isStaff) {
-        console.log('Revenue analytics not available for staff users');
+        Utils.showNotification('Revenue analytics is not available for staff users.');
         return;
     }
     
     const modal = document.getElementById('revenueAnalyticsModal');
     if (!modal) {
-        console.log('Revenue analytics modal not found');
+        Utils.showNotification('Revenue analytics modal not found');
         return;
+    }
+    
+    // Log action
+    if (window.logAction) {
+        logAction('Opened revenue analytics modal');
     }
     
     modal.style.display = 'block';
@@ -430,6 +303,236 @@ function openRevenueAnalytics() {
     if (monthSelect) {
         monthSelect.value = currentMonth;
     }
+    
+    // Reset and show all transactions initially
+    resetRevenueFilter();
+}
+
+/**
+ * Toggle Revenue Filter Inputs with updated structure
+ */
+function toggleRevenueFilterInputs() {
+    const filterType = document.getElementById('revenueFilterType')?.value;
+    const dateRangeInputs = document.getElementById('revenueDateRangeInputs');
+    const monthGroup = document.getElementById('revenueMonthGroup');
+    const yearGroup = document.getElementById('revenueYearGroup');
+    
+    if (!filterType || !dateRangeInputs || !monthGroup || !yearGroup) return;
+    
+    // Hide all inputs first
+    dateRangeInputs.style.display = 'none';
+    monthGroup.style.display = 'none';
+    
+    if (filterType === 'dateRange') {
+        dateRangeInputs.style.display = 'grid';
+        yearGroup.style.display = 'none';
+    } else if (filterType === 'monthly') {
+        monthGroup.style.display = 'block';
+        yearGroup.style.display = 'block';
+    } else {
+        yearGroup.style.display = 'block';
+    }
+}
+
+/**
+ * Apply Revenue Filter with expenses integration
+ */
+function applyRevenueFilter() {
+    if (!window.SalesModule || !window.ServiceModule) {
+        Utils.showNotification('Sales or Service module not available');
+        return;
+    }
+    
+    const filterType = document.getElementById('revenueFilterType')?.value;
+    const revenueType = document.getElementById('revenueTypeFilter')?.value || 'all';
+    const includeExpenses = document.getElementById('includeExpenses')?.checked || false;
+    const resultsDiv = document.getElementById('revenueFilterResults');
+    
+    if (!filterType || !resultsDiv) return;
+    
+    let filteredSales = [];
+    let filteredServices = [];
+    let filteredExpenses = [];
+    let title = '';
+    
+    // First filter by date/time
+    if (filterType === 'dateRange') {
+        const fromDate = document.getElementById('revenueFromDate')?.value;
+        const toDate = document.getElementById('revenueToDate')?.value;
+        
+        if (!fromDate || !toDate) {
+            Utils.showNotification('Please select both from and to dates.');
+            return;
+        }
+        
+        filteredSales = SalesModule.filterSalesByDateRange(fromDate, toDate);
+        filteredServices = ServiceModule.filterServicesByDateRange(fromDate, toDate)
+            .filter(s => s.status === 'completed');
+        
+        if (includeExpenses && window.ExpenseModule) {
+            filteredExpenses = ExpenseModule.getExpensesByDateRange(fromDate, toDate);
+        }
+        
+        title = `Transactions from ${Utils.formatDate(fromDate)} to ${Utils.formatDate(toDate)}`;
+        
+    } else if (filterType === 'monthly') {
+        const month = document.getElementById('revenueMonth')?.value;
+        const year = document.getElementById('revenueYear')?.value;
+        
+        if (month === null || !year) return;
+        
+        filteredSales = SalesModule.filterSalesByMonth(month, year);
+        filteredServices = ServiceModule.filterServicesByMonth(month, year)
+            .filter(s => s.status === 'completed');
+        
+        if (includeExpenses && window.ExpenseModule) {
+            filteredExpenses = ExpenseModule.getExpensesByMonth(month, year);
+        }
+        
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                           'July', 'August', 'September', 'October', 'November', 'December'];
+        title = `Transactions for ${monthNames[month]} ${year}`;
+        
+    } else {
+        filteredSales = SalesModule.sales || [];
+        filteredServices = (ServiceModule.services || []).filter(s => s.status === 'completed');
+        
+        if (includeExpenses && window.ExpenseModule) {
+            filteredExpenses = ExpenseModule.expenses || [];
+        }
+        
+        title = 'All Transactions';
+    }
+    
+    // Then filter by revenue type
+    if (revenueType === 'sales') {
+        filteredServices = [];
+        title += ' (Sales Only)';
+    } else if (revenueType === 'services') {
+        filteredSales = [];
+        title += ' (Services Only)';
+    }
+    
+    // Calculate totals
+    const salesAmount = filteredSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+    const servicesAmount = filteredServices.reduce((sum, service) => sum + service.cost, 0);
+    const expensesAmount = includeExpenses ? filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0) : 0;
+    const totalRevenue = salesAmount + servicesAmount;
+    const netAmount = totalRevenue - expensesAmount;
+    const totalTransactions = filteredSales.length + filteredServices.length + (includeExpenses ? filteredExpenses.length : 0);
+    
+    // Display results
+    let statsHtml = `
+        <div class="stat-card" style="margin: 10px;">
+            <h3>${totalTransactions}</h3>
+            <p>Total Transactions</p>
+        </div>
+        <div class="stat-card" style="margin: 10px;">
+            <h3>${Utils.formatCurrency(salesAmount)}</h3>
+            <p>Sales Revenue</p>
+        </div>
+        <div class="stat-card" style="margin: 10px;">
+            <h3>${Utils.formatCurrency(servicesAmount)}</h3>
+            <p>Services Revenue</p>
+        </div>
+        <div class="stat-card" style="margin: 10px;">
+            <h3>${Utils.formatCurrency(totalRevenue)}</h3>
+            <p>Total Revenue</p>
+        </div>
+    `;
+    
+    if (includeExpenses) {
+        statsHtml += `
+            <div class="stat-card" style="margin: 10px;">
+                <h3 style="color: #dc3545;">${Utils.formatCurrency(expensesAmount)}</h3>
+                <p>Total Expenses</p>
+            </div>
+            <div class="stat-card" style="margin: 10px;">
+                <h3 style="color: ${netAmount >= 0 ? '#28a745' : '#dc3545'};">${Utils.formatCurrency(netAmount)}</h3>
+                <p>Net Amount</p>
+            </div>
+        `;
+    }
+    
+    let tableRows = '';
+    
+    // Add sales rows
+    tableRows += filteredSales.map(sale => `
+        <tr>
+            <td><span class="status available">Sales</span></td>
+            <td>${Utils.sanitizeHtml(sale.date)}</td>
+            <td>${Utils.sanitizeHtml(sale.customerName)}</td>
+            <td>${Utils.sanitizeHtml(sale.watchName)}</td>
+            <td style="color: #28a745;">${Utils.formatCurrency(sale.totalAmount)}</td>
+        </tr>
+    `).join('');
+    
+    // Add services rows
+    tableRows += filteredServices.map(service => `
+        <tr>
+            <td><span class="status completed">Service</span></td>
+            <td>${Utils.sanitizeHtml(service.actualDelivery || service.date)}</td>
+            <td>${Utils.sanitizeHtml(service.customerName)}</td>
+            <td>${Utils.sanitizeHtml(service.watchName)}</td>
+            <td style="color: #28a745;">${Utils.formatCurrency(service.cost)}</td>
+        </tr>
+    `).join('');
+    
+    // Add expenses rows if included
+    if (includeExpenses) {
+        tableRows += filteredExpenses.map(expense => `
+            <tr>
+                <td><span class="status on-hold">Expense</span></td>
+                <td>${Utils.sanitizeHtml(expense.formattedDate)}</td>
+                <td>-</td>
+                <td>${Utils.sanitizeHtml(expense.description)}</td>
+                <td style="color: #dc3545;">-${Utils.formatCurrency(expense.amount)}</td>
+            </tr>
+        `).join('');
+    }
+    
+    resultsDiv.innerHTML = `
+        <div class="filter-results">
+            <h3>${title}</h3>
+            <div class="stats" style="margin: 20px 0;">
+                ${statsHtml}
+            </div>
+            <div style="max-height: 300px; overflow-y: auto;">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Date</th>
+                            <th>Customer</th>
+                            <th>Details</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * Reset Revenue Filter
+ */
+function resetRevenueFilter() {
+    const filterType = document.getElementById('revenueFilterType');
+    const revenueType = document.getElementById('revenueTypeFilter');
+    const includeExpenses = document.getElementById('includeExpenses');
+    const resultsDiv = document.getElementById('revenueFilterResults');
+    
+    if (filterType) filterType.value = 'all';
+    if (revenueType) revenueType.value = 'all';
+    if (includeExpenses) includeExpenses.checked = false;
+    if (resultsDiv) resultsDiv.innerHTML = '';
+    
+    toggleRevenueFilterInputs();
+    applyRevenueFilter();
 }
 
 /**
@@ -439,54 +542,152 @@ function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
         modal.style.display = 'none';
+        
+        // Log modal close action
+        if (window.logAction) {
+            logAction(`Closed modal: ${modalId}`);
+        }
     }
 }
 
 /**
- * Initialize application - MongoDB only
+ * Generic delete function for table rows with logging
  */
-async function initializeApp() {
-    console.log('🚀 Initializing ZEDSON WATCHCRAFT Management System...');
+function deleteItem(button) {
+    if (confirm('Are you sure you want to delete this item?')) {
+        const row = button.closest('tr');
+        if (row) {
+            row.remove();
+            
+            // Log deletion
+            if (window.logAction) {
+                logAction('Deleted item from table');
+            }
+            
+            Utils.showNotification('Item deleted successfully!');
+            updateDashboard();
+        }
+    }
+}
+
+/**
+ * Confirmation prompts for transactions
+ */
+function confirmTransaction(message, callback) {
+    if (confirm(message)) {
+        callback();
+    }
+}
+
+/**
+ * Setup event listeners
+ */
+function setupEventListeners() {
+    // Handle escape key to close modals
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            const openModals = document.querySelectorAll('.modal[style*="block"]');
+            openModals.forEach(modal => {
+                modal.style.display = 'none';
+            });
+        }
+    });
+}
+
+/**
+ * Initialize sample data
+ */
+function initializeSampleData() {
+    // Initialize all modules with safe checks
+    if (window.InventoryModule) {
+        InventoryModule.initializeInventory();
+    }
+    
+    if (window.CustomerModule) {
+        CustomerModule.initializeCustomers();
+    }
+    
+    if (window.SalesModule) {
+        SalesModule.initializeSales();
+    }
+    
+    if (window.ServiceModule) {
+        ServiceModule.initializeServices();
+    }
+    
+    if (window.ExpenseModule) {
+        ExpenseModule.initializeExpenses();
+    }
+    
+    if (window.InvoiceModule) {
+        InvoiceModule.initializeInvoices();
+    }
+    
+    // Update dashboard
+    updateDashboard();
+    
+    console.log('Sample data initialized');
+}
+
+/**
+ * Initialize application with logging
+ */
+function initializeApp() {
+    console.log('Initializing ZEDSON WATCHCRAFT Management System...');
     
     try {
-        // Show login screen initially
-        showLoginScreen();
+        // Initialize logging first
+        if (window.LoggingModule) {
+            LoggingModule.initializeLogging();
+        }
         
-        console.log('✅ Application initialized successfully');
+        // Load modal templates
+        if (window.AppExtendedModule && AppExtendedModule.loadModalTemplates) {
+            AppExtendedModule.loadModalTemplates();
+        }
         
+        // Initialize sample data
+        initializeSampleData();
+        
+        // Setup event listeners
+        setupEventListeners();
+        
+        // Ensure login screen is shown initially
+        const loginScreen = document.getElementById('loginScreen');
+        const mainApp = document.getElementById('mainApp');
+        
+        if (loginScreen) loginScreen.style.display = 'flex';
+        if (mainApp) mainApp.classList.remove('logged-in');
+        
+        // Log system startup
+        if (window.logAction) {
+            logAction('System initialized successfully');
+        }
+        
+        console.log('Application initialized successfully');
     } catch (error) {
         console.error('Error during application initialization:', error);
-        showLoginScreen();
+        Utils.showNotification('Error starting application. Please refresh the page.');
     }
 }
 
-/**
- * Show login screen
- */
-function showLoginScreen() {
-    const loginScreen = document.getElementById('loginScreen');
-    const mainApp = document.getElementById('mainApp');
-    
-    if (loginScreen) loginScreen.style.display = 'flex';
-    if (mainApp) mainApp.classList.remove('logged-in');
-}
-
-// Export core functions
+// Export core functions for extended module
 window.AppCoreModule = {
     showSection,
     updateSectionData,
+    getTodayDate,
+    getTodayRevenue,
     updateDashboard,
     updateDashboardVisibility,
     updateRecentActivities,
     openRevenueAnalytics,
+    toggleRevenueFilterInputs,
+    applyRevenueFilter,
+    resetRevenueFilter,
     closeModal,
-    initializeApp,
-    showLoginScreen,
-    loadModuleData
+    deleteItem,
+    confirmTransaction,
+    setupEventListeners,
+    initializeSampleData,
+    initializeApp
 };
-
-// Make functions globally available
-window.showSection = showSection;
-window.updateDashboard = updateDashboard;
-window.closeModal = closeModal;
-window.openRevenueAnalytics = openRevenueAnalytics;
