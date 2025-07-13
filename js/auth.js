@@ -1,14 +1,39 @@
-// ZEDSON WATCHCRAFT - Authentication Module with MongoDB Integration
+// ZEDSON WATCHCRAFT - Authentication Module with Password Encryption and First Login
 
 /**
- * Authentication and User Management System with MongoDB Real-time Sync
+ * Authentication and User Management System with Encrypted Passwords
  */
 
 // Current logged-in user
 let currentUser = null;
 
-// User database - now synced with MongoDB
-let users = [];
+// Simple password hashing function (in production, use a proper library like bcrypt)
+function hashPassword(password) {
+    // Simple hash function - in production, use proper encryption
+    let hash = 0;
+    if (password.length === 0) return hash.toString();
+    for (let i = 0; i < password.length; i++) {
+        const char = password.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash).toString(36);
+}
+
+// User database with encrypted passwords
+let users = [
+    { 
+        username: 'admin', 
+        password: hashPassword('admin123'), // Encrypted
+        role: 'admin', 
+        fullName: 'System Administrator', 
+        email: 'admin@zedsonwatchcraft.com', 
+        status: 'active', 
+        created: '2024-01-01', 
+        lastLogin: 'Today',
+        firstLogin: false
+    }
+];
 
 // User permissions configuration - Updated to include expenses
 const permissions = {
@@ -18,31 +43,9 @@ const permissions = {
 };
 
 /**
- * Load users from MongoDB
+ * Handle user login with first-time password setup
  */
-async function loadUsers() {
-    try {
-        const response = await window.mongoService.getUsers();
-        users = response.map(user => ({
-            ...user,
-            id: user._id,
-            created: user.createdAt ? new Date(user.createdAt).toISOString().split('T')[0] : 'Unknown',
-            lastLogin: user.lastLogin || 'Never'
-        }));
-        
-        if (currentUser && currentUser.role === 'admin') {
-            updateUserTable();
-        }
-    } catch (error) {
-        console.error('Failed to load users:', error);
-        // Keep existing users array as fallback
-    }
-}
-
-/**
- * Handle user login with MongoDB integration
- */
-async function handleLogin(event) {
+function handleLogin(event) {
     event.preventDefault();
     
     const username = document.getElementById('loginUsername').value.trim();
@@ -54,38 +57,52 @@ async function handleLogin(event) {
         return;
     }
     
-    try {
-        // Show loading state
-        const loginBtn = event.target.querySelector('button[type="submit"]');
-        const originalText = loginBtn.textContent;
-        loginBtn.textContent = 'AUTHENTICATING...';
-        loginBtn.disabled = true;
-        
-        const response = await window.mongoService.login(username, password);
-        
-        if (response.success) {
-            if (response.firstLogin) {
-                // Show first login modal
-                showFirstLoginModal(response.user);
-            } else {
-                // Complete login
-                completeLogin(response.user);
-            }
-        }
-        
-    } catch (error) {
-        console.error('Login error:', error);
-        
+    // Find user
+    const user = users.find(u => u.username === username);
+    
+    if (!user) {
         if (window.logAuthAction) {
-            logAuthAction(`Failed login attempt: ${error.message}`, username);
+            logAuthAction(`Failed login attempt - user not found`, username);
         }
-        
-        Utils.showNotification(error.message || 'Login failed. Please try again.');
-        
-        // Reset button
-        const loginBtn = event.target.querySelector('button[type="submit"]');
-        loginBtn.textContent = 'Login';
-        loginBtn.disabled = false;
+        Utils.showNotification('Invalid username or password.');
+        return;
+    }
+
+    if (user.status !== 'active') {
+        if (window.logAuthAction) {
+            logAuthAction(`Failed login attempt - account inactive`, username);
+        }
+        Utils.showNotification('Your account is inactive. Please contact administrator.');
+        return;
+    }
+
+    // Check if this is first login (temporary password)
+    if (user.firstLogin) {
+        // For first login, check against temporary password
+        if (user.tempPassword === password) {
+            // Show first login modal
+            showFirstLoginModal(user);
+            return;
+        } else {
+            if (window.logAuthAction) {
+                logAuthAction(`Failed first login attempt`, username);
+            }
+            Utils.showNotification('Invalid temporary password. Please contact administrator.');
+            return;
+        }
+    }
+
+    // Regular login - check encrypted password
+    const hashedPassword = hashPassword(password);
+    if (user.password === hashedPassword) {
+        // Successful login
+        completeLogin(user);
+    } else {
+        // Log failed login attempt
+        if (window.logAuthAction) {
+            logAuthAction(`Failed login attempt - wrong password`, username);
+        }
+        Utils.showNotification('Invalid username or password.');
     }
 }
 
@@ -102,9 +119,9 @@ function showFirstLoginModal(user) {
 }
 
 /**
- * Handle first-time password setup with MongoDB
+ * Handle first-time password setup
  */
-async function handleFirstTimePasswordSetup(event) {
+function handleFirstTimePasswordSetup(event) {
     event.preventDefault();
     
     const newPassword = document.getElementById('newPasswordSetup').value;
@@ -126,27 +143,23 @@ async function handleFirstTimePasswordSetup(event) {
         return;
     }
     
-    try {
-        // Update password in MongoDB
-        await window.mongoService.setPassword(currentUser.username, newPassword);
-        
-        // Log password setup
-        if (window.logAuthAction) {
-            logAuthAction(`First login password setup completed`, currentUser.username);
-        }
-        
-        // Close modal and complete login
-        document.getElementById('firstLoginModal').style.display = 'none';
-        document.getElementById('newPasswordSetup').value = '';
-        document.getElementById('confirmPasswordSetup').value = '';
-        
-        completeLogin(currentUser);
-        Utils.showNotification('Password set successfully! Welcome to ZEDSON WATCHCRAFT.');
-        
-    } catch (error) {
-        console.error('Password setup error:', error);
-        Utils.showNotification('Failed to set password. Please try again.');
+    // Update user password
+    currentUser.password = hashPassword(newPassword);
+    currentUser.firstLogin = false;
+    delete currentUser.tempPassword; // Remove temporary password
+    
+    // Log password setup
+    if (window.logAuthAction) {
+        logAuthAction(`First login password setup completed`, currentUser.username);
     }
+    
+    // Close modal and complete login
+    document.getElementById('firstLoginModal').style.display = 'none';
+    document.getElementById('newPasswordSetup').value = '';
+    document.getElementById('confirmPasswordSetup').value = '';
+    
+    completeLogin(currentUser);
+    Utils.showNotification('Password set successfully! Welcome to ZEDSON WATCHCRAFT.');
 }
 
 /**
@@ -171,12 +184,12 @@ function completeLogin(user) {
     // Setup navigation based on user role
     setupNavigation();
     
-    // Load data from MongoDB
-    loadAllData();
+    // Update last login
+    user.lastLogin = 'Just now';
     
     // Update user table if admin is logged in
     if (user.role === 'admin') {
-        loadUsers();
+        updateUserTable();
     }
     
     // Initialize logging system
@@ -189,235 +202,6 @@ function completeLogin(user) {
     document.getElementById('loginPassword').value = '';
     
     Utils.showNotification(`Welcome back, ${user.fullName}!`);
-}
-
-/**
- * Load all data from MongoDB
- */
-async function loadAllData() {
-    try {
-        // Load all modules' data concurrently
-        const loadPromises = [];
-        
-        if (window.CustomerModule) {
-            loadPromises.push(loadCustomersData());
-        }
-        
-        if (window.InventoryModule) {
-            loadPromises.push(loadInventoryData());
-        }
-        
-        if (window.SalesModule) {
-            loadPromises.push(loadSalesData());
-        }
-        
-        if (window.ServiceModule) {
-            loadPromises.push(loadServicesData());
-        }
-        
-        if (window.ExpenseModule) {
-            loadPromises.push(loadExpensesData());
-        }
-        
-        if (window.InvoiceModule) {
-            loadPromises.push(loadInvoicesData());
-        }
-        
-        await Promise.all(loadPromises);
-        
-        // Update dashboard after all data is loaded
-        if (window.updateDashboard) {
-            updateDashboard();
-        }
-        
-        console.log('All data loaded from MongoDB');
-        
-    } catch (error) {
-        console.error('Error loading data:', error);
-        Utils.showNotification('Some data may not be current. Please refresh if needed.');
-    }
-}
-
-/**
- * Load customers data from MongoDB
- */
-async function loadCustomersData() {
-    try {
-        const customersData = await window.mongoService.getCustomers();
-        if (window.CustomerModule && CustomerModule.customers) {
-            // Convert MongoDB data to application format
-            CustomerModule.customers.length = 0; // Clear existing
-            customersData.forEach(customer => {
-                CustomerModule.customers.push({
-                    ...customer,
-                    id: customer._id.toString(), // Ensure ID is string for compatibility
-                    addedDate: customer.createdAt ? new Date(customer.createdAt).toISOString().split('T')[0] : Utils.formatDate(new Date())
-                });
-            });
-            
-            // Update next ID counter
-            const maxId = CustomerModule.customers.length > 0 ? 
-                Math.max(...CustomerModule.customers.map(c => parseInt(c.id.replace(/[^0-9]/g, '')) || 0)) : 0;
-            if (window.nextCustomerId !== undefined) {
-                window.nextCustomerId = maxId + 1;
-            }
-            
-            CustomerModule.renderCustomerTable();
-            console.log(`Loaded ${CustomerModule.customers.length} customers from MongoDB`);
-        }
-    } catch (error) {
-        console.error('Failed to load customers:', error);
-    }
-}
-
-/**
- * Load inventory data from MongoDB
- */
-async function loadInventoryData() {
-    try {
-        const inventoryData = await window.mongoService.getInventory();
-        if (window.InventoryModule && InventoryModule.watches) {
-            // Convert MongoDB data to application format
-            InventoryModule.watches.length = 0; // Clear existing
-            inventoryData.forEach(item => {
-                InventoryModule.watches.push({
-                    ...item,
-                    id: item._id.toString(), // Ensure ID is string for compatibility
-                    addedDate: item.createdAt ? Utils.getCurrentTimestamp() : Utils.getCurrentTimestamp(),
-                    addedBy: item.createdBy || 'system'
-                });
-            });
-            
-            // Update next ID counter
-            const maxId = InventoryModule.watches.length > 0 ? 
-                Math.max(...InventoryModule.watches.map(w => parseInt(w.id.replace(/[^0-9]/g, '')) || 0)) : 0;
-            if (window.nextWatchId !== undefined) {
-                window.nextWatchId = maxId + 1;
-            }
-            
-            InventoryModule.renderWatchTable();
-            console.log(`Loaded ${InventoryModule.watches.length} inventory items from MongoDB`);
-        }
-    } catch (error) {
-        console.error('Failed to load inventory:', error);
-    }
-}
-
-/**
- * Load sales data from MongoDB
- */
-async function loadSalesData() {
-    try {
-        const salesData = await window.mongoService.getSales();
-        if (window.SalesModule && SalesModule.sales) {
-            // Convert MongoDB data to application format
-            SalesModule.sales.length = 0; // Clear existing
-            salesData.forEach(sale => {
-                SalesModule.sales.push({
-                    ...sale,
-                    id: sale._id,
-                    timestamp: sale.createdAt ? sale.createdAt : Utils.getCurrentTimestamp()
-                });
-            });
-            
-            // Update next ID
-            if (salesData.length > 0) {
-                window.nextSaleId = Math.max(...salesData.map(s => parseInt(s.id) || 0)) + 1;
-            }
-            
-            SalesModule.renderSalesTable();
-        }
-    } catch (error) {
-        console.error('Failed to load sales:', error);
-    }
-}
-
-/**
- * Load services data from MongoDB
- */
-async function loadServicesData() {
-    try {
-        const servicesData = await window.mongoService.getServices();
-        if (window.ServiceModule && ServiceModule.services) {
-            // Convert MongoDB data to application format
-            ServiceModule.services.length = 0; // Clear existing
-            servicesData.forEach(service => {
-                ServiceModule.services.push({
-                    ...service,
-                    id: service._id,
-                    timestamp: service.createdAt ? service.createdAt : Utils.getCurrentTimestamp()
-                });
-            });
-            
-            // Update next ID
-            if (servicesData.length > 0) {
-                window.nextServiceId = Math.max(...servicesData.map(s => parseInt(s.id) || 0)) + 1;
-            }
-            
-            ServiceModule.renderServiceTable();
-        }
-    } catch (error) {
-        console.error('Failed to load services:', error);
-    }
-}
-
-/**
- * Load expenses data from MongoDB
- */
-async function loadExpensesData() {
-    try {
-        const expensesData = await window.mongoService.getExpenses();
-        if (window.ExpenseModule && ExpenseModule.expenses) {
-            // Convert MongoDB data to application format
-            ExpenseModule.expenses.length = 0; // Clear existing
-            expensesData.forEach(expense => {
-                ExpenseModule.expenses.push({
-                    ...expense,
-                    id: expense._id,
-                    timestamp: expense.createdAt ? expense.createdAt : Utils.getCurrentTimestamp(),
-                    formattedDate: expense.formattedDate || Utils.formatDate(new Date(expense.date))
-                });
-            });
-            
-            // Update next ID
-            if (expensesData.length > 0) {
-                window.nextExpenseId = Math.max(...expensesData.map(e => parseInt(e.id) || 0)) + 1;
-            }
-            
-            ExpenseModule.renderExpenseTable();
-        }
-    } catch (error) {
-        console.error('Failed to load expenses:', error);
-    }
-}
-
-/**
- * Load invoices data from MongoDB
- */
-async function loadInvoicesData() {
-    try {
-        const invoicesData = await window.mongoService.getInvoices();
-        if (window.InvoiceModule && InvoiceModule.invoices) {
-            // Convert MongoDB data to application format
-            InvoiceModule.invoices.length = 0; // Clear existing
-            invoicesData.forEach(invoice => {
-                InvoiceModule.invoices.push({
-                    ...invoice,
-                    id: invoice._id,
-                    timestamp: invoice.createdAt ? invoice.createdAt : Utils.getCurrentTimestamp()
-                });
-            });
-            
-            // Update next ID
-            if (invoicesData.length > 0) {
-                window.nextInvoiceId = Math.max(...invoicesData.map(i => parseInt(i.id) || 0)) + 1;
-            }
-            
-            InvoiceModule.renderInvoiceTable();
-        }
-    } catch (error) {
-        console.error('Failed to load invoices:', error);
-    }
 }
 
 /**
@@ -441,35 +225,7 @@ function logout() {
         // Clear login form
         document.getElementById('loginUsername').value = '';
         document.getElementById('loginPassword').value = '';
-        
-        // Reset all data arrays
-        resetAllData();
     }
-}
-
-/**
- * Reset all data arrays to prevent data leakage between users
- */
-function resetAllData() {
-    if (window.CustomerModule && CustomerModule.customers) {
-        CustomerModule.customers.length = 0;
-    }
-    if (window.InventoryModule && InventoryModule.watches) {
-        InventoryModule.watches.length = 0;
-    }
-    if (window.SalesModule && SalesModule.sales) {
-        SalesModule.sales.length = 0;
-    }
-    if (window.ServiceModule && ServiceModule.services) {
-        ServiceModule.services.length = 0;
-    }
-    if (window.ExpenseModule && ExpenseModule.expenses) {
-        ExpenseModule.expenses.length = 0;
-    }
-    if (window.InvoiceModule && InvoiceModule.invoices) {
-        InvoiceModule.invoices.length = 0;
-    }
-    users.length = 0;
 }
 
 /**
@@ -544,9 +300,9 @@ function openAddUserModal() {
 }
 
 /**
- * Add new user (Admin only) with MongoDB integration
+ * Add new user (Admin only) - No password required
  */
-async function addNewUser(event) {
+function addNewUser(event) {
     event.preventDefault();
     
     if (currentUser.role !== 'admin') {
@@ -571,45 +327,65 @@ async function addNewUser(event) {
         return;
     }
 
-    try {
-        const newUser = {
-            username: username,
-            role: role,
-            fullName: fullName,
-            email: email,
-            status: 'active',
-            created: Utils.formatDate(new Date()),
-            lastLogin: 'Never',
-            firstLogin: true
-        };
-
-        const response = await window.mongoService.createUser(newUser);
-        
-        if (response.success) {
-            // Log user creation
-            if (window.logUserManagementAction) {
-                logUserManagementAction(`Created new user: ${username} with role: ${role}`, newUser);
-            }
-            
-            // Reload users and update table
-            await loadUsers();
-            closeModal('addUserModal');
-            event.target.reset();
-            
-            // Show temporary password to admin
-            Utils.showNotification(`User created successfully!\n\nTemporary Login Details:\nUsername: ${username}\nTemporary Password: ${response.tempPassword}\n\nUser must change password on first login.`);
-        }
-        
-    } catch (error) {
-        console.error('Create user error:', error);
-        Utils.showNotification(error.message || 'Failed to create user.');
+    // Check if username already exists
+    if (users.find(u => u.username === username)) {
+        Utils.showNotification('Username already exists. Please choose a different username.');
+        return;
     }
+
+    // Check if email already exists
+    if (users.find(u => u.email === email)) {
+        Utils.showNotification('Email already exists. Please use a different email.');
+        return;
+    }
+
+    // Generate temporary password
+    const tempPassword = generateTempPassword();
+
+    const newUser = {
+        username: username,
+        tempPassword: tempPassword, // Temporary password for first login
+        password: null, // Will be set by user on first login
+        role: role,
+        fullName: fullName,
+        email: email,
+        status: 'active',
+        created: Utils.formatDate(new Date()),
+        lastLogin: 'Never',
+        firstLogin: true
+    };
+
+    users.push(newUser);
+    
+    // Log user creation
+    if (window.logUserManagementAction) {
+        logUserManagementAction(`Created new user: ${username} with role: ${role}`, newUser);
+    }
+    
+    updateUserTable();
+    closeModal('addUserModal');
+    event.target.reset();
+    
+    // Show temporary password to admin
+    Utils.showNotification(`User created successfully!\n\nTemporary Login Details:\nUsername: ${username}\nTemporary Password: ${tempPassword}\n\nUser must change password on first login.`);
 }
 
 /**
- * Reset user password (Admin only) with MongoDB integration
+ * Generate temporary password
  */
-async function resetUserPassword(username) {
+function generateTempPassword() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < 8; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
+/**
+ * Reset user password (Admin only)
+ */
+function resetUserPassword(username) {
     if (currentUser.role !== 'admin') {
         Utils.showNotification('Only administrators can reset passwords.');
         return;
@@ -622,28 +398,19 @@ async function resetUserPassword(username) {
     }
 
     if (confirm(`Are you sure you want to reset password for user "${username}"?\nThis will generate a new temporary password and require them to set a new password on next login.`)) {
-        try {
-            // Generate temporary password and update in MongoDB
-            const tempPassword = generateTempPassword();
-            
-            await window.mongoService.updateUser(username, {
-                tempPassword: tempPassword,
-                firstLogin: true
-            });
-            
-            // Log password reset
-            if (window.logUserManagementAction) {
-                logUserManagementAction(`Reset password for user: ${username}`, user, username);
-            }
-            
-            // Reload users and update table
-            await loadUsers();
-            Utils.showNotification(`Password reset successfully!\n\nNew Temporary Login Details:\nUsername: ${username}\nTemporary Password: ${tempPassword}\n\nUser must change password on next login.`);
-            
-        } catch (error) {
-            console.error('Reset password error:', error);
-            Utils.showNotification('Failed to reset password.');
+        const tempPassword = generateTempPassword();
+        
+        user.tempPassword = tempPassword;
+        user.password = null;
+        user.firstLogin = true;
+        
+        // Log password reset
+        if (window.logUserManagementAction) {
+            logUserManagementAction(`Reset password for user: ${username}`, user, username);
         }
+        
+        updateUserTable();
+        Utils.showNotification(`Password reset successfully!\n\nNew Temporary Login Details:\nUsername: ${username}\nTemporary Password: ${tempPassword}\n\nUser must change password on next login.`);
     }
 }
 
@@ -682,7 +449,7 @@ function updateUserTable() {
 }
 
 /**
- * Edit user with MongoDB integration
+ * Edit user
  */
 function editUser(username) {
     if (currentUser.role !== 'admin') {
@@ -743,9 +510,9 @@ function editUser(username) {
 }
 
 /**
- * Update user with MongoDB integration
+ * Update user
  */
-async function updateUser(event, username) {
+function updateUser(event, username) {
     event.preventDefault();
     
     const user = users.find(u => u.username === username);
@@ -765,43 +532,39 @@ async function updateUser(event, username) {
         return;
     }
 
-    try {
-        const updateData = {
-            fullName: fullName,
-            email: email,
-            role: role,
-            status: status
-        };
-
-        await window.mongoService.updateUser(username, updateData);
-
-        // Log user update
-        if (window.logUserManagementAction) {
-            logUserManagementAction(`Updated user: ${username}. Role: ${user.role} -> ${role}, Status: ${user.status} -> ${status}`, {
-                username: username,
-                oldRole: user.role,
-                newRole: role,
-                oldStatus: user.status,
-                newStatus: status
-            }, username);
-        }
-
-        // Reload users and update table
-        await loadUsers();
-        closeModal('editUserModal');
-        document.getElementById('editUserModal').remove();
-        Utils.showNotification('User updated successfully!');
-        
-    } catch (error) {
-        console.error('Update user error:', error);
-        Utils.showNotification('Failed to update user.');
+    // Check if email already exists (excluding current user)
+    if (users.find(u => u.email === email && u.username !== username)) {
+        Utils.showNotification('Email already exists. Please use a different email.');
+        return;
     }
+
+    // Log user update
+    if (window.logUserManagementAction) {
+        logUserManagementAction(`Updated user: ${username}. Role: ${user.role} -> ${role}, Status: ${user.status} -> ${status}`, {
+            username: username,
+            oldRole: user.role,
+            newRole: role,
+            oldStatus: user.status,
+            newStatus: status
+        }, username);
+    }
+
+    // Update user
+    user.fullName = fullName;
+    user.email = email;
+    user.role = role;
+    user.status = status;
+
+    updateUserTable();
+    closeModal('editUserModal');
+    document.getElementById('editUserModal').remove();
+    Utils.showNotification('User updated successfully!');
 }
 
 /**
- * Delete user (Admin only) with MongoDB integration
+ * Delete user (Admin only)
  */
-async function deleteUser(username) {
+function deleteUser(username) {
     if (currentUser.role !== 'admin') {
         Utils.showNotification('Only administrators can delete users.');
         return;
@@ -818,37 +581,17 @@ async function deleteUser(username) {
     }
 
     if (confirm(`Are you sure you want to delete user "${username}"?`)) {
-        try {
-            const userToDelete = users.find(u => u.username === username);
-            
-            await window.mongoService.deleteUser(username);
-            
-            // Log user deletion
-            if (window.logUserManagementAction) {
-                logUserManagementAction(`Deleted user: ${username}`, userToDelete, username);
-            }
-            
-            // Reload users and update table
-            await loadUsers();
-            Utils.showNotification('User deleted successfully!');
-            
-        } catch (error) {
-            console.error('Delete user error:', error);
-            Utils.showNotification('Failed to delete user.');
+        const userToDelete = users.find(u => u.username === username);
+        
+        // Log user deletion
+        if (window.logUserManagementAction) {
+            logUserManagementAction(`Deleted user: ${username}`, userToDelete, username);
         }
+        
+        users = users.filter(u => u.username !== username);
+        updateUserTable();
+        Utils.showNotification('User deleted successfully!');
     }
-}
-
-/**
- * Generate temporary password
- */
-function generateTempPassword() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    for (let i = 0; i < 8; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
 }
 
 /**
@@ -899,7 +642,5 @@ window.AuthModule = {
     getCurrentUser,
     isLoggedIn,
     isStaffUser,
-    canEditDelete,
-    loadUsers,
-    loadAllData
+    canEditDelete
 };

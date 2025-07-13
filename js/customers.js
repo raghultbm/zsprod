@@ -5,8 +5,32 @@
  */
 
 // Customer database
-let customers = [];
-let nextCustomerId = 1;
+let customers = [
+    { 
+        id: 1, 
+        name: "Raj Kumar", 
+        email: "raj@email.com", 
+        phone: "+91-9876543210", 
+        address: "Chennai, Tamil Nadu", 
+        purchases: 0, 
+        serviceCount: 0,
+        netValue: 0,
+        addedDate: "2024-01-01"
+    },
+    { 
+        id: 2, 
+        name: "Priya Sharma", 
+        email: "priya@email.com", 
+        phone: "+91-9876543211", 
+        address: "Mumbai, Maharashtra", 
+        purchases: 0, 
+        serviceCount: 0,
+        netValue: 0,
+        addedDate: "2024-01-01"
+    }
+];
+
+let nextCustomerId = 3;
 
 /**
  * Calculate customer's net value from sales and services
@@ -18,14 +42,14 @@ function calculateCustomerNetValue(customerId) {
     // Calculate sales value
     if (window.SalesModule && SalesModule.sales) {
         salesValue = SalesModule.sales
-            .filter(sale => sale.customerId == customerId || sale.customerId === customerId.toString())
+            .filter(sale => sale.customerId === customerId)
             .reduce((sum, sale) => sum + sale.totalAmount, 0);
     }
     
     // Calculate services value (completed services only)
     if (window.ServiceModule && ServiceModule.services) {
         servicesValue = ServiceModule.services
-            .filter(service => (service.customerId == customerId || service.customerId === customerId.toString()) && service.status === 'completed')
+            .filter(service => service.customerId === customerId && service.status === 'completed')
             .reduce((sum, service) => sum + service.cost, 0);
     }
     
@@ -36,7 +60,7 @@ function calculateCustomerNetValue(customerId) {
  * Update customer's net value
  */
 function updateCustomerNetValue(customerId) {
-    const customer = customers.find(c => c.id == customerId || c.id === customerId.toString());
+    const customer = customers.find(c => c.id === customerId);
     if (customer) {
         customer.netValue = calculateCustomerNetValue(customerId);
         renderCustomerTable();
@@ -165,7 +189,7 @@ function editCustomer(customerId) {
         return;
     }
 
-    const customer = customers.find(c => c.id == customerId || c.id === customerId.toString());
+    const customer = customers.find(c => c.id === customerId);
     if (!customer) {
         Utils.showNotification('Customer not found.');
         return;
@@ -184,7 +208,7 @@ function editCustomer(customerId) {
         <div class="modal-content">
             <span class="close" onclick="closeModal('editCustomerModal')">&times;</span>
             <h2>Edit Customer</h2>
-            <form onsubmit="CustomerModule.updateCustomer(event, '${customerId}')">
+            <form onsubmit="CustomerModule.updateCustomer(event, ${customerId})">
                 <div class="form-group">
                     <label>Name:</label>
                     <input type="text" id="editCustomerName" value="${customer.name}" required>
@@ -222,7 +246,7 @@ function editCustomer(customerId) {
 function updateCustomer(event, customerId) {
     event.preventDefault();
     
-    const customer = customers.find(c => c.id == customerId || c.id === customerId.toString());
+    const customer = customers.find(c => c.id === customerId);
     if (!customer) {
         Utils.showNotification('Customer not found.');
         return;
@@ -252,13 +276,13 @@ function updateCustomer(event, customerId) {
     }
 
     // Check if email already exists (excluding current customer)
-    if (customers.find(c => c.email === email && c.id != customerId)) {
+    if (customers.find(c => c.email === email && c.id !== customerId)) {
         Utils.showNotification('A customer with this email already exists');
         return;
     }
 
     // Check if phone already exists (excluding current customer)
-    if (customers.find(c => c.phone === phone && c.id != customerId)) {
+    if (customers.find(c => c.phone === phone && c.id !== customerId)) {
         Utils.showNotification('A customer with this phone number already exists');
         return;
     }
@@ -304,7 +328,7 @@ function deleteCustomer(customerId) {
         return;
     }
 
-    const customer = customers.find(c => c.id == customerId || c.id === customerId.toString());
+    const customer = customers.find(c => c.id === customerId);
     if (!customer) {
         Utils.showNotification('Customer not found.');
         return;
@@ -316,7 +340,7 @@ function deleteCustomer(customerId) {
             logCustomerAction('Deleted customer: ' + customer.name, customer);
         }
         
-        customers = customers.filter(c => c.id != customerId);
+        customers = customers.filter(c => c.id !== customerId);
         renderCustomerTable();
         updateDashboard();
         Utils.showNotification('Customer deleted successfully!');
@@ -327,7 +351,7 @@ function deleteCustomer(customerId) {
  * Update customer purchase count and net value
  */
 function incrementCustomerPurchases(customerId) {
-    const customer = customers.find(c => c.id == customerId || c.id === customerId.toString());
+    const customer = customers.find(c => c.id === customerId);
     if (customer) {
         customer.purchases++;
         updateCustomerNetValue(customerId);
@@ -338,7 +362,7 @@ function incrementCustomerPurchases(customerId) {
  * Update customer service count and net value
  */
 function incrementCustomerServices(customerId) {
-    const customer = customers.find(c => c.id == customerId || c.id === customerId.toString());
+    const customer = customers.find(c => c.id === customerId);
     if (customer) {
         customer.serviceCount++;
         updateCustomerNetValue(customerId);
@@ -349,7 +373,7 @@ function incrementCustomerServices(customerId) {
  * Decrease customer purchase count and net value
  */
 function decrementCustomerPurchases(customerId) {
-    const customer = customers.find(c => c.id == customerId || c.id === customerId.toString());
+    const customer = customers.find(c => c.id === customerId);
     if (customer) {
         customer.purchases = Math.max(0, customer.purchases - 1);
         updateCustomerNetValue(customerId);
@@ -360,7 +384,7 @@ function decrementCustomerPurchases(customerId) {
  * Decrease customer service count and net value
  */
 function decrementCustomerServices(customerId) {
-    const customer = customers.find(c => c.id == customerId || c.id === customerId.toString());
+    const customer = customers.find(c => c.id === customerId);
     if (customer) {
         customer.serviceCount = Math.max(0, customer.serviceCount - 1);
         updateCustomerNetValue(customerId);
@@ -368,10 +392,10 @@ function decrementCustomerServices(customerId) {
 }
 
 /**
- * Get customer by ID - Handle both string and number IDs
+ * Get customer by ID
  */
 function getCustomerById(customerId) {
-    return customers.find(c => c.id == customerId || c.id === customerId.toString());
+    return customers.find(c => c.id === customerId);
 }
 
 /**
@@ -402,7 +426,7 @@ function initiateSaleFromCustomer(customerId) {
         return;
     }
     
-    const customer = customers.find(c => c.id == customerId || c.id === customerId.toString());
+    const customer = customers.find(c => c.id === customerId);
     if (window.logAction && customer) {
         logAction('Initiated sale from customer profile: ' + customer.name);
     }
@@ -437,7 +461,7 @@ function initiateServiceFromCustomer(customerId) {
         return;
     }
 
-    const customer = customers.find(c => c.id == customerId || c.id === customerId.toString());
+    const customer = customers.find(c => c.id === customerId);
     if (window.logAction && customer) {
         logAction('Initiated service from customer profile: ' + customer.name);
     }
@@ -485,11 +509,11 @@ function renderCustomerTable() {
         
         // Sale and Service buttons (available for all users)
         actionButtons += `
-            <button class="btn" onclick="initiateSaleFromCustomer('${customer.id}')" 
+            <button class="btn" onclick="initiateSaleFromCustomer(${customer.id})" 
                 title="New Sale" ${!AuthModule.hasPermission('sales') ? 'disabled' : ''}>
                 Sale
             </button>
-            <button class="btn" onclick="initiateServiceFromCustomer('${customer.id}')" 
+            <button class="btn" onclick="initiateServiceFromCustomer(${customer.id})" 
                 title="New Service Request" ${!AuthModule.hasPermission('service') ? 'disabled' : ''}>
                 Service
             </button>
@@ -498,12 +522,12 @@ function renderCustomerTable() {
         // Add edit/delete buttons only for non-staff users
         if (!isStaff) {
             actionButtons = `
-                <button class="btn" onclick="editCustomer('${customer.id}')" 
+                <button class="btn" onclick="editCustomer(${customer.id})" 
                     title="Edit Customer" ${!AuthModule.hasPermission('customers') ? 'disabled' : ''}>
                     Edit
                 </button>
                 ${actionButtons}
-                <button class="btn btn-danger" onclick="deleteCustomer('${customer.id}')"
+                <button class="btn btn-danger" onclick="deleteCustomer(${customer.id})"
                     ${!AuthModule.hasPermission('customers') ? 'disabled' : ''}>
                     Delete
                 </button>

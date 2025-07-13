@@ -5,8 +5,58 @@
  */
 
 // Watch inventory data - Updated with OUTLET field and movement history
-let watches = [];
-let nextWatchId = 1;
+let watches = [
+    { 
+        id: 1, 
+        code: "ROL001", 
+        type: "Watch",
+        brand: "Rolex", 
+        model: "Submariner", 
+        size: "40mm",
+        price: 850000, 
+        quantity: 2, 
+        outlet: "Semmancheri",
+        description: "Luxury diving watch", 
+        status: "available",
+        movementHistory: [
+            { date: "2024-01-15", fromOutlet: null, toOutlet: "Semmancheri", reason: "Initial stock" }
+        ]
+    },
+    { 
+        id: 2, 
+        code: "OMG001", 
+        type: "Watch",
+        brand: "Omega", 
+        model: "Speedmaster", 
+        size: "42mm",
+        price: 450000, 
+        quantity: 1, 
+        outlet: "Navalur",
+        description: "Professional chronograph", 
+        status: "available",
+        movementHistory: [
+            { date: "2024-01-10", fromOutlet: null, toOutlet: "Navalur", reason: "Initial stock" }
+        ]
+    },
+    { 
+        id: 3, 
+        code: "CAS001", 
+        type: "Watch",
+        brand: "Casio", 
+        model: "G-Shock", 
+        size: "44mm",
+        price: 15000, 
+        quantity: 5, 
+        outlet: "Padur",
+        description: "Sports watch", 
+        status: "available",
+        movementHistory: [
+            { date: "2024-01-05", fromOutlet: null, toOutlet: "Padur", reason: "Initial stock" }
+        ]
+    }
+];
+
+let nextWatchId = 4;
 
 /**
  * Generate watch code automatically
@@ -32,60 +82,23 @@ function openAddWatchModal() {
     }
     console.log('Opening Add Item Modal');
     document.getElementById('addWatchModal').style.display = 'block';
-    
-    // Setup type change listener for size field validation
-    setupTypeChangeListener();
 }
 
 /**
- * Setup type change listener for size field validation
- */
-function setupTypeChangeListener() {
-    const typeSelect = document.getElementById('watchType');
-    const sizeInput = document.getElementById('watchSize');
-    const sizeLabel = sizeInput?.parentElement?.querySelector('label');
-    
-    if (typeSelect && sizeInput) {
-        typeSelect.addEventListener('change', function() {
-            const selectedType = this.value;
-            
-            if (selectedType === 'Strap') {
-                // Make size mandatory for Strap
-                sizeInput.required = true;
-                if (sizeLabel) {
-                    sizeLabel.innerHTML = 'Size: <span style="color: red;">*</span>';
-                }
-                sizeInput.placeholder = 'Size is required for straps';
-            } else {
-                // Make size optional for other types
-                sizeInput.required = false;
-                if (sizeLabel) {
-                    sizeLabel.textContent = 'Size (Optional):';
-                }
-                sizeInput.placeholder = 'e.g., 40mm, 42mm (optional)';
-            }
-        });
-    }
-}
-
-/**
- * Auto-generate code when brand changes - Only if code field is empty
+ * Auto-generate code when brand changes
  */
 function updateWatchCode() {
     const brandInput = document.getElementById('watchBrand');
     const codeInput = document.getElementById('watchCode');
     
     if (brandInput && codeInput && brandInput.value.trim()) {
-        // Only auto-generate if the code field is empty
-        if (!codeInput.value.trim()) {
-            const suggestedCode = generateWatchCode(brandInput.value.trim());
-            codeInput.value = suggestedCode;
-        }
+        const suggestedCode = generateWatchCode(brandInput.value.trim());
+        codeInput.value = suggestedCode;
     }
 }
 
 /**
- * Add new watch to inventory - Updated size validation logic
+ * Add new watch to inventory - Updated to make size optional
  */
 function addNewWatch(event) {
     event.preventDefault();
@@ -100,21 +113,15 @@ function addNewWatch(event) {
     const type = document.getElementById('watchType').value;
     const brand = document.getElementById('watchBrand').value.trim();
     const model = document.getElementById('watchModel').value.trim();
-    const size = document.getElementById('watchSize').value.trim();
+    const size = document.getElementById('watchSize').value.trim(); // Now optional
     const price = parseFloat(document.getElementById('watchPrice').value);
     const quantity = parseInt(document.getElementById('watchQuantity').value);
     const outlet = document.getElementById('watchOutlet').value;
     const description = document.getElementById('watchDescription').value.trim();
     
-    // Validate input - Size is mandatory only for Strap type
+    // Validate input - Size is now optional
     if (!code || !type || !brand || !model || !price || !quantity || !outlet) {
         Utils.showNotification('Please fill in all required fields');
-        return;
-    }
-
-    // Size validation - required only for Strap type
-    if (type === 'Strap' && !size) {
-        Utils.showNotification('Size is required for Strap type items');
         return;
     }
 
@@ -134,14 +141,14 @@ function addNewWatch(event) {
         return;
     }
 
-    // Create new watch object - Size can be empty for non-strap items
+    // Create new watch object - Size can be empty
     const newWatch = {
         id: nextWatchId++,
         code: code,
         type: type,
         brand: brand,
         model: model,
-        size: size || (type === 'Strap' ? '' : '-'), // Use '-' for empty size except straps
+        size: size || '-', // Use '-' if size is empty
         price: price,
         quantity: quantity,
         outlet: outlet,
@@ -248,10 +255,10 @@ function getAvailableWatches() {
 }
 
 /**
- * Get watch by ID - Handle both string and number IDs
+ * Get watch by ID
  */
 function getWatchById(watchId) {
-    return watches.find(w => w.id == watchId || w.id === watchId.toString());
+    return watches.find(w => w.id === watchId);
 }
 
 /**
@@ -422,7 +429,7 @@ function getInventoryStats() {
 }
 
 /**
- * Edit watch - Updated to handle size validation and code generation
+ * Edit watch - Updated to make size optional and handle outlet changes
  */
 function editWatch(watchId) {
     if (!AuthModule.hasPermission('inventory')) {
@@ -430,7 +437,7 @@ function editWatch(watchId) {
         return;
     }
 
-    const watch = watches.find(w => w.id == watchId);
+    const watch = watches.find(w => w.id === watchId);
     if (!watch) {
         Utils.showNotification('Item not found.');
         return;
@@ -439,7 +446,7 @@ function editWatch(watchId) {
     // Store original outlet for comparison
     const originalOutlet = watch.outlet;
 
-    // Create edit modal with Type and Outlet fields, Size validation
+    // Create edit modal with Type and Outlet fields, Size is optional
     const editModal = document.createElement('div');
     editModal.className = 'modal';
     editModal.id = 'editWatchModal';
@@ -456,7 +463,7 @@ function editWatch(watchId) {
                     </div>
                     <div class="form-group">
                         <label>Type:</label>
-                        <select id="editWatchType" required onchange="updateEditSizeValidation()">
+                        <select id="editWatchType" required>
                             <option value="Watch" ${watch.type === 'Watch' ? 'selected' : ''}>Watch</option>
                             <option value="Clock" ${watch.type === 'Clock' ? 'selected' : ''}>Clock</option>
                             <option value="Timepiece" ${watch.type === 'Timepiece' ? 'selected' : ''}>Timepiece</option>
@@ -477,10 +484,8 @@ function editWatch(watchId) {
                 </div>
                 <div class="grid grid-2">
                     <div class="form-group">
-                        <label id="editSizeLabel">${watch.type === 'Strap' ? 'Size: <span style="color: red;">*</span>' : 'Size (Optional):'}:</label>
-                        <input type="text" id="editWatchSize" value="${watch.size === '-' ? '' : watch.size}" 
-                               placeholder="${watch.type === 'Strap' ? 'Size is required for straps' : 'e.g., 40mm, 42mm (optional)'}"
-                               ${watch.type === 'Strap' ? 'required' : ''}>
+                        <label>Size (Optional):</label>
+                        <input type="text" id="editWatchSize" value="${watch.size === '-' ? '' : watch.size}" placeholder="e.g., 40mm, 42mm">
                     </div>
                     <div class="form-group">
                         <label>Price (₹):</label>
@@ -546,35 +551,12 @@ function editWatch(watchId) {
 }
 
 /**
- * Update size validation in edit modal
- */
-function updateEditSizeValidation() {
-    const typeSelect = document.getElementById('editWatchType');
-    const sizeInput = document.getElementById('editWatchSize');
-    const sizeLabel = document.getElementById('editSizeLabel');
-    
-    if (typeSelect && sizeInput && sizeLabel) {
-        const selectedType = typeSelect.value;
-        
-        if (selectedType === 'Strap') {
-            sizeInput.required = true;
-            sizeLabel.innerHTML = 'Size: <span style="color: red;">*</span>';
-            sizeInput.placeholder = 'Size is required for straps';
-        } else {
-            sizeInput.required = false;
-            sizeLabel.textContent = 'Size (Optional):';
-            sizeInput.placeholder = 'e.g., 40mm, 42mm (optional)';
-        }
-    }
-}
-
-/**
- * Update watch - Updated to handle size validation
+ * Update watch - Updated to handle optional size and movement tracking
  */
 function updateWatch(event, watchId, originalOutlet) {
     event.preventDefault();
     
-    const watch = watches.find(w => w.id == watchId);
+    const watch = watches.find(w => w.id === watchId);
     if (!watch) {
         Utils.showNotification('Item not found.');
         return;
@@ -584,7 +566,7 @@ function updateWatch(event, watchId, originalOutlet) {
     const type = document.getElementById('editWatchType').value;
     const brand = document.getElementById('editWatchBrand').value.trim();
     const model = document.getElementById('editWatchModel').value.trim();
-    const size = document.getElementById('editWatchSize').value.trim();
+    const size = document.getElementById('editWatchSize').value.trim(); // Optional
     const price = parseFloat(document.getElementById('editWatchPrice').value);
     const quantity = parseInt(document.getElementById('editWatchQuantity').value);
     const outlet = document.getElementById('editWatchOutlet').value;
@@ -592,15 +574,9 @@ function updateWatch(event, watchId, originalOutlet) {
     const movementDate = document.getElementById('movementDate').value;
     const movementReason = document.getElementById('movementReason').value;
 
-    // Validate input - Size mandatory only for Strap type
+    // Validate input - Size is optional
     if (!code || !type || !brand || !model || !price || quantity < 0 || !outlet) {
         Utils.showNotification('Please fill in all required fields');
-        return;
-    }
-
-    // Size validation for Strap type
-    if (type === 'Strap' && !size) {
-        Utils.showNotification('Size is required for Strap type items');
         return;
     }
 
@@ -611,17 +587,17 @@ function updateWatch(event, watchId, originalOutlet) {
     }
 
     // Check if code already exists (excluding current watch)
-    if (watches.find(w => w.code === code && w.id != watchId)) {
+    if (watches.find(w => w.code === code && w.id !== watchId)) {
         Utils.showNotification('Item code already exists. Please use a different code.');
         return;
     }
 
-    // Update watch - Size can be empty for non-strap items
+    // Update watch - Size can be empty
     watch.code = code;
     watch.type = type;
     watch.brand = brand;
     watch.model = model;
-    watch.size = size || (type === 'Strap' ? '' : '-'); // Use '-' for empty size except straps
+    watch.size = size || '-'; // Use '-' if size is empty
     watch.price = price;
     watch.quantity = quantity;
     watch.description = description;
@@ -675,7 +651,7 @@ function initializeInventory() {
 }
 
 /**
- * Load modal template for inventory with updated size validation
+ * Load modal template for inventory with Type and Outlet fields - Size made optional
  */
 function loadInventoryModal() {
     const modalHtml = `
@@ -688,11 +664,11 @@ function loadInventoryModal() {
                     <div class="grid grid-2">
                         <div class="form-group">
                             <label>Code:</label>
-                            <input type="text" id="watchCode" required placeholder="Enter code or leave blank for auto-generation">
+                            <input type="text" id="watchCode" required placeholder="Auto-generated">
                         </div>
                         <div class="form-group">
                             <label>Type:</label>
-                            <select id="watchType" required onchange="updateSizeValidation()">
+                            <select id="watchType" required>
                                 <option value="">Select Type</option>
                                 <option value="Watch">Watch</option>
                                 <option value="Clock">Clock</option>
@@ -714,8 +690,8 @@ function loadInventoryModal() {
                     </div>
                     <div class="grid grid-2">
                         <div class="form-group">
-                            <label id="sizeLabel">Size (Optional):</label>
-                            <input type="text" id="watchSize" placeholder="e.g., 40mm, 42mm (optional)">
+                            <label>Size (Optional):</label>
+                            <input type="text" id="watchSize" placeholder="e.g., 40mm, 42mm">
                         </div>
                         <div class="form-group">
                             <label>Price (₹):</label>
@@ -753,33 +729,6 @@ function loadInventoryModal() {
         modalsContainer.innerHTML += modalHtml;
     }
 }
-
-/**
- * Update size validation based on selected type
- */
-function updateSizeValidation() {
-    const typeSelect = document.getElementById('watchType');
-    const sizeInput = document.getElementById('watchSize');
-    const sizeLabel = document.getElementById('sizeLabel');
-    
-    if (typeSelect && sizeInput && sizeLabel) {
-        const selectedType = typeSelect.value;
-        
-        if (selectedType === 'Strap') {
-            sizeInput.required = true;
-            sizeLabel.innerHTML = 'Size: <span style="color: red;">*</span>';
-            sizeInput.placeholder = 'Size is required for straps';
-        } else {
-            sizeInput.required = false;
-            sizeLabel.textContent = 'Size (Optional):';
-            sizeInput.placeholder = 'e.g., 40mm, 42mm (optional)';
-        }
-    }
-}
-
-// Make functions globally available
-window.updateSizeValidation = updateSizeValidation;
-window.updateEditSizeValidation = updateEditSizeValidation;
 
 // Auto-load modal when module loads
 document.addEventListener('DOMContentLoaded', function() {
