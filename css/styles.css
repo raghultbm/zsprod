@@ -1,4 +1,4 @@
-/* ZEDSON WATCHCRAFT - Main Styles (Updated with Smaller Action Buttons) */
+/* ZEDSON WATCHCRAFT - Main Styles (Updated with New Layout & Footer) */
 
 * {
     margin: 0;
@@ -11,6 +11,8 @@ body {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
     color: #333;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Container Styles */
@@ -18,9 +20,10 @@ body {
     max-width: 1400px;
     margin: 0 auto;
     padding: 20px;
+    flex: 1;
 }
 
-/* Header Styles */
+/* Header Styles - Updated Layout */
 .header {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
@@ -28,7 +31,6 @@ body {
     border-radius: 15px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     margin-bottom: 30px;
-    text-align: center;
     position: relative;
 }
 
@@ -45,44 +47,39 @@ body {
     z-index: -1;
 }
 
-/* Logo Styles */
+/* Updated Header Layout - Logo Left, Nav Right with reduced gap */
+.header-layout {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    gap: 30px; /* Reduced gap between logo and navigation */
+}
+
+/* Logo Styles - Moved to Left */
 .logo-container {
     display: flex;
     align-items: center;
-    justify-content: center;
-    margin-bottom: 15px;
     gap: 15px;
+    flex-shrink: 0; /* Prevent logo from shrinking */
 }
 
 .header-logo-image {
-    height: 80px;
+    height: 120px; /* Made even bigger */
     width: auto;
-    max-width: 300px;
-    margin: 0 auto;
+    max-width: 400px; /* Increased max width */
     display: block;
     filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
     transition: transform 0.3s ease;
 }
 
-/* Larger logo for header */
-.header-logo-image-large {
-    height: 120px;
-    width: auto;
-    max-width: 400px;
-    margin: 0 auto;
-    display: block;
-    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
-    transition: transform 0.3s ease;
-}
-
-.header-logo-image:hover,
-.header-logo-image-large:hover {
+.header-logo-image:hover {
     transform: scale(1.05);
 }
 
 .logo-circle {
-    width: 80px;
-    height: 80px;
+    width: 120px; /* Made bigger to match image */
+    height: 120px;
     background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
     border-radius: 50%;
     display: flex;
@@ -95,8 +92,8 @@ body {
 .logo-circle::before {
     content: '';
     position: absolute;
-    width: 65px;
-    height: 65px;
+    width: 95px; /* Adjusted for bigger logo */
+    height: 95px;
     border: 3px solid #ffd700;
     border-radius: 50%;
     border-style: dashed;
@@ -104,8 +101,8 @@ body {
 }
 
 .logo-watch {
-    width: 35px;
-    height: 35px;
+    width: 55px; /* Made bigger */
+    height: 55px;
     background: white;
     border-radius: 50%;
     display: flex;
@@ -117,8 +114,8 @@ body {
 .logo-watch::before {
     content: '';
     position: absolute;
-    width: 2px;
-    height: 12px;
+    width: 3px;
+    height: 20px; /* Made bigger */
     background: #1a237e;
     transform-origin: bottom;
     transform: rotate(45deg);
@@ -127,8 +124,8 @@ body {
 .logo-watch::after {
     content: '';
     position: absolute;
-    width: 2px;
-    height: 8px;
+    width: 3px;
+    height: 15px; /* Made bigger */
     background: #ffd700;
     transform-origin: bottom;
     transform: rotate(-30deg);
@@ -136,7 +133,7 @@ body {
 
 .header h1 {
     color: #1a237e;
-    font-size: 2.8em;
+    font-size: 3.5em; /* Made bigger to match logo */
     margin-bottom: 5px;
     font-weight: 700;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
@@ -144,35 +141,36 @@ body {
 
 .header .subtitle {
     color: #ffd700;
-    font-size: 1.2em;
+    font-size: 1.6em; /* Made bigger */
     font-weight: 600;
     margin-bottom: 10px;
     text-transform: uppercase;
     letter-spacing: 2px;
 }
 
-/* Navigation Styles */
+/* Navigation Styles - Moved to Right with bigger buttons */
 .nav {
     display: flex;
-    justify-content: center;
-    gap: 20px;
-    margin-top: 20px;
+    justify-content: flex-end; /* Align to right */
+    gap: 12px; /* Slightly increased gap for bigger buttons */
     flex-wrap: wrap;
+    flex-shrink: 0; /* Prevent navigation from shrinking */
 }
 
 .nav-btn {
     background: linear-gradient(45deg, #1a237e, #283593);
     color: white;
     border: 2px solid #ffd700;
-    padding: 12px 24px;
-    border-radius: 25px;
+    padding: 10px 16px; /* Made bigger - increased from 8px 14px */
+    border-radius: 22px;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 13px; /* Made bigger - increased from 12px */
     font-weight: 600;
     transition: all 0.3s ease;
     box-shadow: 0 4px 15px rgba(26, 35, 126, 0.4);
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
+    white-space: nowrap; /* Prevent text wrapping */
 }
 
 .nav-btn:hover {
@@ -210,6 +208,74 @@ body {
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+/* Footer Styles - NEW */
+.footer {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 15px;
+    text-align: center;
+    margin-top: 30px;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.footer-text {
+    color: #1a237e;
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.footer-heart {
+    color: #e74c3c;
+    font-size: 16px;
+    animation: heartbeat 2s ease-in-out infinite;
+}
+
+@keyframes heartbeat {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+/* Connection Status Indicator - NEW */
+.connection-status {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.connection-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #28a745;
+    animation: pulse 2s infinite;
+}
+
+.connection-indicator.offline {
+    background: #dc3545;
+    animation: none;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
 }
 
 /* Button Styles - UPDATED for smaller action buttons */
@@ -528,23 +594,25 @@ body {
 /* User Info Bar */
 .user-info {
     position: absolute;
-    top: 20px;
-    right: 20px;
+    top: 10px; /* Moved up to avoid overlap */
+    right: 10px; /* Moved in slightly */
     background: rgba(255, 255, 255, 0.9);
-    padding: 10px 20px;
-    border-radius: 25px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    padding: 6px 12px; /* Reduced padding */
+    border-radius: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 8px; /* Reduced gap */
+    font-size: 11px; /* Smaller font size */
+    z-index: 100; /* Ensure it stays on top */
 }
 
 .user-info .user-role {
     background: linear-gradient(45deg, #1a237e, #283593);
     color: white;
-    padding: 5px 12px;
-    border-radius: 15px;
-    font-size: 12px;
+    padding: 3px 8px; /* Reduced padding */
+    border-radius: 12px;
+    font-size: 10px; /* Smaller font */
     font-weight: 600;
     text-transform: uppercase;
 }
@@ -553,10 +621,10 @@ body {
     background: #ff6b6b;
     color: white;
     border: none;
-    padding: 8px 15px;
-    border-radius: 15px;
+    padding: 4px 8px; /* Reduced padding */
+    border-radius: 12px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 10px; /* Smaller font */
     font-weight: 600;
     transition: all 0.3s ease;
 }
@@ -666,9 +734,20 @@ body {
         padding: 10px;
     }
 
-    .nav {
+    .header-layout {
         flex-direction: column;
         align-items: center;
+        text-align: center;
+    }
+
+    .nav {
+        justify-content: center; /* Center on mobile */
+        margin-top: 15px;
+    }
+
+    .nav-btn {
+        font-size: 12px;
+        padding: 10px 16px;
     }
 
     .grid-2, .grid-3 {
@@ -713,20 +792,19 @@ body {
     }
 
     .header-logo-image {
-        height: 60px;
-        max-width: 250px;
-    }
-
-    .header-logo-image-large {
-        height: 80px;
+        height: 80px; /* Smaller on mobile */
         max-width: 300px;
     }
 
     .header h1 {
-        font-size: 2.2em;
+        font-size: 2.5em;
     }
 
     .stat-card h3 {
         font-size: 2em;
+    }
+
+    .footer-text {
+        font-size: 12px;
     }
 }

@@ -1,4 +1,91 @@
-<!DOCTYPE html>
+<!-- Connection Status Script -->
+    <script>
+        // Update connection status display
+        function updateConnectionStatus() {
+            const statusDiv = document.getElementById('connectionStatus');
+            const indicator = document.getElementById('connectionIndicator');
+            const text = document.getElementById('connectionText');
+            
+            if (window.mongoService) {
+                const status = window.mongoService.getConnectionStatus();
+                
+                if (status.isOnline) {
+                    indicator.classList.remove('offline');
+                    text.textContent = 'Online';
+                    
+                    if (status.queuedOperations > 0) {
+                        text.textContent = `Online (${status.queuedOperations} pending)`;
+                    }
+                } else {
+                    indicator.classList.add('offline');
+                    text.textContent = status.queuedOperations > 0 ? 
+                        `Offline (${status.queuedOperations} queued)` : 'Offline';
+                }
+            } else {
+                indicator.classList.add('offline');
+                text.textContent = 'Initializing...';
+            }
+        }
+        
+        // Update status every 5 seconds
+        setInterval(updateConnectionStatus, 5000);
+        
+        // Initial update after page load
+        setTimeout(updateConnectionStatus, 1000);
+
+        // Ensure all modules are properly initialized
+        document.addEventListener('DOMContentLoaded', function() {
+            // Wait for all scripts to load
+            setTimeout(() => {
+                console.log('DOM loaded, initializing all modules...');
+                
+                // Initialize modules in the correct order
+                if (window.LoggingModule) {
+                    LoggingModule.initializeLogging();
+                }
+
+                // Initialize core modules first
+                if (window.CustomerModule) {
+                    CustomerModule.initializeCustomers();
+                }
+                
+                if (window.InventoryModule) {
+                    InventoryModule.initializeInventory();
+                }
+                
+                if (window.SalesModule) {
+                    SalesModule.initializeSales();
+                }
+                
+                if (window.ServiceModule) {
+                    ServiceModule.initializeServices();
+                }
+                
+                if (window.ExpenseModule) {
+                    ExpenseModule.initializeExpenses();
+                }
+                
+                if (window.InvoiceModule) {
+                    InvoiceModule.initializeInvoices();
+                }
+
+                // Initialize data sync after all modules are ready
+                if (window.dataSyncModule) {
+                    setTimeout(() => {
+                        dataSyncModule.initialize();
+                    }, 500);
+                }
+
+                // Initialize app core
+                if (window.AppCoreModule) {
+                    AppCoreModule.initializeApp();
+                }
+                
+                console.log('All modules initialized successfully');
+            }, 1000);
+        });
+    </script>
+                <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -8,6 +95,12 @@
     <link rel="stylesheet" href="css/login.css">
 </head>
 <body>
+    <!-- Connection Status Indicator -->
+    <div id="connectionStatus" class="connection-status">
+        <div class="connection-indicator" id="connectionIndicator"></div>
+        <span id="connectionText">Connecting...</span>
+    </div>
+
     <!-- Login Screen -->
     <div id="loginScreen" class="login-screen">
         <div class="login-container">
@@ -57,7 +150,7 @@
     <!-- Main Application -->
     <div id="mainApp" class="app-container">
         <div class="container">
-            <!-- Header with Logo and Navigation -->
+            <!-- Header with Updated Layout - Logo Left, Navigation Right -->
             <div class="header">
                 <!-- User Info Bar -->
                 <div class="user-info">
@@ -66,26 +159,31 @@
                     <button class="logout-btn" onclick="logout()">Logout</button>
                 </div>
                 
-                <div class="logo-container">
-                    <img src="assets/zedson-logo.png" alt="ZEDSON WATCHCRAFT" class="header-logo-image-large">
-                    <!-- Fallback to original design if image fails to load -->
-                    <div class="logo-circle" style="display: none;">
-                        <div class="logo-watch"></div>
+                <div class="header-layout">
+                    <!-- Logo on the Left -->
+                    <div class="logo-container">
+                        <img src="assets/zedson-logo.png" alt="ZEDSON WATCHCRAFT" class="header-logo-image">
+                        <!-- Fallback to original design if image fails to load -->
+                        <div class="logo-circle" style="display: none;">
+                            <div class="logo-watch"></div>
+                        </div>
+                        <div style="display: none;">
+                            <h1>ZEDSON</h1>
+                            <div class="subtitle">WATCHCRAFT</div>
+                        </div>
                     </div>
-                    <div style="display: none;">
-                        <h1>ZEDSON</h1>
-                        <div class="subtitle">WATCHCRAFT</div>
+                    
+                    <!-- Navigation on the Right -->
+                    <div class="nav" id="mainNavigation">
+                        <button class="nav-btn active" onclick="showSection('dashboard', this)">Dashboard</button>
+                        <button class="nav-btn" onclick="showSection('customers', this)">Customers</button>
+                        <button class="nav-btn" onclick="showSection('inventory', this)">Inventory</button>
+                        <button class="nav-btn" onclick="showSection('sales', this)">Sales</button>
+                        <button class="nav-btn" onclick="showSection('service', this)">Service</button>
+                        <button class="nav-btn" onclick="showSection('expenses', this)">Expenses</button>
+                        <button class="nav-btn" onclick="showSection('invoices', this)">Invoices</button>
+                        <button class="nav-btn" id="userManagementBtn" onclick="showSection('users', this)" style="display: none;">User Management</button>
                     </div>
-                </div>
-                <div class="nav" id="mainNavigation">
-                    <button class="nav-btn active" onclick="showSection('dashboard', this)">Dashboard</button>
-                    <button class="nav-btn" onclick="showSection('customers', this)">Customers</button>
-                    <button class="nav-btn" onclick="showSection('inventory', this)">Inventory</button>
-                    <button class="nav-btn" onclick="showSection('sales', this)">Sales</button>
-                    <button class="nav-btn" onclick="showSection('service', this)">Service</button>
-                    <button class="nav-btn" onclick="showSection('expenses', this)">Expenses</button>
-                    <button class="nav-btn" onclick="showSection('invoices', this)">Invoices</button>
-                    <button class="nav-btn" id="userManagementBtn" onclick="showSection('users', this)" style="display: none;">User Management</button>
                 </div>
             </div>
 
@@ -95,7 +193,7 @@
                     <h2>Dashboard Overview</h2>
                     <div class="stats">
                         <div class="stat-card">
-                            <h3 id="totalWatches">3</h3>
+                            <h3 id="totalWatches">0</h3>
                             <p>Total Items</p>
                         </div>
                         <div class="stat-card clickable-stat" onclick="openRevenueAnalytics()">
@@ -107,7 +205,7 @@
                             <p>Incomplete Services</p>
                         </div>
                         <div class="stat-card">
-                            <h3 id="totalCustomers">2</h3>
+                            <h3 id="totalCustomers">0</h3>
                             <p>Total Customers</p>
                         </div>
                         <div class="stat-card">
@@ -322,6 +420,13 @@
                 </div>
             </div>
         </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-text">
+                Designed & Developed by PULSEWARE<span class="footer-heart">❤</span>
+            </div>
+        </div>
     </div>
 
     <!-- UPDATED Revenue Analytics Modal -->
@@ -380,9 +485,9 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="includeExpenses" onchange="applyRevenueFilter()">
-                        Include Expenses (subtract from revenue)
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="includeExpenses" onchange="applyRevenueFilter()" style="margin: 0;">
+                        <span>Include Expenses</span>
                     </label>
                 </div>
                 <button class="btn" onclick="applyRevenueFilter()">Apply Filter</button>
@@ -410,6 +515,8 @@
 
     <!-- JavaScript Files -->
     <script src="js/utils.js"></script>
+    <script src="js/mongodb-service.js"></script>
+    <script src="js/data-sync.js"></script>
     <script src="js/logging.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/inventory.js"></script>
@@ -446,6 +553,42 @@
   const app = initializeApp(firebaseConfig);
   const analytics = getAnalytics(app);
 </script>
+
+    <!-- Connection Status Script -->
+    <script>
+        // Update connection status display
+        function updateConnectionStatus() {
+            const statusDiv = document.getElementById('connectionStatus');
+            const indicator = document.getElementById('connectionIndicator');
+            const text = document.getElementById('connectionText');
+            
+            if (window.mongoService) {
+                const status = window.mongoService.getConnectionStatus();
+                
+                if (status.isOnline) {
+                    indicator.classList.remove('offline');
+                    text.textContent = 'Online';
+                    
+                    if (status.queuedOperations > 0) {
+                        text.textContent = `Online (${status.queuedOperations} pending)`;
+                    }
+                } else {
+                    indicator.classList.add('offline');
+                    text.textContent = status.queuedOperations > 0 ? 
+                        `Offline (${status.queuedOperations} queued)` : 'Offline';
+                }
+            } else {
+                indicator.classList.add('offline');
+                text.textContent = 'Initializing...';
+            }
+        }
+        
+        // Update status every 5 seconds
+        setInterval(updateConnectionStatus, 5000);
+        
+        // Initial update after page load
+        setTimeout(updateConnectionStatus, 1000);
+    </script>
 
 </body>
 </html>
