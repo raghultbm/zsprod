@@ -1,433 +1,460 @@
-// ZEDSON WATCHCRAFT - Simplified MongoDB Backend Server
+// ZEDSON WATCHCRAFT - Service Management Module with MongoDB Integration
 // Developed by PULSEWARE❤️
 
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-require('dotenv').config();
+/**
+ * Service Management System with MongoDB Backend
+ */
 
-const app = express();
-const PORT = process.env.PORT || 5000;
+// Service database (local cache)
+let services = [];
 
-// Middleware
-app.use(cors({
-    origin: ['http://localhost:3000', 'http://localhost:8000', 'http://127.0.0.1:8000'],
-    credentials: true
-}));
-app.use(express.json());
+/**
+ * Open New Service Modal
+ */
+function openNewServiceModal() {
+    if (!AuthModule.hasPermission('service')) {
+        Utils.showNotification('You do not have permission to create service requests.');
+        return;
+    }
+    
+    console.log('Opening New Service Modal');
+    
+    // Ensure modal exists
+    const modal = document.getElementById('newServiceModal');
+    if (!modal) {
+        Utils.showNotification('Service modal not found. Please refresh the page.');
+        return;
+    }
+    
+    // Populate customer dropdown
+    if (window.CustomerModule && CustomerModule.populateCustomerDropdown) {
+        CustomerModule.populateCustomerDropdown('serviceCustomer');
+    }
+    
+    // Reset form
+    const form = modal.querySelector('form');
+    if (form) {
+        form.reset();
+    }
+    
+    modal.style.display = 'block';
+}
 
-// MongoDB connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/zedson_watchcraft';
+/**
+ * Add new service request - with MongoDB integration
+ */
+async function addNewService(event) {
+    event.preventDefault();
+    
+    if (!AuthModule.hasPermission('service')) {
+        Utils.showNotification('You do not have permission to create service requests.');
+        return;
+    }
 
-mongoose.connect(MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-})
-.then(() => {
-    console.log('✅ Connected to MongoDB');
-    initializeDefaultData();
-})
-.catch(err => {
-    console.error('❌ MongoDB connection error:', err);
-});
+    console.log('Adding new service...');
 
-// Auto-increment plugin
-const AutoIncrement = require('mongoose-sequence')(mongoose);
+    // Get form data
+    const customerId = parseInt(document.getElementById('serviceCustomer').value);
+    const type = document.getElementById('serviceType').value;
+    const watchName = document.getElementById('serviceWatchName').value.trim();
+    const brand = document.getElementById('serviceBrand').value.trim();
+    const model = document.getElementById('serviceModel').value.trim();
+    const movementNo = document.getElementById('serviceMovementNo').value.trim();
+    const dialColor = document.getElementById('serviceDialColor').value.trim() || 'N/A';
+    const gender = document.getElementById('serviceGender').value || 'N/A';
+    const caseType = document.getElementById('serviceCaseType').value.trim() || 'N/A';
+    const strapType = document.getElementById('serviceStrapType').value.trim() || 'N/A';
+    const issue = document.getElementById('serviceIssue').value.trim();
+    const cost = parseFloat(document.getElementById('serviceCost').value);
+    const estimatedDelivery = document.getElementById('serviceEstimatedDelivery').value;
+    
+    // Validate input
+    if (!customerId || !type || !watchName || !brand || !model || !movementNo || !issue || !cost) {
+        Utils.showNotification('Please fill in all required fields');
+        return;
+    }
 
-// Schemas
-const userSchema = new mongoose.Schema({
-    username: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
-    role: { type: String, enum: ['admin', 'owner', 'staff'], required: true },
-    fullName: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    status: { type: String, enum: ['active', 'inactive'], default: 'active' },
-    lastLogin: { type: Date }
-}, { timestamps: true });
+    if (cost <= 0) {
+        Utils.showNotification('Cost must be greater than zero');
+        return;
+    }
 
-const customerSchema = new mongoose.Schema({
-    name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    phone: { type: String, required: true },
-    address: { type: String },
-    purchases: { type: Number, default: 0 },
-    serviceCount: { type: Number, default: 0 },
-    netValue: { type: Number, default: 0 },
-    addedBy: { type: String }
-}, { timestamps: true });
+    // Get customer details
+    const customer = CustomerModule.getCustomerById(customerId);
+    if (!customer) {
+        Utils.showNotification('Selected customer not found');
+        return;
+    }
 
-const inventorySchema = new mongoose.Schema({
-    code: { type: String, required: true, unique: true },
-    type: { type: String, required: true },
-    brand: { type: String, required: true },
-    model: { type: String, required: true },
-    size: { type: String, default: '-' },
-    price: { type: Number, required: true },
-    quantity: { type: Number, required: true },
-    outlet: { type: String, required: true },
-    description: { type: String },
-    status: { type: String, enum: ['available', 'sold'], default: 'available' },
-    addedBy: { type: String }
-}, { timestamps: true });
-
-const salesSchema = new mongoose.Schema({
-    date: { type: String, required: true },
-    time: { type: String, required: true },
-    timestamp: { type: String, required: true },
-    customerId: { type: Number, required: true },
-    customerName: { type: String, required: true },
-    watchId: { type: Number, required: true },
-    watchName: { type: String, required: true },
-    watchCode: { type: String, required: true },
-    price: { type: Number, required: true },
-    quantity: { type: Number, required: true },
-    subtotal: { type: Number, required: true },
-    discountType: { type: String, default: '' },
-    discountValue: { type: Number, default: 0 },
-    discountAmount: { type: Number, default: 0 },
-    totalAmount: { type: Number, required: true },
-    paymentMethod: { type: String, required: true },
-    status: { type: String, default: 'completed' },
-    createdBy: { type: String }
-}, { timestamps: true });
-
-const serviceSchema = new mongoose.Schema({
-    date: { type: String, required: true },
-    time: { type: String, required: true },
-    timestamp: { type: String, required: true },
-    customerId: { type: Number, required: true },
-    customerName: { type: String, required: true },
-    type: { type: String, required: true },
-    watchName: { type: String, required: true },
-    brand: { type: String, required: true },
-    model: { type: String, required: true },
-    dialColor: { type: String, default: 'N/A' },
-    movementNo: { type: String, required: true },
-    gender: { type: String, default: 'N/A' },
-    caseType: { type: String, default: 'N/A' },
-    strapType: { type: String, default: 'N/A' },
-    issue: { type: String, required: true },
-    cost: { type: Number, required: true },
-    status: { type: String, enum: ['pending', 'in-progress', 'on-hold', 'completed'], default: 'pending' },
-    estimatedDelivery: { type: String },
-    actualDelivery: { type: String },
-    completionDescription: { type: String },
-    warrantyPeriod: { type: Number, default: 0 },
-    createdBy: { type: String }
-}, { timestamps: true });
-
-const expenseSchema = new mongoose.Schema({
-    date: { type: String, required: true },
-    formattedDate: { type: String, required: true },
-    description: { type: String, required: true },
-    amount: { type: Number, required: true },
-    timestamp: { type: String, required: true },
-    createdBy: { type: String }
-}, { timestamps: true });
-
-const invoiceSchema = new mongoose.Schema({
-    invoiceNo: { type: String, required: true, unique: true },
-    type: { type: String, required: true },
-    subType: { type: String, required: true },
-    date: { type: String, required: true },
-    timestamp: { type: String, required: true },
-    customerId: { type: Number, required: true },
-    customerName: { type: String, required: true },
-    relatedId: { type: Number, required: true },
-    relatedType: { type: String, required: true },
-    amount: { type: Number, required: true },
-    status: { type: String, default: 'generated' },
-    createdBy: { type: String }
-}, { timestamps: true });
-
-// Apply auto-increment
-customerSchema.plugin(AutoIncrement, {inc_field: 'id', id: 'customer_counter'});
-inventorySchema.plugin(AutoIncrement, {inc_field: 'id', id: 'inventory_counter'});
-salesSchema.plugin(AutoIncrement, {inc_field: 'id', id: 'sales_counter'});
-serviceSchema.plugin(AutoIncrement, {inc_field: 'id', id: 'service_counter'});
-expenseSchema.plugin(AutoIncrement, {inc_field: 'id', id: 'expense_counter'});
-invoiceSchema.plugin(AutoIncrement, {inc_field: 'id', id: 'invoice_counter'});
-
-// Models
-const User = mongoose.model('User', userSchema);
-const Customer = mongoose.model('Customer', customerSchema);
-const Inventory = mongoose.model('Inventory', inventorySchema);
-const Sales = mongoose.model('Sales', salesSchema);
-const Service = mongoose.model('Service', serviceSchema);
-const Expense = mongoose.model('Expense', expenseSchema);
-const Invoice = mongoose.model('Invoice', invoiceSchema);
-
-// Initialize default data
-async function initializeDefaultData() {
     try {
-        // Check if admin user exists
-        const adminExists = await User.findOne({ username: 'admin' });
-        if (!adminExists) {
-            const hashedPassword = await bcrypt.hash('admin123', 10);
-            await User.create({
-                username: 'admin',
-                password: hashedPassword,
-                role: 'admin',
-                fullName: 'System Administrator',
-                email: 'admin@zedsonwatchcraft.com',
-                status: 'active'
-            });
-            console.log('✅ Default admin user created');
-        }
+        // Create service object
+        const now = new Date();
+        const newService = {
+            date: Utils.formatDate(now),
+            time: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+            timestamp: Utils.getCurrentTimestamp(),
+            customerId: customerId,
+            customerName: customer.name,
+            type: type,
+            watchName: watchName,
+            brand: brand,
+            model: model,
+            dialColor: dialColor,
+            movementNo: movementNo,
+            gender: gender,
+            caseType: caseType,
+            strapType: strapType,
+            issue: issue,
+            cost: cost,
+            status: 'pending',
+            estimatedDelivery: estimatedDelivery,
+            actualDelivery: '',
+            completionDescription: '',
+            warrantyPeriod: 0,
+            createdBy: AuthModule.getCurrentUser().username
+        };
 
-        // Check if sample data exists
-        const customerCount = await Customer.countDocuments();
-        if (customerCount === 0) {
-            await Customer.insertMany([
-                {
-                    name: "Raj Kumar",
-                    email: "raj@email.com",
-                    phone: "+91-9876543210",
-                    address: "Chennai, Tamil Nadu",
-                    addedBy: "admin"
-                },
-                {
-                    name: "Priya Sharma",
-                    email: "priya@email.com",
-                    phone: "+91-9876543211",
-                    address: "Mumbai, Maharashtra",
-                    addedBy: "admin"
-                }
-            ]);
-
-            await Inventory.insertMany([
-                {
-                    code: "ROL001",
-                    type: "Watch",
-                    brand: "Rolex",
-                    model: "Submariner",
-                    size: "40mm",
-                    price: 850000,
-                    quantity: 2,
-                    outlet: "Semmancheri",
-                    description: "Luxury diving watch",
-                    addedBy: "admin"
-                },
-                {
-                    code: "OMG001",
-                    type: "Watch",
-                    brand: "Omega",
-                    model: "Speedmaster",
-                    size: "42mm",
-                    price: 450000,
-                    quantity: 1,
-                    outlet: "Navalur",
-                    description: "Professional chronograph",
-                    addedBy: "admin"
-                }
-            ]);
+        // Save to MongoDB
+        const response = await window.apiService.createService(newService);
+        
+        if (response.success) {
+            // Add to local cache
+            services.push(response.data);
             
-            console.log('✅ Sample data created');
+            // Update customer service count
+            await CustomerModule.incrementCustomerServices(customerId);
+            
+            // Generate Service Acknowledgement Receipt
+            if (window.InvoiceModule) {
+                const acknowledgement = InvoiceModule.generateServiceAcknowledgement(response.data);
+                if (acknowledgement) {
+                    response.data.acknowledgementGenerated = true;
+                    response.data.acknowledgementInvoiceId = acknowledgement.id;
+                }
+            }
+            
+            // Update displays
+            renderServiceTable();
+            if (window.updateDashboard) {
+                updateDashboard();
+            }
+            
+            // Close modal and reset form
+            document.getElementById('newServiceModal').style.display = 'none';
+            event.target.reset();
+            
+            Utils.showNotification(`Service request created successfully! Service ID: ${response.data.id}. Acknowledgement receipt generated.`);
+            console.log('Service added:', response.data);
+        } else {
+            Utils.showNotification(response.error || 'Failed to add service request');
         }
     } catch (error) {
-        console.error('Error initializing default data:', error);
+        console.error('Error adding service:', error);
+        Utils.showNotification('Error adding service request: ' + error.message);
     }
 }
 
-// Middleware to verify JWT token
-const authenticateToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (!token) {
-        return res.status(401).json({ error: 'Access token required' });
+/**
+ * Update service status - with MongoDB integration
+ */
+async function updateServiceStatus(serviceId, newStatus) {
+    if (!AuthModule.hasPermission('service')) {
+        Utils.showNotification('You do not have permission to update service status.');
+        return;
     }
 
-    jwt.verify(token, process.env.JWT_SECRET || 'zedson_secret', (err, user) => {
-        if (err) {
-            return res.status(403).json({ error: 'Invalid token' });
-        }
-        req.user = user;
-        next();
-    });
-};
+    const service = services.find(s => s.id === serviceId);
+    if (!service) {
+        Utils.showNotification('Service not found.');
+        return;
+    }
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-    res.json({
-        status: 'OK',
-        message: 'ZEDSON WATCHCRAFT Backend - MongoDB Connected',
-        timestamp: new Date().toISOString(),
-        database: 'MongoDB Local'
-    });
-});
-
-// Authentication routes
-app.post('/api/auth/login', async (req, res) => {
     try {
-        const { username, password } = req.body;
-
-        const user = await User.findOne({ username });
-        if (!user) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+        const updateData = { status: newStatus };
+        
+        // If marking as completed, ask for completion details
+        if (newStatus === 'completed') {
+            const completionDescription = prompt('Enter completion description (optional):') || 'Service completed successfully';
+            const warrantyPeriod = parseInt(prompt('Enter warranty period in months (0 for no warranty):') || '0');
+            
+            updateData.completionDescription = completionDescription;
+            updateData.warrantyPeriod = Math.max(0, warrantyPeriod);
+            updateData.actualDelivery = Utils.formatDate(new Date());
         }
 
-        const isValidPassword = await bcrypt.compare(password, user.password);
-        if (!isValidPassword) {
-            return res.status(401).json({ error: 'Invalid credentials' });
-        }
-
-        // Update last login
-        user.lastLogin = new Date();
-        await user.save();
-
-        const token = jwt.sign(
-            { id: user._id, username: user.username, role: user.role },
-            process.env.JWT_SECRET || 'zedson_secret',
-            { expiresIn: '24h' }
-        );
-
-        res.json({
-            success: true,
-            token,
-            user: {
-                username: user.username,
-                role: user.role,
-                fullName: user.fullName,
-                email: user.email
+        const response = await window.apiService.updateService(serviceId, updateData);
+        
+        if (response.success) {
+            // Update local cache
+            Object.assign(service, updateData);
+            
+            // Generate completion invoice if status is completed
+            if (newStatus === 'completed' && window.InvoiceModule) {
+                const completionInvoice = InvoiceModule.generateServiceCompletionInvoice(service);
+                if (completionInvoice) {
+                    service.completionInvoiceGenerated = true;
+                    service.completionInvoiceId = completionInvoice.id;
+                }
             }
-        });
-    } catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-// Generic CRUD routes for all collections
-const createCRUDRoutes = (path, Model) => {
-    // Get all
-    app.get(`/api/${path}`, async (req, res) => {
-        try {
-            const documents = await Model.find({}).sort({ createdAt: -1 });
-            res.json({ success: true, data: documents });
-        } catch (error) {
-            console.error(`Error fetching ${path}:`, error);
-            res.status(500).json({ error: 'Internal server error' });
+            
+            renderServiceTable();
+            if (window.updateDashboard) {
+                updateDashboard();
+            }
+            
+            Utils.showNotification(`Service status updated to ${newStatus}!`);
+        } else {
+            Utils.showNotification(response.error || 'Failed to update service status');
         }
-    });
+    } catch (error) {
+        console.error('Error updating service status:', error);
+        Utils.showNotification('Error updating service status: ' + error.message);
+    }
+}
 
-    // Create
-    app.post(`/api/${path}`, async (req, res) => {
+/**
+ * Delete service - with MongoDB integration
+ */
+async function deleteService(serviceId) {
+    const currentUser = AuthModule.getCurrentUser();
+    const isStaff = currentUser && currentUser.role === 'staff';
+    
+    if (isStaff) {
+        Utils.showNotification('Staff users cannot delete service requests.');
+        return;
+    }
+
+    if (!AuthModule.hasPermission('service')) {
+        Utils.showNotification('You do not have permission to delete service requests.');
+        return;
+    }
+
+    const service = services.find(s => s.id === serviceId);
+    if (!service) {
+        Utils.showNotification('Service not found.');
+        return;
+    }
+
+    if (confirm(`Are you sure you want to delete the service request for ${service.watchName}?`)) {
         try {
-            const document = new Model(req.body);
-            const saved = await document.save();
-            res.status(201).json({ success: true, data: saved });
-        } catch (error) {
-            console.error(`Error creating ${path}:`, error);
-            if (error.code === 11000) {
-                res.status(400).json({ error: 'Duplicate entry found' });
+            const response = await window.apiService.deleteService(serviceId);
+            
+            if (response.success) {
+                // Update customer service count
+                await CustomerModule.decrementCustomerServices(service.customerId);
+                
+                // Remove from local cache
+                services = services.filter(s => s.id !== serviceId);
+                
+                renderServiceTable();
+                if (window.updateDashboard) {
+                    updateDashboard();
+                }
+                Utils.showNotification('Service request deleted successfully!');
             } else {
-                res.status(500).json({ error: 'Internal server error' });
+                Utils.showNotification(response.error || 'Failed to delete service request');
             }
-        }
-    });
-
-    // Update by ID
-    app.put(`/api/${path}/:id`, async (req, res) => {
-        try {
-            const { id } = req.params;
-            const updateData = req.body;
-            
-            const result = await Model.updateOne({ id: parseInt(id) }, updateData);
-            
-            if (result.matchedCount === 0) {
-                return res.status(404).json({ error: `${path} not found` });
-            }
-            
-            res.json({ success: true, data: result });
         } catch (error) {
-            console.error(`Error updating ${path}:`, error);
-            res.status(500).json({ error: 'Internal server error' });
+            console.error('Error deleting service:', error);
+            Utils.showNotification('Error deleting service request: ' + error.message);
         }
-    });
-
-    // Delete by ID
-    app.delete(`/api/${path}/:id`, async (req, res) => {
-        try {
-            const { id } = req.params;
-            const result = await Model.deleteOne({ id: parseInt(id) });
-            
-            if (result.deletedCount === 0) {
-                return res.status(404).json({ error: `${path} not found` });
-            }
-            
-            res.json({ success: true, data: result });
-        } catch (error) {
-            console.error(`Error deleting ${path}:`, error);
-            res.status(500).json({ error: 'Internal server error' });
-        }
-    });
-};
-
-// Create CRUD routes for all models
-createCRUDRoutes('customers', Customer);
-createCRUDRoutes('inventory', Inventory);
-createCRUDRoutes('sales', Sales);
-createCRUDRoutes('services', Service);
-createCRUDRoutes('expenses', Expense);
-createCRUDRoutes('invoices', Invoice);
-
-// Dashboard statistics
-app.get('/api/dashboard/stats', async (req, res) => {
-    try {
-        const totalWatches = await Inventory.countDocuments();
-        const totalCustomers = await Customer.countDocuments();
-        const totalSales = await Sales.countDocuments();
-        const totalServices = await Service.countDocuments();
-        const incompleteServices = await Service.countDocuments({ status: { $ne: 'completed' } });
-        const totalInvoices = await Invoice.countDocuments();
-        
-        // Today's revenue
-        const today = new Date().toLocaleDateString('en-IN');
-        const todaySales = await Sales.find({ date: today });
-        const todayServices = await Service.find({
-            status: 'completed',
-            actualDelivery: today
-        });
-        
-        const todayRevenue = 
-            todaySales.reduce((sum, sale) => sum + sale.totalAmount, 0) +
-            todayServices.reduce((sum, service) => sum + service.cost, 0);
-        
-        res.json({
-            success: true,
-            data: {
-                totalWatches,
-                totalCustomers,
-                totalSales,
-                totalServices,
-                incompleteServices,
-                totalInvoices,
-                todayRevenue
-            }
-        });
-    } catch (error) {
-        console.error('Error fetching dashboard stats:', error);
-        res.status(500).json({ error: 'Internal server error' });
     }
-});
+}
 
-// Error handling
-app.use((error, req, res, next) => {
-    console.error('Global error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-});
+/**
+ * View service acknowledgement receipt
+ */
+function viewServiceAcknowledgement(serviceId) {
+    if (!window.InvoiceModule) {
+        Utils.showNotification('Invoice module not available.');
+        return;
+    }
+    
+    InvoiceModule.viewServiceAcknowledgement(serviceId);
+}
 
-// Start server
-app.listen(PORT, () => {
-    console.log(`🚀 ZEDSON WATCHCRAFT Backend Server Started`);
-    console.log(`💝 Developed by PULSEWARE with ❤️`);
-    console.log(`🔗 Server running on: http://localhost:${PORT}`);
-    console.log(`🏥 Health Check: http://localhost:${PORT}/health`);
-    console.log(`📡 API Base URL: http://localhost:${PORT}/api`);
-    console.log('════════════════════════════════════════════════════');
-});
+/**
+ * View service completion invoice
+ */
+function viewServiceCompletionInvoice(serviceId) {
+    if (!window.InvoiceModule) {
+        Utils.showNotification('Invoice module not available.');
+        return;
+    }
+    
+    const invoices = InvoiceModule.getInvoicesForTransaction(serviceId, 'service');
+    const completionInvoice = invoices.find(inv => inv.type === 'Service Completion');
+    
+    if (completionInvoice) {
+        InvoiceModule.viewInvoice(completionInvoice.id);
+    } else {
+        Utils.showNotification('No completion invoice found for this service.');
+    }
+}
 
-module.exports = app;
+/**
+ * Get service by ID
+ */
+function getServiceById(serviceId) {
+    return services.find(s => s.id === serviceId);
+}
+
+/**
+ * Get services by customer
+ */
+function getServicesByCustomer(customerId) {
+    return services.filter(service => service.customerId === customerId);
+}
+
+/**
+ * Get incomplete services
+ */
+function getIncompleteServices() {
+    return services.filter(service => service.status !== 'completed');
+}
+
+/**
+ * Search services
+ */
+function searchServices(query) {
+    const tbody = document.getElementById('serviceTableBody');
+    if (!tbody) return;
+    
+    const rows = tbody.querySelectorAll('tr');
+    
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        if (text.includes(query.toLowerCase())) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+/**
+ * Render service table
+ */
+function renderServiceTable() {
+    const tbody = document.getElementById('serviceTableBody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    // Sort services by date (newest first)
+    const sortedServices = services.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    
+    sortedServices.forEach((service, index) => {
+        const row = document.createElement('tr');
+        
+        // Check user permissions
+        const currentUser = AuthModule.getCurrentUser();
+        const isStaff = currentUser && currentUser.role === 'staff';
+        const canEdit = !isStaff && AuthModule.hasPermission('service');
+        
+        // Build action buttons based on permissions and service status
+        let actionButtons = '';
+        
+        // Status update buttons (available for all users)
+        if (service.status !== 'completed') {
+            actionButtons += `
+                <button class="btn btn-sm" onclick="ServiceModule.updateServiceStatus(${service.id}, 'in-progress')"
+                    ${service.status === 'in-progress' ? 'disabled' : ''}>In Progress</button>
+                <button class="btn btn-sm" onclick="ServiceModule.updateServiceStatus(${service.id}, 'on-hold')"
+                    ${service.status === 'on-hold' ? 'disabled' : ''}>On Hold</button>
+                <button class="btn btn-sm btn-success" onclick="ServiceModule.updateServiceStatus(${service.id}, 'completed')">Complete</button>
+            `;
+        }
+        
+        // Acknowledgement receipt button
+        actionButtons += `
+            <button class="btn btn-sm" onclick="ServiceModule.viewServiceAcknowledgement(${service.id})" title="View Receipt">Receipt</button>
+        `;
+        
+        // Completion invoice button (only if completed)
+        if (service.status === 'completed') {
+            actionButtons += `
+                <button class="btn btn-sm btn-success" onclick="ServiceModule.viewServiceCompletionInvoice(${service.id})" title="View Invoice">Invoice</button>
+            `;
+        }
+        
+        // Delete button (only for non-staff users)
+        if (canEdit) {
+            actionButtons += `
+                <button class="btn btn-sm btn-danger" onclick="ServiceModule.deleteService(${service.id})">Delete</button>
+            `;
+        }
+        
+        // Get customer mobile number
+        const customer = window.CustomerModule ? CustomerModule.getCustomerById(service.customerId) : null;
+        const customerMobile = customer ? customer.phone : 'N/A';
+        
+        row.innerHTML = `
+            <td class="serial-number">${index + 1}</td>
+            <td>${Utils.sanitizeHtml(service.date)}</td>
+            <td>${Utils.sanitizeHtml(service.time)}</td>
+            <td class="customer-info">
+                <div class="customer-name">${Utils.sanitizeHtml(service.customerName)}</div>
+                <div class="customer-mobile">${Utils.sanitizeHtml(customerMobile)}</div>
+            </td>
+            <td>
+                <strong>${Utils.sanitizeHtml(service.watchName)}</strong><br>
+                <small>Type: ${Utils.sanitizeHtml(service.type)}</small>
+            </td>
+            <td>
+                <strong>${Utils.sanitizeHtml(service.brand)} ${Utils.sanitizeHtml(service.model)}</strong><br>
+                <small>Movement: ${Utils.sanitizeHtml(service.movementNo)}</small><br>
+                <small>Dial: ${Utils.sanitizeHtml(service.dialColor)}</small>
+            </td>
+            <td>${Utils.sanitizeHtml(service.issue)}</td>
+            <td><span class="status ${service.status.replace('-', '')}">${service.status}</span></td>
+            <td>${Utils.formatCurrency(service.cost)}</td>
+            <td style="white-space: nowrap;">${actionButtons}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+/**
+ * Load services from MongoDB
+ */
+async function loadServices() {
+    try {
+        const response = await window.apiService.getServices();
+        if (response.success) {
+            services = response.data;
+            renderServiceTable();
+            console.log('Services loaded from MongoDB:', services.length);
+        }
+    } catch (error) {
+        console.error('Error loading services:', error);
+        Utils.showNotification('Error loading services from server');
+    }
+}
+
+/**
+ * Initialize service module
+ */
+async function initializeServices() {
+    await loadServices();
+    renderServiceTable();
+    console.log('Service module initialized with MongoDB integration');
+}
+
+// Export functions for global use
+window.ServiceModule = {
+    openNewServiceModal,
+    addNewService,
+    updateServiceStatus,
+    deleteService,
+    viewServiceAcknowledgement,
+    viewServiceCompletionInvoice,
+    getServiceById,
+    getServicesByCustomer,
+    getIncompleteServices,
+    searchServices,
+    renderServiceTable,
+    loadServices,
+    initializeServices,
+    services // For access by other modules
+};
