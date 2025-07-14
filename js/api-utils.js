@@ -1,7 +1,7 @@
-// ZEDSON WATCHCRAFT - API Utilities with Complete Integration (FIXED)
+// ZEDSON WATCHCRAFT - API Utilities with Inventory API Integration
 
 /**
- * API configuration and utility functions (Complete Integration)
+ * API configuration and utility functions (Updated with Inventory API)
  */
 
 const API_BASE_URL = 'http://localhost:5000/api';
@@ -151,7 +151,7 @@ class APIUtils {
 // Create global API instance
 const api = new APIUtils();
 
-// Authentication API methods
+// Authentication API methods (existing)
 const AuthAPI = {
   async login(username, password) {
     try {
@@ -262,10 +262,19 @@ const AuthAPI = {
     } catch (error) {
       throw error;
     }
+  },
+
+  async initializeAdmin() {
+    try {
+      const response = await api.post('/auth/init', {}, { auth: false });
+      return response;
+    } catch (error) {
+      throw error;
+    }
   }
 };
 
-// Customer API methods
+// Customer API methods (existing)
 const CustomerAPI = {
   async getCustomers(params = {}) {
     try {
@@ -372,8 +381,11 @@ const CustomerAPI = {
   }
 };
 
-// Inventory API methods
+// NEW: Inventory API methods
 const InventoryAPI = {
+  /**
+   * Get all inventory items
+   */
   async getInventory(params = {}) {
     try {
       const queryString = new URLSearchParams(params).toString();
@@ -385,6 +397,9 @@ const InventoryAPI = {
     }
   },
 
+  /**
+   * Get inventory statistics
+   */
   async getInventoryStats() {
     try {
       const response = await api.get('/inventory/stats');
@@ -394,6 +409,9 @@ const InventoryAPI = {
     }
   },
 
+  /**
+   * Get available items for sales
+   */
   async getAvailableItems(outlet = null) {
     try {
       const params = outlet ? `?outlet=${outlet}` : '';
@@ -404,6 +422,9 @@ const InventoryAPI = {
     }
   },
 
+  /**
+   * Get low stock alerts
+   */
   async getLowStockAlerts() {
     try {
       const response = await api.get('/inventory/low-stock');
@@ -413,6 +434,9 @@ const InventoryAPI = {
     }
   },
 
+  /**
+   * Search inventory items
+   */
   async searchInventory(searchTerm, filters = {}) {
     try {
       const params = new URLSearchParams({ q: searchTerm, ...filters });
@@ -423,6 +447,9 @@ const InventoryAPI = {
     }
   },
 
+  /**
+   * Get single inventory item
+   */
   async getInventoryItem(itemId) {
     try {
       const response = await api.get(`/inventory/${itemId}`);
@@ -432,6 +459,9 @@ const InventoryAPI = {
     }
   },
 
+  /**
+   * Create new inventory item
+   */
   async createInventoryItem(itemData) {
     try {
       const response = await api.post('/inventory', itemData);
@@ -441,6 +471,9 @@ const InventoryAPI = {
     }
   },
 
+  /**
+   * Update inventory item
+   */
   async updateInventoryItem(itemId, itemData) {
     try {
       const response = await api.put(`/inventory/${itemId}`, itemData);
@@ -450,6 +483,9 @@ const InventoryAPI = {
     }
   },
 
+  /**
+   * Delete inventory item
+   */
   async deleteInventoryItem(itemId) {
     try {
       const response = await api.delete(`/inventory/${itemId}`);
@@ -459,6 +495,9 @@ const InventoryAPI = {
     }
   },
 
+  /**
+   * Decrease item quantity (for sales)
+   */
   async decreaseQuantity(itemId, amount = 1) {
     try {
       const response = await api.patch(`/inventory/${itemId}/decrease-quantity`, { amount });
@@ -468,6 +507,9 @@ const InventoryAPI = {
     }
   },
 
+  /**
+   * Increase item quantity (for returns/restocking)
+   */
   async increaseQuantity(itemId, amount = 1) {
     try {
       const response = await api.patch(`/inventory/${itemId}/increase-quantity`, { amount });
@@ -477,6 +519,9 @@ const InventoryAPI = {
     }
   },
 
+  /**
+   * Move item to different outlet
+   */
   async moveToOutlet(itemId, outlet, reason = 'Stock Transfer') {
     try {
       const response = await api.patch(`/inventory/${itemId}/move-outlet`, { outlet, reason });
@@ -486,6 +531,9 @@ const InventoryAPI = {
     }
   },
 
+  /**
+   * Get movement history for an item
+   */
   async getMovementHistory(itemId) {
     try {
       const response = await api.get(`/inventory/${itemId}/movement-history`);
@@ -496,315 +544,18 @@ const InventoryAPI = {
   }
 };
 
-// Sales API methods
-const SalesAPI = {
-  async getSales(params = {}) {
-    try {
-      const queryString = new URLSearchParams(params).toString();
-      const endpoint = queryString ? `/sales?${queryString}` : '/sales';
-      const response = await api.get(endpoint);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async getSalesStats() {
-    try {
-      const response = await api.get('/sales/stats');
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async getRecentSales(limit = 5) {
-    try {
-      const response = await api.get(`/sales/recent?limit=${limit}`);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async getSale(saleId) {
-    try {
-      const response = await api.get(`/sales/${saleId}`);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async createSale(saleData) {
-    try {
-      const response = await api.post('/sales', saleData);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async updateSale(saleId, saleData) {
-    try {
-      const response = await api.put(`/sales/${saleId}`, saleData);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async deleteSale(saleId) {
-    try {
-      const response = await api.delete(`/sales/${saleId}`);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async addSaleNote(saleId, note) {
-    try {
-      const response = await api.post(`/sales/${saleId}/notes`, { note });
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async getSalesByCustomer(customerId) {
-    try {
-      const response = await api.get(`/sales/customer/${customerId}`);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  }
-};
-
-// Service API methods
-const ServiceAPI = {
-  async getServices(params = {}) {
-    try {
-      const queryString = new URLSearchParams(params).toString();
-      const endpoint = queryString ? `/service?${queryString}` : '/service';
-      const response = await api.get(endpoint);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async getServiceStats() {
-    try {
-      const response = await api.get('/service/stats');
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async getIncompleteServices(limit = 5) {
-    try {
-      const response = await api.get(`/service/incomplete?limit=${limit}`);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async getServicesByStatus(status) {
-    try {
-      const response = await api.get(`/service/status/${status}`);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async getService(serviceId) {
-    try {
-      const response = await api.get(`/service/${serviceId}`);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async createService(serviceData) {
-    try {
-      const response = await api.post('/service', serviceData);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async updateService(serviceId, serviceData) {
-    try {
-      const response = await api.put(`/service/${serviceId}`, serviceData);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async updateServiceStatus(serviceId, status) {
-    try {
-      const response = await api.patch(`/service/${serviceId}/status`, { status });
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async completeService(serviceId, completionData) {
-    try {
-      const response = await api.patch(`/service/${serviceId}/complete`, completionData);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async deleteService(serviceId) {
-    try {
-      const response = await api.delete(`/service/${serviceId}`);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async addServiceNote(serviceId, note) {
-    try {
-      const response = await api.post(`/service/${serviceId}/notes`, { note });
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async getServicesByCustomer(customerId) {
-    try {
-      const response = await api.get(`/service/customer/${customerId}`);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  }
-};
-
-// Invoice API methods
-const InvoiceAPI = {
-  async getInvoices(params = {}) {
-    try {
-      const queryString = new URLSearchParams(params).toString();
-      const endpoint = queryString ? `/invoices?${queryString}` : '/invoices';
-      const response = await api.get(endpoint);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async getInvoiceStats() {
-    try {
-      const response = await api.get('/invoices/stats');
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async getInvoice(invoiceId) {
-    try {
-      const response = await api.get(`/invoices/${invoiceId}`);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async generateSalesInvoice(saleId) {
-    try {
-      const response = await api.post('/invoices/sales', { saleId });
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async generateServiceCompletionInvoice(serviceId) {
-    try {
-      const response = await api.post('/invoices/service-completion', { serviceId });
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async generateServiceAcknowledgement(serviceId) {
-    try {
-      const response = await api.post('/invoices/service-acknowledgement', { serviceId });
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async getInvoicesByTransaction(transactionId, transactionType) {
-    try {
-      const response = await api.get(`/invoices/transaction/${transactionId}/${transactionType}`);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async getServiceAcknowledgement(serviceId) {
-    try {
-      const response = await api.get(`/invoices/acknowledgement/${serviceId}`);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async updateInvoiceStatus(invoiceId, status) {
-    try {
-      const response = await api.patch(`/invoices/${invoiceId}/status`, { status });
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async addInvoiceNote(invoiceId, note) {
-    try {
-      const response = await api.post(`/invoices/${invoiceId}/notes`, { note });
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  async getInvoicesByCustomer(customerId) {
-    try {
-      const response = await api.get(`/invoices/customer/${customerId}`);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  }
-};
-
 // Utility functions
 const APIHelpers = {
+  /**
+   * Check if user is authenticated
+   */
   isAuthenticated() {
     return !!api.getToken();
   },
 
+  /**
+   * Show error message to user
+   */
   showError(error) {
     const message = error.message || 'An unexpected error occurred';
     if (window.Utils && Utils.showNotification) {
@@ -814,6 +565,9 @@ const APIHelpers = {
     }
   },
 
+  /**
+   * Show success message to user
+   */
   showSuccess(message) {
     if (window.Utils && Utils.showNotification) {
       Utils.showNotification(message);
@@ -822,6 +576,9 @@ const APIHelpers = {
     }
   },
 
+  /**
+   * Handle API errors with user feedback
+   */
   async handleAPICall(apiCall, successMessage = null) {
     try {
       const result = await apiCall();
@@ -835,6 +592,9 @@ const APIHelpers = {
     }
   },
 
+  /**
+   * Check server health
+   */
   async checkServerHealth() {
     try {
       const response = await fetch(`${API_BASE_URL}/health`);
@@ -851,8 +611,5 @@ const APIHelpers = {
 window.API = api;
 window.AuthAPI = AuthAPI;
 window.CustomerAPI = CustomerAPI;
-window.InventoryAPI = InventoryAPI;
-window.SalesAPI = SalesAPI;
-window.ServiceAPI = ServiceAPI;
-window.InvoiceAPI = InvoiceAPI;
+window.InventoryAPI = InventoryAPI; // NEW
 window.APIHelpers = APIHelpers;

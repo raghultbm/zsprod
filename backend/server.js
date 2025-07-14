@@ -1,4 +1,4 @@
-// ZEDSON WATCHCRAFT - Backend API Server (FIXED - Complete Integration)
+// ZEDSON WATCHCRAFT - Backend API Server (Updated with Inventory)
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -11,10 +11,7 @@ const connectDB = require('./config/database');
 // Import routes
 const authRoutes = require('./routes/auth');
 const customerRoutes = require('./routes/customers');
-const inventoryRoutes = require('./routes/inventory');
-const salesRoutes = require('./routes/sales');
-const serviceRoutes = require('./routes/service');
-const invoiceRoutes = require('./routes/invoices');
+const inventoryRoutes = require('./routes/inventory'); // NEW
 
 // Initialize Express app
 const app = express();
@@ -47,10 +44,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/customers', customerRoutes);
-app.use('/api/inventory', inventoryRoutes);
-app.use('/api/sales', salesRoutes);
-app.use('/api/service', serviceRoutes);
-app.use('/api/invoices', invoiceRoutes);
+app.use('/api/inventory', inventoryRoutes); // NEW
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -87,9 +81,5 @@ app.listen(PORT, () => {
   console.log(`📊 Environment: ${process.env.NODE_ENV}`);
   console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL}`);
   console.log(`📝 Health check: http://localhost:${PORT}/api/health`);
-  console.log(`👥 Customer API: http://localhost:${PORT}/api/customers`);
   console.log(`📦 Inventory API: http://localhost:${PORT}/api/inventory`);
-  console.log(`💰 Sales API: http://localhost:${PORT}/api/sales`);
-  console.log(`🔧 Service API: http://localhost:${PORT}/api/service`);
-  console.log(`📄 Invoice API: http://localhost:${PORT}/api/invoices`);
 });
