@@ -57,7 +57,7 @@
     <!-- Main Application -->
     <div id="mainApp" class="app-container">
         <div class="container">
-            <!-- Header with Logo and Navigation -->
+            <!-- Header with Logo and Navigation - Updated Layout -->
             <div class="header">
                 <!-- User Info Bar -->
                 <div class="user-info">
@@ -66,26 +66,34 @@
                     <button class="logout-btn" onclick="logout()">Logout</button>
                 </div>
                 
-                <div class="logo-container">
-                    <img src="assets/zedson-logo.png" alt="ZEDSON WATCHCRAFT" class="header-logo-image-large">
-                    <!-- Fallback to original design if image fails to load -->
-                    <div class="logo-circle" style="display: none;">
-                        <div class="logo-watch"></div>
+                <!-- Updated Header Content Layout -->
+                <div class="header-content">
+                    <!-- Logo on the left -->
+                    <div class="logo-container">
+                        <img src="assets/zedson-logo.png" alt="ZEDSON WATCHCRAFT" class="header-logo-image-large">
+                        <!-- Fallback to original design if image fails to load -->
+                        <div class="logo-circle" style="display: none;">
+                            <div class="logo-watch"></div>
+                        </div>
+                        <div style="display: none;">
+                            <h1>ZEDSON</h1>
+                            <div class="subtitle">WATCHCRAFT</div>
+                        </div>
                     </div>
-                    <div style="display: none;">
-                        <h1>ZEDSON</h1>
-                        <div class="subtitle">WATCHCRAFT</div>
+                    
+                    <!-- Navigation on the right -->
+                    <div class="nav-container">
+                        <div class="nav" id="mainNavigation">
+                            <button class="nav-btn active" onclick="showSection('dashboard', this)">Dashboard</button>
+                            <button class="nav-btn" onclick="showSection('customers', this)">Customers</button>
+                            <button class="nav-btn" onclick="showSection('inventory', this)">Inventory</button>
+                            <button class="nav-btn" onclick="showSection('sales', this)">Sales</button>
+                            <button class="nav-btn" onclick="showSection('service', this)">Service</button>
+                            <button class="nav-btn" onclick="showSection('expenses', this)">Expenses</button>
+                            <button class="nav-btn" onclick="showSection('invoices', this)">Invoices</button>
+                            <button class="nav-btn" id="userManagementBtn" onclick="showSection('users', this)" style="display: none;">User Management</button>
+                        </div>
                     </div>
-                </div>
-                <div class="nav" id="mainNavigation">
-                    <button class="nav-btn active" onclick="showSection('dashboard', this)">Dashboard</button>
-                    <button class="nav-btn" onclick="showSection('customers', this)">Customers</button>
-                    <button class="nav-btn" onclick="showSection('inventory', this)">Inventory</button>
-                    <button class="nav-btn" onclick="showSection('sales', this)">Sales</button>
-                    <button class="nav-btn" onclick="showSection('service', this)">Service</button>
-                    <button class="nav-btn" onclick="showSection('expenses', this)">Expenses</button>
-                    <button class="nav-btn" onclick="showSection('invoices', this)">Invoices</button>
-                    <button class="nav-btn" id="userManagementBtn" onclick="showSection('users', this)" style="display: none;">User Management</button>
                 </div>
             </div>
 
@@ -321,6 +329,11 @@
                     </table>
                 </div>
             </div>
+        </div>
+        
+        <!-- Footer Section - NEW -->
+        <div class="footer">
+            <p>Designed & Developed by <a href="#">PULSEWARE</a>❤</p>
         </div>
     </div>
 

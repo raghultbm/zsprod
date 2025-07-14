@@ -59,7 +59,7 @@ let watches = [
 let nextWatchId = 4;
 
 /**
- * Generate watch code automatically
+ * Generate watch code automatically - UPDATED to not override manually entered codes
  */
 function generateWatchCode(brand) {
     const brandPrefix = brand.substring(0, 3).toUpperCase();
@@ -85,20 +85,48 @@ function openAddWatchModal() {
 }
 
 /**
- * Auto-generate code when brand changes
+ * Auto-generate code when brand changes - UPDATED to check if code field is empty
  */
 function updateWatchCode() {
     const brandInput = document.getElementById('watchBrand');
     const codeInput = document.getElementById('watchCode');
     
     if (brandInput && codeInput && brandInput.value.trim()) {
-        const suggestedCode = generateWatchCode(brandInput.value.trim());
-        codeInput.value = suggestedCode;
+        // Only auto-generate if the code field is empty
+        if (!codeInput.value.trim()) {
+            const suggestedCode = generateWatchCode(brandInput.value.trim());
+            codeInput.value = suggestedCode;
+        }
     }
 }
 
 /**
- * Add new watch to inventory - Updated to make size optional
+ * Handle type change to show/hide size requirement - NEW FUNCTION
+ */
+function handleTypeChange() {
+    const typeSelect = document.getElementById('watchType') || document.getElementById('editWatchType');
+    const sizeInput = document.getElementById('watchSize') || document.getElementById('editWatchSize');
+    const sizeLabel = sizeInput ? sizeInput.closest('.form-group').querySelector('label') : null;
+    
+    if (typeSelect && sizeInput && sizeLabel) {
+        const selectedType = typeSelect.value;
+        
+        if (selectedType === 'Strap') {
+            // Make size mandatory for Strap type
+            sizeInput.required = true;
+            sizeLabel.innerHTML = 'Size: <span style="color: red;">*</span>';
+            sizeInput.placeholder = 'Size is required for straps';
+        } else {
+            // Make size optional for other types
+            sizeInput.required = false;
+            sizeLabel.innerHTML = 'Size (Optional):';
+            sizeInput.placeholder = 'e.g., 40mm, 42mm (optional)';
+        }
+    }
+}
+
+/**
+ * Add new watch to inventory - UPDATED size validation based on type
  */
 function addNewWatch(event) {
     event.preventDefault();
@@ -113,15 +141,21 @@ function addNewWatch(event) {
     const type = document.getElementById('watchType').value;
     const brand = document.getElementById('watchBrand').value.trim();
     const model = document.getElementById('watchModel').value.trim();
-    const size = document.getElementById('watchSize').value.trim(); // Now optional
+    const size = document.getElementById('watchSize').value.trim();
     const price = parseFloat(document.getElementById('watchPrice').value);
     const quantity = parseInt(document.getElementById('watchQuantity').value);
     const outlet = document.getElementById('watchOutlet').value;
     const description = document.getElementById('watchDescription').value.trim();
     
-    // Validate input - Size is now optional
+    // Validate input - Size is mandatory only for Strap type
     if (!code || !type || !brand || !model || !price || !quantity || !outlet) {
         Utils.showNotification('Please fill in all required fields');
+        return;
+    }
+
+    // Check size requirement based on type
+    if (type === 'Strap' && !size) {
+        Utils.showNotification('Size is required for Strap type items');
         return;
     }
 
@@ -141,7 +175,7 @@ function addNewWatch(event) {
         return;
     }
 
-    // Create new watch object - Size can be empty
+    // Create new watch object - Size can be empty for non-strap items
     const newWatch = {
         id: nextWatchId++,
         code: code,
@@ -429,7 +463,7 @@ function getInventoryStats() {
 }
 
 /**
- * Edit watch - Updated to make size optional and handle outlet changes
+ * Edit watch - UPDATED to handle optional size and movement tracking
  */
 function editWatch(watchId) {
     if (!AuthModule.hasPermission('inventory')) {
@@ -446,7 +480,7 @@ function editWatch(watchId) {
     // Store original outlet for comparison
     const originalOutlet = watch.outlet;
 
-    // Create edit modal with Type and Outlet fields, Size is optional
+    // Create edit modal with Type and Outlet fields, Size is optional based on type
     const editModal = document.createElement('div');
     editModal.className = 'modal';
     editModal.id = 'editWatchModal';
@@ -463,7 +497,7 @@ function editWatch(watchId) {
                     </div>
                     <div class="form-group">
                         <label>Type:</label>
-                        <select id="editWatchType" required>
+                        <select id="editWatchType" required onchange="InventoryModule.handleTypeChange()">
                             <option value="Watch" ${watch.type === 'Watch' ? 'selected' : ''}>Watch</option>
                             <option value="Clock" ${watch.type === 'Clock' ? 'selected' : ''}>Clock</option>
                             <option value="Timepiece" ${watch.type === 'Timepiece' ? 'selected' : ''}>Timepiece</option>
@@ -484,8 +518,10 @@ function editWatch(watchId) {
                 </div>
                 <div class="grid grid-2">
                     <div class="form-group">
-                        <label>Size (Optional):</label>
-                        <input type="text" id="editWatchSize" value="${watch.size === '-' ? '' : watch.size}" placeholder="e.g., 40mm, 42mm">
+                        <label>Size ${watch.type === 'Strap' ? '<span style="color: red;">*</span>' : '(Optional)'}:</label>
+                        <input type="text" id="editWatchSize" value="${watch.size === '-' ? '' : watch.size}" 
+                               placeholder="${watch.type === 'Strap' ? 'Size is required for straps' : 'e.g., 40mm, 42mm (optional)'}"
+                               ${watch.type === 'Strap' ? 'required' : ''}>
                     </div>
                     <div class="form-group">
                         <label>Price (₹):</label>
@@ -548,10 +584,13 @@ function editWatch(watchId) {
     });
     
     observer.observe(movementDateContainer, { attributes: true });
+    
+    // Set initial size requirement based on current type
+    handleTypeChange();
 }
 
 /**
- * Update watch - Updated to handle optional size and movement tracking
+ * Update watch - UPDATED to handle optional size based on type and movement tracking
  */
 function updateWatch(event, watchId, originalOutlet) {
     event.preventDefault();
@@ -566,7 +605,7 @@ function updateWatch(event, watchId, originalOutlet) {
     const type = document.getElementById('editWatchType').value;
     const brand = document.getElementById('editWatchBrand').value.trim();
     const model = document.getElementById('editWatchModel').value.trim();
-    const size = document.getElementById('editWatchSize').value.trim(); // Optional
+    const size = document.getElementById('editWatchSize').value.trim();
     const price = parseFloat(document.getElementById('editWatchPrice').value);
     const quantity = parseInt(document.getElementById('editWatchQuantity').value);
     const outlet = document.getElementById('editWatchOutlet').value;
@@ -574,9 +613,15 @@ function updateWatch(event, watchId, originalOutlet) {
     const movementDate = document.getElementById('movementDate').value;
     const movementReason = document.getElementById('movementReason').value;
 
-    // Validate input - Size is optional
+    // Validate input - Size is mandatory only for Strap type
     if (!code || !type || !brand || !model || !price || quantity < 0 || !outlet) {
         Utils.showNotification('Please fill in all required fields');
+        return;
+    }
+
+    // Check size requirement based on type
+    if (type === 'Strap' && !size) {
+        Utils.showNotification('Size is required for Strap type items');
         return;
     }
 
@@ -592,7 +637,7 @@ function updateWatch(event, watchId, originalOutlet) {
         return;
     }
 
-    // Update watch - Size can be empty
+    // Update watch - Size can be empty for non-strap items
     watch.code = code;
     watch.type = type;
     watch.brand = brand;
@@ -651,7 +696,7 @@ function initializeInventory() {
 }
 
 /**
- * Load modal template for inventory with Type and Outlet fields - Size made optional
+ * Load modal template for inventory with Type and Outlet fields - UPDATED with size validation
  */
 function loadInventoryModal() {
     const modalHtml = `
@@ -664,11 +709,11 @@ function loadInventoryModal() {
                     <div class="grid grid-2">
                         <div class="form-group">
                             <label>Code:</label>
-                            <input type="text" id="watchCode" required placeholder="Auto-generated">
+                            <input type="text" id="watchCode" required placeholder="Enter code or leave blank for auto-generation">
                         </div>
                         <div class="form-group">
                             <label>Type:</label>
-                            <select id="watchType" required>
+                            <select id="watchType" required onchange="InventoryModule.handleTypeChange()">
                                 <option value="">Select Type</option>
                                 <option value="Watch">Watch</option>
                                 <option value="Clock">Clock</option>
@@ -691,7 +736,7 @@ function loadInventoryModal() {
                     <div class="grid grid-2">
                         <div class="form-group">
                             <label>Size (Optional):</label>
-                            <input type="text" id="watchSize" placeholder="e.g., 40mm, 42mm">
+                            <input type="text" id="watchSize" placeholder="e.g., 40mm, 42mm (optional)">
                         </div>
                         <div class="form-group">
                             <label>Price (₹):</label>
@@ -759,6 +804,7 @@ window.InventoryModule = {
     initializeInventory,
     updateWatchCode,
     handleOutletChange,
+    handleTypeChange, // NEW FUNCTION
     viewMovementHistory,
     watches // For access by other modules
 };
