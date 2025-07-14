@@ -1,4 +1,4 @@
-// ZEDSON WATCHCRAFT - Backend API Server
+// ZEDSON WATCHCRAFT - Backend API Server (Updated with Inventory)
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -11,6 +11,7 @@ const connectDB = require('./config/database');
 // Import routes
 const authRoutes = require('./routes/auth');
 const customerRoutes = require('./routes/customers');
+const inventoryRoutes = require('./routes/inventory'); // NEW
 
 // Initialize Express app
 const app = express();
@@ -43,6 +44,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/customers', customerRoutes);
+app.use('/api/inventory', inventoryRoutes); // NEW
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -79,4 +81,5 @@ app.listen(PORT, () => {
   console.log(`📊 Environment: ${process.env.NODE_ENV}`);
   console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL}`);
   console.log(`📝 Health check: http://localhost:${PORT}/api/health`);
+  console.log(`📦 Inventory API: http://localhost:${PORT}/api/inventory`);
 });
