@@ -1,7 +1,8 @@
-// ZEDSON WATCHCRAFT - Service Management Module with Image Upload
+// ZEDSON WATCHCRAFT - Service Management Module with Image Upload (FIXED)
 
 /**
  * Service Request Management System with Image Upload and Final Service Cost
+ * FIXED: Invoice button functionality and invoice viewing
  */
 
 // Service requests database
@@ -94,7 +95,7 @@ function addNewService(event) {
         actualDelivery: null,
         completionImage: null,
         completionDescription: null,
-        warrantyPeriod: null,
+        warrantyPeriod: 0, // Default to 0 months warranty
         notes: [],
         acknowledgementGenerated: false,
         completionInvoiceGenerated: false,
@@ -558,7 +559,7 @@ function deleteService(serviceId) {
 }
 
 /**
- * View service acknowledgement - FIXED FUNCTION
+ * View service acknowledgement
  */
 function viewServiceAcknowledgement(serviceId) {
     if (!window.InvoiceModule) {
@@ -574,13 +575,18 @@ function viewServiceAcknowledgement(serviceId) {
  * View service completion invoice - FIXED FUNCTION
  */
 function viewServiceCompletionInvoice(serviceId) {
+    console.log('Attempting to view service completion invoice for service ID:', serviceId);
+    
     if (!window.InvoiceModule) {
         Utils.showNotification('Invoice module not available.');
         return;
     }
     
     const invoices = InvoiceModule.getInvoicesForTransaction(serviceId, 'service');
+    console.log('Found invoices for service:', invoices);
+    
     const completionInvoice = invoices.find(inv => inv.type === 'Service Completion');
+    console.log('Found completion invoice:', completionInvoice);
     
     if (completionInvoice) {
         InvoiceModule.viewInvoice(completionInvoice.id);
@@ -671,9 +677,6 @@ function filterServicesByMonth(month, year) {
 /**
  * Render service table with updated action buttons - FIXED INVOICE BUTTONS
  */
-/**
- * Render service table with updated action buttons - FIXED INVOICE BUTTONS
- */
 function renderServiceTable() {
     const tbody = document.getElementById('serviceTableBody');
     if (!tbody) return;
@@ -693,45 +696,43 @@ function renderServiceTable() {
         let actionButtons = '';
         if (service.status === 'pending') {
             actionButtons = `
-                <button class="btn" onclick="updateServiceStatus(${service.id}, 'in-progress')">Start</button>
-                <button class="btn" onclick="updateServiceStatus(${service.id}, 'on-hold')">Hold</button>
+                <button class="btn btn-sm" onclick="updateServiceStatus(${service.id}, 'in-progress')">Start</button>
+                <button class="btn btn-sm" onclick="updateServiceStatus(${service.id}, 'on-hold')">Hold</button>
             `;
         } else if (service.status === 'in-progress') {
             actionButtons = `
-                <button class="btn btn-success" onclick="updateServiceStatus(${service.id}, 'completed')">Complete</button>
-                <button class="btn" onclick="updateServiceStatus(${service.id}, 'on-hold')">Hold</button>
+                <button class="btn btn-sm btn-success" onclick="updateServiceStatus(${service.id}, 'completed')">Complete</button>
+                <button class="btn btn-sm" onclick="updateServiceStatus(${service.id}, 'on-hold')">Hold</button>
             `;
         } else if (service.status === 'on-hold') {
             actionButtons = `
-                <button class="btn btn-success" onclick="updateServiceStatus(${service.id}, 'in-progress')">Resume</button>
+                <button class="btn btn-sm btn-success" onclick="updateServiceStatus(${service.id}, 'in-progress')">Resume</button>
             `;
         }
         
         // Add edit/delete buttons only for non-staff users
         if (!isStaff) {
             actionButtons += `
-                <button class="btn" onclick="editService(${service.id})" 
+                <button class="btn btn-sm" onclick="editService(${service.id})" 
                     ${!AuthModule.hasPermission('service') ? 'disabled' : ''}>Edit</button>
-                <button class="btn btn-danger" onclick="confirmTransaction('Are you sure you want to delete this service request?', () => deleteService(${service.id}))" 
+                <button class="btn btn-sm btn-danger" onclick="confirmTransaction('Are you sure you want to delete this service request?', () => deleteService(${service.id}))" 
                     ${!AuthModule.hasPermission('service') ? 'disabled' : ''}>Delete</button>
             `;
         }
         
-        // Add invoice view buttons - FIXED TO USE DIRECT FUNCTIONS
+        // Add invoice view buttons - FIXED TO ENSURE THEY WORK
         const hasAcknowledgement = service.acknowledgementGenerated;
-        const hasCompletionInvoice = window.InvoiceModule && 
-            InvoiceModule.getInvoicesForTransaction(service.id, 'service')
-                .some(inv => inv.type === 'Service Completion');
+        const hasCompletionInvoice = service.completionInvoiceGenerated && service.status === 'completed';
         
         if (hasAcknowledgement) {
             actionButtons += `
-                <button class="btn btn-success" onclick="viewServiceAcknowledgement(${service.id})" title="View Acknowledgement">Receipt</button>
+                <button class="btn btn-sm btn-success" onclick="ServiceModule.viewServiceAcknowledgement(${service.id})" title="View Acknowledgement">Receipt</button>
             `;
         }
         
         if (hasCompletionInvoice) {
             actionButtons += `
-                <button class="btn btn-success" onclick="viewServiceCompletionInvoice(${service.id})" title="View Completion Invoice">Invoice</button>
+                <button class="btn btn-sm btn-success" onclick="ServiceModule.viewServiceCompletionInvoice(${service.id})" title="View Completion Invoice">Invoice</button>
             `;
         }
         
@@ -769,25 +770,6 @@ function renderServiceTable() {
     });
 }
 
-// Make global functions available for button clicks - FIXED
-window.viewServiceAcknowledgement = function(serviceId) {
-    if (window.InvoiceModule) {
-        InvoiceModule.viewServiceAcknowledgement(serviceId);
-    }
-};
-
-window.viewServiceCompletionInvoice = function(serviceId) {
-    if (window.InvoiceModule) {
-        const invoices = InvoiceModule.getInvoicesForTransaction(serviceId, 'service');
-        const completionInvoice = invoices.find(inv => inv.type === 'Service Completion');
-        
-        if (completionInvoice) {
-            InvoiceModule.viewInvoice(completionInvoice.id);
-        } else {
-            Utils.showNotification('No completion invoice found for this service.');
-        }
-    }
-};
 /**
  * Initialize service module
  */
@@ -900,19 +882,6 @@ window.previewCompletionImage = previewCompletionImage;
 
 // Make close function globally available
 window.closeEditServiceModal = closeEditServiceModal;
-
-// Make global functions available for button clicks - FIXED
-window.viewServiceAcknowledgement = function(serviceId) {
-    if (window.ServiceModule) {
-        ServiceModule.viewServiceAcknowledgement(serviceId);
-    }
-};
-
-window.viewServiceCompletionInvoice = function(serviceId) {
-    if (window.ServiceModule) {
-        ServiceModule.viewServiceCompletionInvoice(serviceId);
-    }
-};
 
 // Export functions for global use
 window.ServiceModule = {

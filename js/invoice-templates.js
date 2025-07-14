@@ -1,23 +1,23 @@
-// ZEDSON WATCHCRAFT - Invoice Templates Module with Logo Integration
+// ZEDSON WATCHCRAFT - Invoice Templates Module with Logo Integration (FIXED)
 
 /**
- * Professional Invoice Templates with Logo and Updated Design
+ * Professional Invoice Templates with Larger Logo, GST, and Conditional Warranty
  */
 
 /**
- * Create Sales Invoice HTML with updated design - FIXED LOGO DISPLAY
+ * Create Sales Invoice HTML with updated design - FIXED LOGO DISPLAY AND REMOVED TERMS
  */
 function createSalesInvoiceHTML(invoice) {
     return `
         <div style="max-width: 800px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif; background: white; color: #333;">
-            <!-- Header Section with Logo -->
+            <!-- Header Section with Larger Logo -->
             <div style="background: linear-gradient(135deg, #1a237e 0%, #283593 100%); color: white; padding: 20px; border-radius: 10px 10px 0 0; margin-bottom: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div style="display: flex; align-items: center; gap: 15px;">
-                        <img src="assets/zedson-logo.png" alt="ZEDSON WATCHCRAFT" style="height: 60px; width: auto; background: white; padding: 5px; border-radius: 5px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <img src="assets/zedson-logo.png" alt="ZEDSON WATCHCRAFT" style="height: 100px; width: auto; background: white; padding: 8px; border-radius: 8px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                         <div style="display: none; flex-direction: column; align-items: center;">
-                            <h1 style="margin: 0; font-size: 2.5em; font-weight: bold;">ZEDSON</h1>
-                            <p style="margin: 5px 0 0 0; font-size: 1.2em; color: #ffd700; font-weight: 600; letter-spacing: 2px;">WATCHCRAFT</p>
+                            <h1 style="margin: 0; font-size: 3em; font-weight: bold;">ZEDSON</h1>
+                            <p style="margin: 5px 0 0 0; font-size: 1.4em; color: #ffd700; font-weight: 600; letter-spacing: 2px;">WATCHCRAFT</p>
                         </div>
                     </div>
                     <div style="text-align: right;">
@@ -27,11 +27,12 @@ function createSalesInvoiceHTML(invoice) {
                 </div>
             </div>
 
-            <!-- Company Info Bar -->
+            <!-- Company Info Bar with GST -->
             <div style="background: #f8f9fa; padding: 15px; border-left: 5px solid #ffd700; margin-bottom: 20px;">
                 <div style="font-size: 0.9em; color: #666;">
-                    <strong>14B, Northern Street, Greater South Avenue</strong><br>
-                    New York 10001, U.S.A
+                    <strong>Shop A2A, No. 137/2B, Express Food Street</strong><br>
+                    Semmancheri, Chennai<br>
+                    <strong>GST No:</strong> 33AABCZ1234L1Z5
                 </div>
             </div>
 
@@ -52,10 +53,6 @@ function createSalesInvoiceHTML(invoice) {
                             <span>Invoice Date:</span>
                             <strong>${Utils.sanitizeHtml(invoice.date)}</strong>
                         </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                            <span>Terms:</span>
-                            <strong>Due on Receipt</strong>
-                        </div>
                         <div style="display: flex; justify-content: space-between;">
                             <span>Payment Method:</span>
                             <strong>${Utils.sanitizeHtml(invoice.paymentMethod)}</strong>
@@ -64,7 +61,7 @@ function createSalesInvoiceHTML(invoice) {
                 </div>
             </div>
 
-            <!-- Items Table (added Discount column) -->
+            <!-- Items Table -->
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
                 <thead>
                     <tr style="background: #1a237e; color: white;">
@@ -91,7 +88,7 @@ function createSalesInvoiceHTML(invoice) {
                 </tbody>
             </table>
 
-            <!-- Summary Section (simplified - only Total) -->
+            <!-- Summary Section -->
             <div style="display: flex; justify-content: flex-end; margin-bottom: 30px;">
                 <div style="width: 300px;">
                     <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; border: 2px solid #1a237e;">
@@ -107,26 +104,45 @@ function createSalesInvoiceHTML(invoice) {
             <div style="text-align: center; margin-top: 30px; padding: 20px; background: linear-gradient(135deg, #1a237e, #283593); color: white; border-radius: 0 0 10px 10px;">
                 <p style="margin: 5px 0; font-size: 1.1em; font-weight: 600;">Thank you for your business!</p>
                 <p style="margin: 5px 0; font-size: 0.9em;">ZEDSON WATCHCRAFT - Your trusted watch partner</p>
-                <p style="margin: 5px 0; font-size: 0.85em;">Contact: +91-9345667717 | Email: zedsonwatchcraft@gmail.com</p>
+                <p style="margin: 5px 0; font-size: 0.85em;">Contact: +91-9345667717 | 9500661769 | Email: zedsonwatchcraft@gmail.com</p>
             </div>
         </div>
     `;
 }
 
 /**
- * Create Service Completion Invoice HTML with logo and updated design - FIXED LOGO DISPLAY
+ * Create Service Completion Invoice HTML with larger logo, GST, and conditional warranty
  */
 function createServiceCompletionHTML(invoice) {
+    const hasWarranty = invoice.warrantyPeriod && invoice.warrantyPeriod > 0;
+    
+    // Warranty section - only show if warranty exists
+    let warrantySection = '';
+    if (hasWarranty) {
+        warrantySection = `
+            <!-- Warranty Information -->
+            <div style="background: linear-gradient(135deg, #d4edda, #c3e6cb); padding: 20px; border-radius: 10px; border: 2px solid #155724; margin-bottom: 20px;">
+                <h4 style="color: #155724; margin-top: 0; text-align: center;">WARRANTY INFORMATION</h4>
+                <p style="color: #155724; margin: 10px 0; text-align: center; font-size: 1.1em;">
+                    <strong>${invoice.warrantyPeriod} Month${invoice.warrantyPeriod > 1 ? 's' : ''} Warranty</strong> on service work performed
+                </p>
+                <p style="color: #155724; margin: 5px 0; font-size: 0.9em; text-align: center;">
+                    Warranty covers the specific work performed. Normal wear and tear not included.
+                </p>
+            </div>
+        `;
+    }
+
     return `
         <div style="max-width: 800px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif; background: white; color: #333;">
-            <!-- Header Section with Logo -->
+            <!-- Header Section with Larger Logo -->
             <div style="background: linear-gradient(135deg, #1a237e 0%, #283593 100%); color: white; padding: 20px; border-radius: 10px 10px 0 0; margin-bottom: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div style="display: flex; align-items: center; gap: 15px;">
-                        <img src="assets/zedson-logo.png" alt="ZEDSON WATCHCRAFT" style="height: 60px; width: auto; background: white; padding: 5px; border-radius: 5px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <img src="assets/zedson-logo.png" alt="ZEDSON WATCHCRAFT" style="height: 100px; width: auto; background: white; padding: 8px; border-radius: 8px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                         <div style="display: none; flex-direction: column; align-items: center;">
-                            <h1 style="margin: 0; font-size: 2.5em; font-weight: bold;">ZEDSON</h1>
-                            <p style="margin: 5px 0 0 0; font-size: 1.2em; color: #ffd700; font-weight: 600; letter-spacing: 2px;">WATCHCRAFT</p>
+                            <h1 style="margin: 0; font-size: 3em; font-weight: bold;">ZEDSON</h1>
+                            <p style="margin: 5px 0 0 0; font-size: 1.4em; color: #ffd700; font-weight: 600; letter-spacing: 2px;">WATCHCRAFT</p>
                         </div>
                     </div>
                     <div style="text-align: right;">
@@ -136,12 +152,13 @@ function createServiceCompletionHTML(invoice) {
                 </div>
             </div>
 
-            <!-- Company Info Bar -->
+            <!-- Company Info Bar with GST -->
             <div style="background: #f8f9fa; padding: 15px; border-left: 5px solid #ffd700; margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.9em; color: #666;">
                     <div>
-                        <strong>14B, Northern Street, Greater South Avenue</strong><br>
-                        New York 10001, U.S.A
+                        <strong>Shop A2A, No. 137/2B, Express Food Street</strong><br>
+                        Semmancheri, Chennai<br>
+                        <strong>GST No:</strong> 33AABCZ1234L1Z5
                     </div>
                     <div style="text-align: right;">
                         <strong>Service Amount</strong><br>
@@ -167,14 +184,17 @@ function createServiceCompletionHTML(invoice) {
                             <span>Completion Date:</span>
                             <strong>${Utils.sanitizeHtml(invoice.completionDate || invoice.date)}</strong>
                         </div>
+                        ${hasWarranty ? `
                         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                             <span>Warranty:</span>
                             <strong>${invoice.warrantyPeriod} Month${invoice.warrantyPeriod > 1 ? 's' : ''}</strong>
                         </div>
-                        <div style="display: flex; justify-content: space-between;">
-                            <span>Terms:</span>
-                            <strong>Due on Receipt</strong>
+                        ` : `
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span>Warranty:</span>
+                            <strong>No Warranty</strong>
                         </div>
+                        `}
                     </div>
                 </div>
             </div>
@@ -245,47 +265,47 @@ function createServiceCompletionHTML(invoice) {
                 </div>
             </div>
 
-            <!-- Warranty Information -->
-            <div style="background: linear-gradient(135deg, #d4edda, #c3e6cb); padding: 20px; border-radius: 10px; border: 2px solid #155724; margin-bottom: 20px;">
-                <h4 style="color: #155724; margin-top: 0; text-align: center;">WARRANTY INFORMATION</h4>
-                <p style="color: #155724; margin: 10px 0; text-align: center; font-size: 1.1em;">
-                    <strong>${invoice.warrantyPeriod} Month${invoice.warrantyPeriod > 1 ? 's' : ''} Warranty</strong> on service work performed
-                </p>
-                <p style="color: #155724; margin: 5px 0; font-size: 0.9em; text-align: center;">
-                    Warranty covers the specific work performed. Normal wear and tear not included.
-                </p>
-            </div>
+            ${warrantySection}
 
             <!-- Footer with Contact Details -->
             <div style="text-align: center; margin-top: 30px; padding: 20px; background: linear-gradient(135deg, #1a237e, #283593); color: white; border-radius: 0 0 10px 10px;">
                 <p style="margin: 5px 0; font-size: 1.1em; font-weight: 600;">Thank you for choosing our service!</p>
                 <p style="margin: 5px 0; font-size: 0.9em;">ZEDSON WATCHCRAFT - Expert watch servicing</p>
-                <p style="margin: 5px 0; font-size: 0.85em;">Contact: +91-9345667717 | Email: zedsonwatchcraft@gmail.com</p>
+                <p style="margin: 5px 0; font-size: 0.85em;">Contact: +91-9345667717 | 9500661769 | Email: zedsonwatchcraft@gmail.com</p>
             </div>
         </div>
     `;
 }
 
 /**
- * Create Service Acknowledgement HTML with logo - FIXED LOGO DISPLAY
+ * Create Service Acknowledgement HTML with larger logo and GST
  */
 function createServiceAcknowledgementHTML(acknowledgement) {
     return `
         <div style="max-width: 800px; margin: 0 auto; padding: 20px; font-family: Arial, sans-serif; background: white; color: #333;">
-            <!-- Header Section with Logo -->
+            <!-- Header Section with Larger Logo -->
             <div style="background: linear-gradient(135deg, #1a237e 0%, #283593 100%); color: white; padding: 20px; border-radius: 10px 10px 0 0; margin-bottom: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div style="display: flex; align-items: center; gap: 15px;">
-                        <img src="assets/zedson-logo.png" alt="ZEDSON WATCHCRAFT" style="height: 60px; width: auto; background: white; padding: 5px; border-radius: 5px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <img src="assets/zedson-logo.png" alt="ZEDSON WATCHCRAFT" style="height: 100px; width: auto; background: white; padding: 8px; border-radius: 8px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                         <div style="display: none; flex-direction: column; align-items: center;">
-                            <h1 style="margin: 0; font-size: 2.5em; font-weight: bold;">ZEDSON</h1>
-                            <p style="margin: 5px 0 0 0; font-size: 1.2em; color: #ffd700; font-weight: 600; letter-spacing: 2px;">WATCHCRAFT</p>
+                            <h1 style="margin: 0; font-size: 3em; font-weight: bold;">ZEDSON</h1>
+                            <p style="margin: 5px 0 0 0; font-size: 1.4em; color: #ffd700; font-weight: 600; letter-spacing: 2px;">WATCHCRAFT</p>
                         </div>
                     </div>
                     <div style="text-align: right;">
                         <h2 style="margin: 0; font-size: 1.8em; color: #ffd700;">SERVICE RECEIPT</h2>
                         <p style="margin: 5px 0 0 0; font-size: 1em;"># ${Utils.sanitizeHtml(acknowledgement.invoiceNo)}</p>
                     </div>
+                </div>
+            </div>
+
+            <!-- Company Info Bar with GST -->
+            <div style="background: #f8f9fa; padding: 15px; border-left: 5px solid #ffd700; margin-bottom: 20px;">
+                <div style="font-size: 0.9em; color: #666;">
+                    <strong>Shop A2A, No. 137/2B, Express Food Street</strong><br>
+                    Semmancheri, Chennai<br>
+                    <strong>GST No:</strong> 33AABCZ1234L1Z5
                 </div>
             </div>
 
@@ -338,7 +358,7 @@ function createServiceAcknowledgementHTML(acknowledgement) {
             <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #1a237e, #283593); color: white; border-radius: 0 0 10px 10px;">
                 <p style="margin: 5px 0;">Thank you for trusting us with your timepiece!</p>
                 <p style="margin: 5px 0; font-size: 0.9em;">ZEDSON WATCHCRAFT - Expert watch servicing</p>
-                <p style="margin: 5px 0; font-size: 0.85em;">Contact: +91-9345667717 | Email: zedsonwatchcraft@gmail.com</p>
+                <p style="margin: 5px 0; font-size: 0.85em;">Contact: +91-9345667717 | 9500661769 | Email: zedsonwatchcraft@gmail.com</p>
             </div>
         </div>
     `;
