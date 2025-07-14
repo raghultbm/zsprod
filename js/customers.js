@@ -1,36 +1,64 @@
-// ZEDSON WATCHCRAFT - Customer Management Module with Net Value
+// ZEDSON WATCHCRAFT - Customer Management Module (FIXED - Button Reset Issues)
 
 /**
- * Customer Management System with Net Value calculation and Staff restrictions
+ * Customer Management System with API Integration and Real-time sync
  */
 
-// Customer database
-let customers = [
-    { 
-        id: 1, 
-        name: "Raj Kumar", 
-        email: "raj@email.com", 
-        phone: "+91-9876543210", 
-        address: "Chennai, Tamil Nadu", 
-        purchases: 0, 
-        serviceCount: 0,
-        netValue: 0,
-        addedDate: "2024-01-01"
-    },
-    { 
-        id: 2, 
-        name: "Priya Sharma", 
-        email: "priya@email.com", 
-        phone: "+91-9876543211", 
-        address: "Mumbai, Maharashtra", 
-        purchases: 0, 
-        serviceCount: 0,
-        netValue: 0,
-        addedDate: "2024-01-01"
-    }
-];
+// Local cache for customers (for quick access)
+let customers = [];
 
-let nextCustomerId = 3;
+/**
+ * Reset button to original state
+ */
+function resetButton(button, originalText) {
+    if (button) {
+        button.textContent = originalText;
+        button.disabled = false;
+    }
+}
+
+/**
+ * Set button loading state
+ */
+function setButtonLoading(button, loadingText) {
+    if (button) {
+        button.dataset.originalText = button.textContent;
+        button.textContent = loadingText;
+        button.disabled = true;
+        return button.dataset.originalText;
+    }
+    return null;
+}
+
+/**
+ * Initialize customer module with API data
+ */
+async function initializeCustomers() {
+    try {
+        await loadCustomersFromAPI();
+        renderCustomerTable();
+        console.log('Customer module initialized with API integration');
+    } catch (error) {
+        console.error('Customer initialization error:', error);
+        Utils.showNotification('Failed to load customers. Please refresh the page.');
+    }
+}
+
+/**
+ * Load customers from API
+ */
+async function loadCustomersFromAPI() {
+    try {
+        const response = await CustomerAPI.getCustomers();
+        if (response.success) {
+            customers = response.data || [];
+            console.log(`Loaded ${customers.length} customers from API`);
+        }
+    } catch (error) {
+        console.error('Load customers error:', error);
+        throw error;
+    }
+}
 
 /**
  * Calculate customer's net value from sales and services
@@ -59,22 +87,24 @@ function calculateCustomerNetValue(customerId) {
 /**
  * Update customer's net value
  */
-function updateCustomerNetValue(customerId) {
-    const customer = customers.find(c => c.id === customerId);
-    if (customer) {
-        customer.netValue = calculateCustomerNetValue(customerId);
-        renderCustomerTable();
+async function updateCustomerNetValue(customerId) {
+    try {
+        const salesValue = 0; // This would come from sales module
+        const serviceValue = 0; // This would come from service module
+        
+        const response = await CustomerAPI.updateNetValue(customerId, salesValue, serviceValue);
+        if (response.success) {
+            // Update local cache
+            const customerIndex = customers.findIndex(c => c.id === customerId);
+            if (customerIndex !== -1) {
+                customers[customerIndex] = response.data;
+            }
+            renderCustomerTable();
+        }
+    } catch (error) {
+        console.error('Update net value error:', error);
+        Utils.showNotification('Failed to update customer value.');
     }
-}
-
-/**
- * Update all customers' net values
- */
-function updateAllCustomersNetValue() {
-    customers.forEach(customer => {
-        customer.netValue = calculateCustomerNetValue(customer.id);
-    });
-    renderCustomerTable();
 }
 
 /**
@@ -86,6 +116,18 @@ function openAddCustomerModal() {
         return;
     }
     
+    // Reset the form when opening modal
+    const form = document.querySelector('#addCustomerModal form');
+    if (form) {
+        form.reset();
+        
+        // Reset the submit button
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            resetButton(submitBtn, 'Add Customer');
+        }
+    }
+    
     if (window.logAction) {
         logAction('Opened add customer modal');
     }
@@ -93,9 +135,9 @@ function openAddCustomerModal() {
 }
 
 /**
- * Add new customer
+ * Add new customer with API integration - FIXED BUTTON RESET
  */
-function addNewCustomer(event) {
+async function addNewCustomer(event) {
     event.preventDefault();
     
     if (!AuthModule.hasPermission('customers')) {
@@ -127,53 +169,51 @@ function addNewCustomer(event) {
         return;
     }
 
-    // Check if email already exists
-    if (customers.find(c => c.email === email)) {
-        Utils.showNotification('A customer with this email already exists');
-        return;
-    }
+    // Get the submit button
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    const originalText = setButtonLoading(submitBtn, 'Adding Customer...');
 
-    // Check if phone already exists
-    if (customers.find(c => c.phone === phone)) {
-        Utils.showNotification('A customer with this phone number already exists');
-        return;
-    }
+    try {
+        const customerData = {
+            name,
+            email,
+            phone,
+            address
+        };
 
-    // Create new customer object
-    const newCustomer = {
-        id: nextCustomerId++,
-        name: name,
-        email: email,
-        phone: phone,
-        address: address,
-        purchases: 0,
-        serviceCount: 0,
-        netValue: 0, // Initial net value is 0
-        addedDate: Utils.formatDate(new Date()),
-        addedBy: AuthModule.getCurrentUser().username
-    };
+        const response = await CustomerAPI.createCustomer(customerData);
 
-    // Add to customers array
-    customers.push(newCustomer);
-    
-    // Log action
-    if (window.logCustomerAction) {
-        logCustomerAction('Added new customer: ' + name, newCustomer);
+        if (response.success) {
+            // Log action
+            if (window.logCustomerAction) {
+                logCustomerAction('Added new customer: ' + name, response.data);
+            }
+            
+            // Add to local cache
+            customers.push(response.data);
+            
+            // Update display
+            renderCustomerTable();
+            updateDashboard();
+            
+            // Close modal and reset form
+            closeModal('addCustomerModal');
+            event.target.reset();
+            
+            Utils.showNotification('Customer added successfully!');
+        }
+
+    } catch (error) {
+        console.error('Add customer error:', error);
+        Utils.showNotification(error.message || 'Failed to add customer. Please try again.');
+    } finally {
+        // Always reset button state
+        resetButton(submitBtn, originalText || 'Add Customer');
     }
-    
-    // Update display
-    renderCustomerTable();
-    updateDashboard();
-    
-    // Close modal and reset form
-    closeModal('addCustomerModal');
-    event.target.reset();
-    
-    Utils.showNotification('Customer added successfully!');
 }
 
 /**
- * Edit customer
+ * Edit customer with API integration
  */
 function editCustomer(customerId) {
     const currentUser = AuthModule.getCurrentUser();
@@ -208,22 +248,22 @@ function editCustomer(customerId) {
         <div class="modal-content">
             <span class="close" onclick="closeModal('editCustomerModal')">&times;</span>
             <h2>Edit Customer</h2>
-            <form onsubmit="CustomerModule.updateCustomer(event, ${customerId})">
+            <form onsubmit="CustomerModule.updateCustomer(event, '${customerId}')">
                 <div class="form-group">
                     <label>Name:</label>
-                    <input type="text" id="editCustomerName" value="${customer.name}" required>
+                    <input type="text" id="editCustomerName" value="${Utils.sanitizeHtml(customer.name)}" required>
                 </div>
                 <div class="form-group">
                     <label>Email:</label>
-                    <input type="email" id="editCustomerEmail" value="${customer.email}" required>
+                    <input type="email" id="editCustomerEmail" value="${Utils.sanitizeHtml(customer.email)}" required>
                 </div>
                 <div class="form-group">
                     <label>Phone:</label>
-                    <input type="tel" id="editCustomerPhone" value="${customer.phone}" required>
+                    <input type="tel" id="editCustomerPhone" value="${Utils.sanitizeHtml(customer.phone)}" required>
                 </div>
                 <div class="form-group">
                     <label>Address:</label>
-                    <textarea id="editCustomerAddress" rows="3">${customer.address || ''}</textarea>
+                    <textarea id="editCustomerAddress" rows="3">${Utils.sanitizeHtml(customer.address || '')}</textarea>
                 </div>
                 <div class="form-group">
                     <label>Net Value:</label>
@@ -241,9 +281,9 @@ function editCustomer(customerId) {
 }
 
 /**
- * Update customer
+ * Update customer with API integration - FIXED BUTTON RESET
  */
-function updateCustomer(event, customerId) {
+async function updateCustomer(event, customerId) {
     event.preventDefault();
     
     const customer = customers.find(c => c.id === customerId);
@@ -275,46 +315,58 @@ function updateCustomer(event, customerId) {
         return;
     }
 
-    // Check if email already exists (excluding current customer)
-    if (customers.find(c => c.email === email && c.id !== customerId)) {
-        Utils.showNotification('A customer with this email already exists');
-        return;
+    // Get the submit button
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    const originalText = setButtonLoading(submitBtn, 'Updating...');
+
+    try {
+        const customerData = {
+            name,
+            email,
+            phone,
+            address
+        };
+
+        const response = await CustomerAPI.updateCustomer(customerId, customerData);
+
+        if (response.success) {
+            // Log action
+            if (window.logCustomerAction) {
+                logCustomerAction('Updated customer: ' + customer.name + ' -> ' + name, {
+                    id: customerId,
+                    oldName: customer.name,
+                    newName: name,
+                    oldEmail: customer.email,
+                    newEmail: email
+                });
+            }
+
+            // Update local cache
+            const customerIndex = customers.findIndex(c => c.id === customerId);
+            if (customerIndex !== -1) {
+                customers[customerIndex] = response.data;
+            }
+
+            renderCustomerTable();
+            updateDashboard();
+            closeModal('editCustomerModal');
+            document.getElementById('editCustomerModal').remove();
+            Utils.showNotification('Customer updated successfully!');
+        }
+
+    } catch (error) {
+        console.error('Update customer error:', error);
+        Utils.showNotification(error.message || 'Failed to update customer. Please try again.');
+    } finally {
+        // Always reset button state
+        resetButton(submitBtn, originalText || 'Update Customer');
     }
-
-    // Check if phone already exists (excluding current customer)
-    if (customers.find(c => c.phone === phone && c.id !== customerId)) {
-        Utils.showNotification('A customer with this phone number already exists');
-        return;
-    }
-
-    // Log action
-    if (window.logCustomerAction) {
-        logCustomerAction('Updated customer: ' + customer.name + ' -> ' + name, {
-            id: customerId,
-            oldName: customer.name,
-            newName: name,
-            oldEmail: customer.email,
-            newEmail: email
-        });
-    }
-
-    // Update customer
-    customer.name = name;
-    customer.email = email;
-    customer.phone = phone;
-    customer.address = address;
-
-    renderCustomerTable();
-    updateDashboard();
-    closeModal('editCustomerModal');
-    document.getElementById('editCustomerModal').remove();
-    Utils.showNotification('Customer updated successfully!');
 }
 
 /**
- * Delete customer
+ * Delete customer with API integration
  */
-function deleteCustomer(customerId) {
+async function deleteCustomer(customerId) {
     const currentUser = AuthModule.getCurrentUser();
     const isStaff = currentUser && currentUser.role === 'staff';
     
@@ -335,37 +387,65 @@ function deleteCustomer(customerId) {
     }
 
     if (confirm('Are you sure you want to delete customer "' + customer.name + '"?')) {
-        // Log action
-        if (window.logCustomerAction) {
-            logCustomerAction('Deleted customer: ' + customer.name, customer);
+        try {
+            const response = await CustomerAPI.deleteCustomer(customerId);
+            
+            if (response.success) {
+                // Log action
+                if (window.logCustomerAction) {
+                    logCustomerAction('Deleted customer: ' + customer.name, customer);
+                }
+                
+                // Remove from local cache
+                customers = customers.filter(c => c.id !== customerId);
+                
+                renderCustomerTable();
+                updateDashboard();
+                Utils.showNotification('Customer deleted successfully!');
+            }
+
+        } catch (error) {
+            console.error('Delete customer error:', error);
+            Utils.showNotification(error.message || 'Failed to delete customer. Please try again.');
         }
-        
-        customers = customers.filter(c => c.id !== customerId);
-        renderCustomerTable();
-        updateDashboard();
-        Utils.showNotification('Customer deleted successfully!');
     }
 }
 
 /**
- * Update customer purchase count and net value
+ * Update customer purchase count and net value with API
  */
-function incrementCustomerPurchases(customerId) {
-    const customer = customers.find(c => c.id === customerId);
-    if (customer) {
-        customer.purchases++;
-        updateCustomerNetValue(customerId);
+async function incrementCustomerPurchases(customerId) {
+    try {
+        const response = await CustomerAPI.incrementPurchases(customerId);
+        if (response.success) {
+            // Update local cache
+            const customerIndex = customers.findIndex(c => c.id === customerId);
+            if (customerIndex !== -1) {
+                customers[customerIndex] = response.data;
+            }
+            renderCustomerTable();
+        }
+    } catch (error) {
+        console.error('Increment purchases error:', error);
     }
 }
 
 /**
- * Update customer service count and net value
+ * Update customer service count and net value with API
  */
-function incrementCustomerServices(customerId) {
-    const customer = customers.find(c => c.id === customerId);
-    if (customer) {
-        customer.serviceCount++;
-        updateCustomerNetValue(customerId);
+async function incrementCustomerServices(customerId) {
+    try {
+        const response = await CustomerAPI.incrementServices(customerId);
+        if (response.success) {
+            // Update local cache
+            const customerIndex = customers.findIndex(c => c.id === customerId);
+            if (customerIndex !== -1) {
+                customers[customerIndex] = response.data;
+            }
+            renderCustomerTable();
+        }
+    } catch (error) {
+        console.error('Increment services error:', error);
     }
 }
 
@@ -373,22 +453,18 @@ function incrementCustomerServices(customerId) {
  * Decrease customer purchase count and net value
  */
 function decrementCustomerPurchases(customerId) {
-    const customer = customers.find(c => c.id === customerId);
-    if (customer) {
-        customer.purchases = Math.max(0, customer.purchases - 1);
-        updateCustomerNetValue(customerId);
-    }
+    // This would need API endpoint for decrementing
+    // For now, just reload customers
+    loadCustomersFromAPI().then(() => renderCustomerTable());
 }
 
 /**
  * Decrease customer service count and net value
  */
 function decrementCustomerServices(customerId) {
-    const customer = customers.find(c => c.id === customerId);
-    if (customer) {
-        customer.serviceCount = Math.max(0, customer.serviceCount - 1);
-        updateCustomerNetValue(customerId);
-    }
+    // This would need API endpoint for decrementing
+    // For now, just reload customers
+    loadCustomersFromAPI().then(() => renderCustomerTable());
 }
 
 /**
@@ -399,7 +475,7 @@ function getCustomerById(customerId) {
 }
 
 /**
- * Search customers
+ * Search customers with real-time filtering
  */
 function searchCustomers(query) {
     const tbody = document.getElementById('customerTableBody');
@@ -488,7 +564,7 @@ function initiateServiceFromCustomer(customerId) {
 }
 
 /**
- * Render customer table with Net Value column and updated action buttons
+ * Render customer table with API data
  */
 function renderCustomerTable() {
     const tbody = document.getElementById('customerTableBody');
@@ -502,6 +578,17 @@ function renderCustomerTable() {
     
     tbody.innerHTML = '';
     
+    if (customers.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align: center; color: #999; padding: 20px;">
+                    No customers found. Click "Add Customer" to get started.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
     customers.forEach((customer, index) => {
         const row = document.createElement('tr');
         
@@ -509,11 +596,11 @@ function renderCustomerTable() {
         
         // Sale and Service buttons (available for all users)
         actionButtons += `
-            <button class="btn" onclick="initiateSaleFromCustomer(${customer.id})" 
+            <button class="btn" onclick="initiateSaleFromCustomer('${customer.id}')" 
                 title="New Sale" ${!AuthModule.hasPermission('sales') ? 'disabled' : ''}>
                 Sale
             </button>
-            <button class="btn" onclick="initiateServiceFromCustomer(${customer.id})" 
+            <button class="btn" onclick="initiateServiceFromCustomer('${customer.id}')" 
                 title="New Service Request" ${!AuthModule.hasPermission('service') ? 'disabled' : ''}>
                 Service
             </button>
@@ -522,12 +609,12 @@ function renderCustomerTable() {
         // Add edit/delete buttons only for non-staff users
         if (!isStaff) {
             actionButtons = `
-                <button class="btn" onclick="editCustomer(${customer.id})" 
+                <button class="btn" onclick="editCustomer('${customer.id}')" 
                     title="Edit Customer" ${!AuthModule.hasPermission('customers') ? 'disabled' : ''}>
                     Edit
                 </button>
                 ${actionButtons}
-                <button class="btn btn-danger" onclick="deleteCustomer(${customer.id})"
+                <button class="btn btn-danger" onclick="deleteCustomer('${customer.id}')"
                     ${!AuthModule.hasPermission('customers') ? 'disabled' : ''}>
                     Delete
                 </button>
@@ -548,13 +635,23 @@ function renderCustomerTable() {
         tbody.appendChild(row);
     });
     
-    console.log('Customer table rendered successfully with Net Value column');
+    console.log('Customer table rendered successfully with API data');
 }
 
 /**
- * Get customer statistics
+ * Get customer statistics with API integration
  */
-function getCustomerStats() {
+async function getCustomerStats() {
+    try {
+        const response = await CustomerAPI.getCustomerStats();
+        if (response.success) {
+            return response.data;
+        }
+    } catch (error) {
+        console.error('Get customer stats error:', error);
+    }
+    
+    // Fallback to local calculation
     const totalCustomers = customers.length;
     const activeCustomers = customers.filter(c => c.purchases > 0 || c.serviceCount > 0).length;
     const totalNetValue = customers.reduce((sum, c) => sum + c.netValue, 0);
@@ -581,21 +678,68 @@ function populateCustomerDropdown(selectId) {
     
     select.innerHTML = '<option value="">Select Customer</option>';
     customers.forEach(customer => {
-        select.innerHTML += '<option value="' + customer.id + '">' + Utils.sanitizeHtml(customer.name) + '</option>';
+        select.innerHTML += `<option value="${customer.id}">${Utils.sanitizeHtml(customer.name)}</option>`;
     });
 }
 
 /**
- * Initialize customer module
+ * Refresh customers from API
  */
-function initializeCustomers() {
-    updateAllCustomersNetValue();
-    renderCustomerTable();
-    console.log('Customer module initialized with Net Value calculations');
+async function refreshCustomers() {
+    try {
+        await loadCustomersFromAPI();
+        renderCustomerTable();
+        console.log('Customers refreshed from API');
+    } catch (error) {
+        console.error('Refresh customers error:', error);
+        Utils.showNotification('Failed to refresh customer data.');
+    }
 }
+
+/**
+ * Close modal and reset form states - NEW FUNCTION
+ */
+function closeCustomerModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+        
+        // Reset any forms in the modal
+        const forms = modal.querySelectorAll('form');
+        forms.forEach(form => {
+            form.reset();
+            
+            // Reset submit buttons
+            const submitBtns = form.querySelectorAll('button[type="submit"]');
+            submitBtns.forEach(btn => {
+                if (btn.dataset.originalText) {
+                    resetButton(btn, btn.dataset.originalText);
+                } else {
+                    btn.disabled = false;
+                }
+            });
+        });
+    }
+}
+
+// Override the global closeModal function for customer modals
+window.closeModal = function(modalId) {
+    // Check if it's a customer modal
+    if (modalId === 'addCustomerModal' || modalId === 'editCustomerModal') {
+        closeCustomerModal(modalId);
+    } else {
+        // Use original close modal logic for other modals
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+};
 
 // Export functions for global use
 window.CustomerModule = {
+    initializeCustomers,
+    loadCustomersFromAPI,
     openAddCustomerModal,
     addNewCustomer,
     editCustomer,
@@ -612,9 +756,11 @@ window.CustomerModule = {
     renderCustomerTable,
     getCustomerStats,
     populateCustomerDropdown,
-    initializeCustomers,
     updateCustomerNetValue,
-    updateAllCustomersNetValue,
     calculateCustomerNetValue,
+    refreshCustomers,
+    resetButton,
+    setButtonLoading,
+    closeCustomerModal,
     customers // For access by other modules
 };

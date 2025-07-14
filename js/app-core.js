@@ -1,8 +1,107 @@
-// ZEDSON WATCHCRAFT - App Core Module with Logging Integration
+// ZEDSON WATCHCRAFT - App Core Module with API Integration
 
 /**
- * Main Application Controller - Core Functions with Action Logging and Revenue Analytics
+ * Main Application Controller - Core Functions with API Integration
  */
+
+/**
+ * Initialize application with API integration
+ */
+async function initializeApp() {
+    console.log('Initializing ZEDSON WATCHCRAFT Management System with API...');
+    
+    try {
+        // First check if server is available
+        const serverHealthy = await APIHelpers.checkServerHealth();
+        if (!serverHealthy) {
+            Utils.showNotification('Server is not available. Please ensure the backend server is running on port 5000.');
+            return;
+        }
+        
+        // Initialize logging first
+        if (window.LoggingModule) {
+            LoggingModule.initializeLogging();
+        }
+        
+        // Check for existing authentication
+        const user = await AuthModule.initializeAuth();
+        
+        if (user) {
+            // User is already logged in
+            console.log('User already authenticated:', user.username);
+            AuthModule.completeLogin(user);
+        } else {
+            // Show login screen
+            console.log('No authenticated user, showing login screen');
+            const loginScreen = document.getElementById('loginScreen');
+            const mainApp = document.getElementById('mainApp');
+            
+            if (loginScreen) loginScreen.style.display = 'flex';
+            if (mainApp) mainApp.classList.remove('logged-in');
+        }
+        
+        // Load modal templates
+        if (window.AppExtendedModule && AppExtendedModule.loadModalTemplates) {
+            AppExtendedModule.loadModalTemplates();
+        }
+        
+        // Initialize other modules (but don't load sample data)
+        if (window.InventoryModule) {
+            // InventoryModule.initializeInventory(); // Will be called after login
+        }
+        
+        // Setup event listeners
+        setupEventListeners();
+        
+        console.log('Application initialized successfully with API integration');
+        
+    } catch (error) {
+        console.error('Error during application initialization:', error);
+        Utils.showNotification('Error starting application. Please check if the backend server is running and refresh the page.');
+    }
+}
+
+/**
+ * Initialize modules after successful login
+ */
+async function initializeModulesAfterLogin() {
+    try {
+        // Initialize customer module with API data
+        if (window.CustomerModule) {
+            await CustomerModule.initializeCustomers();
+        }
+        
+        // Initialize other modules (they will use local data for now)
+        if (window.InventoryModule) {
+            InventoryModule.initializeInventory();
+        }
+        
+        if (window.SalesModule) {
+            SalesModule.initializeSales();
+        }
+        
+        if (window.ServiceModule) {
+            ServiceModule.initializeServices();
+        }
+        
+        if (window.ExpenseModule) {
+            ExpenseModule.initializeExpenses();
+        }
+        
+        if (window.InvoiceModule) {
+            InvoiceModule.initializeInvoices();
+        }
+        
+        // Update dashboard
+        updateDashboard();
+        
+        console.log('All modules initialized after login');
+        
+    } catch (error) {
+        console.error('Error initializing modules after login:', error);
+        Utils.showNotification('Error loading application data. Please refresh the page.');
+    }
+}
 
 /**
  * Navigation function with logging
@@ -57,7 +156,8 @@ function updateSectionData(sectionId) {
             break;
         case 'customers':
             if (window.CustomerModule) {
-                CustomerModule.renderCustomerTable();
+                // Refresh customers from API when viewing customers section
+                CustomerModule.refreshCustomers();
             }
             break;
         case 'users':
@@ -126,64 +226,71 @@ function getTodayRevenue() {
 }
 
 /**
- * Update dashboard statistics with role-based restrictions
+ * Update dashboard statistics with API data
  */
-function updateDashboard() {
+async function updateDashboard() {
     const currentUser = AuthModule.getCurrentUser();
-    const isStaff = currentUser && currentUser.role === 'staff';
+    if (!currentUser) return;
     
-    // Update statistics cards with safe checks
-    if (window.InventoryModule && !isStaff) {
-        const inventoryStats = InventoryModule.getInventoryStats();
-        const totalWatchesElement = document.getElementById('totalWatches');
-        if (totalWatchesElement) {
-            totalWatchesElement.textContent = inventoryStats.totalWatches;
-        }
-    }
+    const isStaff = currentUser.role === 'staff';
     
-    if (window.CustomerModule && !isStaff) {
-        const customerStats = CustomerModule.getCustomerStats();
-        const totalCustomersElement = document.getElementById('totalCustomers');
-        if (totalCustomersElement) {
-            totalCustomersElement.textContent = customerStats.totalCustomers;
+    try {
+        // Update statistics cards with safe checks
+        if (window.InventoryModule && !isStaff) {
+            const inventoryStats = InventoryModule.getInventoryStats();
+            const totalWatchesElement = document.getElementById('totalWatches');
+            if (totalWatchesElement) {
+                totalWatchesElement.textContent = inventoryStats.totalWatches;
+            }
         }
-    }
-    
-    // Update combined today's sales (Sales + Services) - Change label to "Today's Sales"
-    const todaySales = getTodayRevenue();
-    const todaySalesElement = document.getElementById('todayRevenue');
-    if (todaySalesElement) {
-        todaySalesElement.textContent = Utils.formatCurrency(todaySales.totalRevenue);
-        // Update the label to "Today's Sales"
-        const labelElement = todaySalesElement.nextElementSibling;
-        if (labelElement && labelElement.tagName === 'P') {
-            labelElement.textContent = "Today's Sales";
+        
+        if (window.CustomerModule && !isStaff) {
+            const customerStats = await CustomerModule.getCustomerStats();
+            const totalCustomersElement = document.getElementById('totalCustomers');
+            if (totalCustomersElement && customerStats) {
+                totalCustomersElement.textContent = customerStats.totalCustomers;
+            }
         }
-    }
-    
-    // Update incomplete services - visible for both staff and others
-    if (window.ServiceModule) {
-        const serviceStats = ServiceModule.getServiceStats();
-        const incompleteServicesElement = document.getElementById('incompleteServices');
-        if (incompleteServicesElement) {
-            incompleteServicesElement.textContent = serviceStats.incompleteServices;
+        
+        // Update combined today's sales (Sales + Services)
+        const todaySales = getTodayRevenue();
+        const todaySalesElement = document.getElementById('todayRevenue');
+        if (todaySalesElement) {
+            todaySalesElement.textContent = Utils.formatCurrency(todaySales.totalRevenue);
+            // Update the label to "Today's Sales"
+            const labelElement = todaySalesElement.nextElementSibling;
+            if (labelElement && labelElement.tagName === 'P') {
+                labelElement.textContent = "Today's Sales";
+            }
         }
-    }
+        
+        // Update incomplete services - visible for both staff and others
+        if (window.ServiceModule) {
+            const serviceStats = ServiceModule.getServiceStats();
+            const incompleteServicesElement = document.getElementById('incompleteServices');
+            if (incompleteServicesElement) {
+                incompleteServicesElement.textContent = serviceStats.incompleteServices;
+            }
+        }
 
-    // Hide invoices stat for staff
-    if (window.InvoiceModule && !isStaff) {
-        const invoiceStats = InvoiceModule.getInvoiceStats();
-        const totalInvoicesElement = document.getElementById('totalInvoices');
-        if (totalInvoicesElement) {
-            totalInvoicesElement.textContent = invoiceStats.totalInvoices;
+        // Hide invoices stat for staff
+        if (window.InvoiceModule && !isStaff) {
+            const invoiceStats = InvoiceModule.getInvoiceStats();
+            const totalInvoicesElement = document.getElementById('totalInvoices');
+            if (totalInvoicesElement) {
+                totalInvoicesElement.textContent = invoiceStats.totalInvoices;
+            }
         }
-    }
 
-    // Update dashboard visibility based on user role
-    updateDashboardVisibility();
-    
-    // Update recent activities
-    updateRecentActivities();
+        // Update dashboard visibility based on user role
+        updateDashboardVisibility();
+        
+        // Update recent activities
+        updateRecentActivities();
+        
+    } catch (error) {
+        console.error('Error updating dashboard:', error);
+    }
 }
 
 /**
@@ -305,234 +412,17 @@ function openRevenueAnalytics() {
     }
     
     // Reset and show all transactions initially
-    resetRevenueFilter();
+    resetRevenueAnalytics();
 }
 
 /**
- * Toggle Revenue Filter Inputs with updated structure
+ * Reset revenue analytics
  */
-function toggleRevenueFilterInputs() {
-    const filterType = document.getElementById('revenueFilterType')?.value;
-    const dateRangeInputs = document.getElementById('revenueDateRangeInputs');
-    const monthGroup = document.getElementById('revenueMonthGroup');
-    const yearGroup = document.getElementById('revenueYearGroup');
-    
-    if (!filterType || !dateRangeInputs || !monthGroup || !yearGroup) return;
-    
-    // Hide all inputs first
-    dateRangeInputs.style.display = 'none';
-    monthGroup.style.display = 'none';
-    
-    if (filterType === 'dateRange') {
-        dateRangeInputs.style.display = 'grid';
-        yearGroup.style.display = 'none';
-    } else if (filterType === 'monthly') {
-        monthGroup.style.display = 'block';
-        yearGroup.style.display = 'block';
-    } else {
-        yearGroup.style.display = 'block';
+function resetRevenueAnalytics() {
+    // This function will be implemented in app-extended.js
+    if (window.AppExtendedModule && AppExtendedModule.resetRevenueFilter) {
+        AppExtendedModule.resetRevenueFilter();
     }
-}
-
-/**
- * Apply Revenue Filter with expenses integration
- */
-function applyRevenueFilter() {
-    if (!window.SalesModule || !window.ServiceModule) {
-        Utils.showNotification('Sales or Service module not available');
-        return;
-    }
-    
-    const filterType = document.getElementById('revenueFilterType')?.value;
-    const revenueType = document.getElementById('revenueTypeFilter')?.value || 'all';
-    const includeExpenses = document.getElementById('includeExpenses')?.checked || false;
-    const resultsDiv = document.getElementById('revenueFilterResults');
-    
-    if (!filterType || !resultsDiv) return;
-    
-    let filteredSales = [];
-    let filteredServices = [];
-    let filteredExpenses = [];
-    let title = '';
-    
-    // First filter by date/time
-    if (filterType === 'dateRange') {
-        const fromDate = document.getElementById('revenueFromDate')?.value;
-        const toDate = document.getElementById('revenueToDate')?.value;
-        
-        if (!fromDate || !toDate) {
-            Utils.showNotification('Please select both from and to dates.');
-            return;
-        }
-        
-        filteredSales = SalesModule.filterSalesByDateRange(fromDate, toDate);
-        filteredServices = ServiceModule.filterServicesByDateRange(fromDate, toDate)
-            .filter(s => s.status === 'completed');
-        
-        if (includeExpenses && window.ExpenseModule) {
-            filteredExpenses = ExpenseModule.getExpensesByDateRange(fromDate, toDate);
-        }
-        
-        title = `Transactions from ${Utils.formatDate(fromDate)} to ${Utils.formatDate(toDate)}`;
-        
-    } else if (filterType === 'monthly') {
-        const month = document.getElementById('revenueMonth')?.value;
-        const year = document.getElementById('revenueYear')?.value;
-        
-        if (month === null || !year) return;
-        
-        filteredSales = SalesModule.filterSalesByMonth(month, year);
-        filteredServices = ServiceModule.filterServicesByMonth(month, year)
-            .filter(s => s.status === 'completed');
-        
-        if (includeExpenses && window.ExpenseModule) {
-            filteredExpenses = ExpenseModule.getExpensesByMonth(month, year);
-        }
-        
-        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-                           'July', 'August', 'September', 'October', 'November', 'December'];
-        title = `Transactions for ${monthNames[month]} ${year}`;
-        
-    } else {
-        filteredSales = SalesModule.sales || [];
-        filteredServices = (ServiceModule.services || []).filter(s => s.status === 'completed');
-        
-        if (includeExpenses && window.ExpenseModule) {
-            filteredExpenses = ExpenseModule.expenses || [];
-        }
-        
-        title = 'All Transactions';
-    }
-    
-    // Then filter by revenue type
-    if (revenueType === 'sales') {
-        filteredServices = [];
-        title += ' (Sales Only)';
-    } else if (revenueType === 'services') {
-        filteredSales = [];
-        title += ' (Services Only)';
-    }
-    
-    // Calculate totals
-    const salesAmount = filteredSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
-    const servicesAmount = filteredServices.reduce((sum, service) => sum + service.cost, 0);
-    const expensesAmount = includeExpenses ? filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0) : 0;
-    const totalRevenue = salesAmount + servicesAmount;
-    const netAmount = totalRevenue - expensesAmount;
-    const totalTransactions = filteredSales.length + filteredServices.length + (includeExpenses ? filteredExpenses.length : 0);
-    
-    // Display results
-    let statsHtml = `
-        <div class="stat-card" style="margin: 10px;">
-            <h3>${totalTransactions}</h3>
-            <p>Total Transactions</p>
-        </div>
-        <div class="stat-card" style="margin: 10px;">
-            <h3>${Utils.formatCurrency(salesAmount)}</h3>
-            <p>Sales Revenue</p>
-        </div>
-        <div class="stat-card" style="margin: 10px;">
-            <h3>${Utils.formatCurrency(servicesAmount)}</h3>
-            <p>Services Revenue</p>
-        </div>
-        <div class="stat-card" style="margin: 10px;">
-            <h3>${Utils.formatCurrency(totalRevenue)}</h3>
-            <p>Total Revenue</p>
-        </div>
-    `;
-    
-    if (includeExpenses) {
-        statsHtml += `
-            <div class="stat-card" style="margin: 10px;">
-                <h3 style="color: #dc3545;">${Utils.formatCurrency(expensesAmount)}</h3>
-                <p>Total Expenses</p>
-            </div>
-            <div class="stat-card" style="margin: 10px;">
-                <h3 style="color: ${netAmount >= 0 ? '#28a745' : '#dc3545'};">${Utils.formatCurrency(netAmount)}</h3>
-                <p>Net Amount</p>
-            </div>
-        `;
-    }
-    
-    let tableRows = '';
-    
-    // Add sales rows
-    tableRows += filteredSales.map(sale => `
-        <tr>
-            <td><span class="status available">Sales</span></td>
-            <td>${Utils.sanitizeHtml(sale.date)}</td>
-            <td>${Utils.sanitizeHtml(sale.customerName)}</td>
-            <td>${Utils.sanitizeHtml(sale.watchName)}</td>
-            <td style="color: #28a745;">${Utils.formatCurrency(sale.totalAmount)}</td>
-        </tr>
-    `).join('');
-    
-    // Add services rows
-    tableRows += filteredServices.map(service => `
-        <tr>
-            <td><span class="status completed">Service</span></td>
-            <td>${Utils.sanitizeHtml(service.actualDelivery || service.date)}</td>
-            <td>${Utils.sanitizeHtml(service.customerName)}</td>
-            <td>${Utils.sanitizeHtml(service.watchName)}</td>
-            <td style="color: #28a745;">${Utils.formatCurrency(service.cost)}</td>
-        </tr>
-    `).join('');
-    
-    // Add expenses rows if included
-    if (includeExpenses) {
-        tableRows += filteredExpenses.map(expense => `
-            <tr>
-                <td><span class="status on-hold">Expense</span></td>
-                <td>${Utils.sanitizeHtml(expense.formattedDate)}</td>
-                <td>-</td>
-                <td>${Utils.sanitizeHtml(expense.description)}</td>
-                <td style="color: #dc3545;">-${Utils.formatCurrency(expense.amount)}</td>
-            </tr>
-        `).join('');
-    }
-    
-    resultsDiv.innerHTML = `
-        <div class="filter-results">
-            <h3>${title}</h3>
-            <div class="stats" style="margin: 20px 0;">
-                ${statsHtml}
-            </div>
-            <div style="max-height: 300px; overflow-y: auto;">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Type</th>
-                            <th>Date</th>
-                            <th>Customer</th>
-                            <th>Details</th>
-                            <th>Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${tableRows}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    `;
-}
-
-/**
- * Reset Revenue Filter
- */
-function resetRevenueFilter() {
-    const filterType = document.getElementById('revenueFilterType');
-    const revenueType = document.getElementById('revenueTypeFilter');
-    const includeExpenses = document.getElementById('includeExpenses');
-    const resultsDiv = document.getElementById('revenueFilterResults');
-    
-    if (filterType) filterType.value = 'all';
-    if (revenueType) revenueType.value = 'all';
-    if (includeExpenses) includeExpenses.checked = false;
-    if (resultsDiv) resultsDiv.innerHTML = '';
-    
-    toggleRevenueFilterInputs();
-    applyRevenueFilter();
 }
 
 /**
@@ -594,85 +484,10 @@ function setupEventListeners() {
     });
 }
 
-/**
- * Initialize sample data
- */
-function initializeSampleData() {
-    // Initialize all modules with safe checks
-    if (window.InventoryModule) {
-        InventoryModule.initializeInventory();
-    }
-    
-    if (window.CustomerModule) {
-        CustomerModule.initializeCustomers();
-    }
-    
-    if (window.SalesModule) {
-        SalesModule.initializeSales();
-    }
-    
-    if (window.ServiceModule) {
-        ServiceModule.initializeServices();
-    }
-    
-    if (window.ExpenseModule) {
-        ExpenseModule.initializeExpenses();
-    }
-    
-    if (window.InvoiceModule) {
-        InvoiceModule.initializeInvoices();
-    }
-    
-    // Update dashboard
-    updateDashboard();
-    
-    console.log('Sample data initialized');
-}
-
-/**
- * Initialize application with logging
- */
-function initializeApp() {
-    console.log('Initializing ZEDSON WATCHCRAFT Management System...');
-    
-    try {
-        // Initialize logging first
-        if (window.LoggingModule) {
-            LoggingModule.initializeLogging();
-        }
-        
-        // Load modal templates
-        if (window.AppExtendedModule && AppExtendedModule.loadModalTemplates) {
-            AppExtendedModule.loadModalTemplates();
-        }
-        
-        // Initialize sample data
-        initializeSampleData();
-        
-        // Setup event listeners
-        setupEventListeners();
-        
-        // Ensure login screen is shown initially
-        const loginScreen = document.getElementById('loginScreen');
-        const mainApp = document.getElementById('mainApp');
-        
-        if (loginScreen) loginScreen.style.display = 'flex';
-        if (mainApp) mainApp.classList.remove('logged-in');
-        
-        // Log system startup
-        if (window.logAction) {
-            logAction('System initialized successfully');
-        }
-        
-        console.log('Application initialized successfully');
-    } catch (error) {
-        console.error('Error during application initialization:', error);
-        Utils.showNotification('Error starting application. Please refresh the page.');
-    }
-}
-
 // Export core functions for extended module
 window.AppCoreModule = {
+    initializeApp,
+    initializeModulesAfterLogin,
     showSection,
     updateSectionData,
     getTodayDate,
@@ -681,13 +496,8 @@ window.AppCoreModule = {
     updateDashboardVisibility,
     updateRecentActivities,
     openRevenueAnalytics,
-    toggleRevenueFilterInputs,
-    applyRevenueFilter,
-    resetRevenueFilter,
     closeModal,
     deleteItem,
     confirmTransaction,
-    setupEventListeners,
-    initializeSampleData,
-    initializeApp
+    setupEventListeners
 };
