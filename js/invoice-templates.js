@@ -5,7 +5,7 @@
  */
 
 /**
- * Create Sales Invoice HTML with updated design - removed Invoice Amount, added Discount column, simplified summary
+ * Create Sales Invoice HTML with updated design - FIXED LOGO DISPLAY
  */
 function createSalesInvoiceHTML(invoice) {
     return `
@@ -14,8 +14,8 @@ function createSalesInvoiceHTML(invoice) {
             <div style="background: linear-gradient(135deg, #1a237e 0%, #283593 100%); color: white; padding: 20px; border-radius: 10px 10px 0 0; margin-bottom: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div style="display: flex; align-items: center; gap: 15px;">
-                        <img src="assets/zedson-logo.png" alt="ZEDSON WATCHCRAFT" style="height: 60px; width: auto; filter: brightness(0) invert(1);" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                        <div style="display: none;">
+                        <img src="assets/zedson-logo.png" alt="ZEDSON WATCHCRAFT" style="height: 60px; width: auto; background: white; padding: 5px; border-radius: 5px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <div style="display: none; flex-direction: column; align-items: center;">
                             <h1 style="margin: 0; font-size: 2.5em; font-weight: bold;">ZEDSON</h1>
                             <p style="margin: 5px 0 0 0; font-size: 1.2em; color: #ffd700; font-weight: 600; letter-spacing: 2px;">WATCHCRAFT</p>
                         </div>
@@ -27,7 +27,7 @@ function createSalesInvoiceHTML(invoice) {
                 </div>
             </div>
 
-            <!-- Company Info Bar (removed Invoice Amount) -->
+            <!-- Company Info Bar -->
             <div style="background: #f8f9fa; padding: 15px; border-left: 5px solid #ffd700; margin-bottom: 20px;">
                 <div style="font-size: 0.9em; color: #666;">
                     <strong>14B, Northern Street, Greater South Avenue</strong><br>
@@ -114,7 +114,7 @@ function createSalesInvoiceHTML(invoice) {
 }
 
 /**
- * Create Service Completion Invoice HTML with logo and updated design (unchanged)
+ * Create Service Completion Invoice HTML with logo and updated design - FIXED LOGO DISPLAY
  */
 function createServiceCompletionHTML(invoice) {
     return `
@@ -123,8 +123,8 @@ function createServiceCompletionHTML(invoice) {
             <div style="background: linear-gradient(135deg, #1a237e 0%, #283593 100%); color: white; padding: 20px; border-radius: 10px 10px 0 0; margin-bottom: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div style="display: flex; align-items: center; gap: 15px;">
-                        <img src="assets/zedson-logo.png" alt="ZEDSON WATCHCRAFT" style="height: 60px; width: auto; filter: brightness(0) invert(1);" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                        <div style="display: none;">
+                        <img src="assets/zedson-logo.png" alt="ZEDSON WATCHCRAFT" style="height: 60px; width: auto; background: white; padding: 5px; border-radius: 5px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <div style="display: none; flex-direction: column; align-items: center;">
                             <h1 style="margin: 0; font-size: 2.5em; font-weight: bold;">ZEDSON</h1>
                             <p style="margin: 5px 0 0 0; font-size: 1.2em; color: #ffd700; font-weight: 600; letter-spacing: 2px;">WATCHCRAFT</p>
                         </div>
@@ -267,7 +267,7 @@ function createServiceCompletionHTML(invoice) {
 }
 
 /**
- * Create Service Acknowledgement HTML with logo (unchanged)
+ * Create Service Acknowledgement HTML with logo - FIXED LOGO DISPLAY
  */
 function createServiceAcknowledgementHTML(acknowledgement) {
     return `
@@ -276,8 +276,8 @@ function createServiceAcknowledgementHTML(acknowledgement) {
             <div style="background: linear-gradient(135deg, #1a237e 0%, #283593 100%); color: white; padding: 20px; border-radius: 10px 10px 0 0; margin-bottom: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div style="display: flex; align-items: center; gap: 15px;">
-                        <img src="assets/zedson-logo.png" alt="ZEDSON WATCHCRAFT" style="height: 60px; width: auto; filter: brightness(0) invert(1);" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                        <div style="display: none;">
+                        <img src="assets/zedson-logo.png" alt="ZEDSON WATCHCRAFT" style="height: 60px; width: auto; background: white; padding: 5px; border-radius: 5px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <div style="display: none; flex-direction: column; align-items: center;">
                             <h1 style="margin: 0; font-size: 2.5em; font-weight: bold;">ZEDSON</h1>
                             <p style="margin: 5px 0 0 0; font-size: 1.2em; color: #ffd700; font-weight: 600; letter-spacing: 2px;">WATCHCRAFT</p>
                         </div>

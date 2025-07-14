@@ -558,7 +558,7 @@ function deleteService(serviceId) {
 }
 
 /**
- * View service acknowledgement
+ * View service acknowledgement - FIXED FUNCTION
  */
 function viewServiceAcknowledgement(serviceId) {
     if (!window.InvoiceModule) {
@@ -566,11 +566,12 @@ function viewServiceAcknowledgement(serviceId) {
         return;
     }
     
+    // Use the InvoiceModule function directly
     InvoiceModule.viewServiceAcknowledgement(serviceId);
 }
 
 /**
- * View service completion invoice
+ * View service completion invoice - FIXED FUNCTION
  */
 function viewServiceCompletionInvoice(serviceId) {
     if (!window.InvoiceModule) {
@@ -668,7 +669,10 @@ function filterServicesByMonth(month, year) {
 }
 
 /**
- * Render service table with updated action buttons
+ * Render service table with updated action buttons - FIXED INVOICE BUTTONS
+ */
+/**
+ * Render service table with updated action buttons - FIXED INVOICE BUTTONS
  */
 function renderServiceTable() {
     const tbody = document.getElementById('serviceTableBody');
@@ -713,7 +717,7 @@ function renderServiceTable() {
             `;
         }
         
-        // Add invoice view buttons
+        // Add invoice view buttons - FIXED TO USE DIRECT FUNCTIONS
         const hasAcknowledgement = service.acknowledgementGenerated;
         const hasCompletionInvoice = window.InvoiceModule && 
             InvoiceModule.getInvoicesForTransaction(service.id, 'service')
@@ -765,6 +769,25 @@ function renderServiceTable() {
     });
 }
 
+// Make global functions available for button clicks - FIXED
+window.viewServiceAcknowledgement = function(serviceId) {
+    if (window.InvoiceModule) {
+        InvoiceModule.viewServiceAcknowledgement(serviceId);
+    }
+};
+
+window.viewServiceCompletionInvoice = function(serviceId) {
+    if (window.InvoiceModule) {
+        const invoices = InvoiceModule.getInvoicesForTransaction(serviceId, 'service');
+        const completionInvoice = invoices.find(inv => inv.type === 'Service Completion');
+        
+        if (completionInvoice) {
+            InvoiceModule.viewInvoice(completionInvoice.id);
+        } else {
+            Utils.showNotification('No completion invoice found for this service.');
+        }
+    }
+};
 /**
  * Initialize service module
  */
@@ -878,7 +901,7 @@ window.previewCompletionImage = previewCompletionImage;
 // Make close function globally available
 window.closeEditServiceModal = closeEditServiceModal;
 
-// Make view functions globally available
+// Make global functions available for button clicks - FIXED
 window.viewServiceAcknowledgement = function(serviceId) {
     if (window.ServiceModule) {
         ServiceModule.viewServiceAcknowledgement(serviceId);

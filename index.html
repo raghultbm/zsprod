@@ -336,76 +336,76 @@
             <p>Designed & Developed by <a href="#">PULSEWARE</a>❤</p>
         </div>
     </div>
-
-    <!-- UPDATED Revenue Analytics Modal -->
-    <div id="revenueAnalyticsModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('revenueAnalyticsModal')">&times;</span>
-            <h2>Revenue Analytics</h2>
-            <div class="filter-controls">
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Filter Type:</label>
-                        <select id="revenueFilterType" onchange="toggleRevenueFilterInputs()">
-                            <option value="all">All Transactions</option>
-                            <option value="dateRange">Date Range</option>
-                            <option value="monthly">Monthly</option>
-                        </select>
+    
+<!-- UPDATED Revenue Analytics Modal -->
+            <div id="revenueAnalyticsModal" class="modal">
+                <div class="modal-content">
+                    <span class="close" onclick="closeModal('revenueAnalyticsModal')">&times;</span>
+                    <h2>Revenue Analytics</h2>
+                    <div class="filter-controls">
+                        <div class="grid grid-2">
+                            <div class="form-group">
+                                <label>Filter Type:</label>
+                                <select id="revenueFilterType" onchange="toggleRevenueFilterInputs()">
+                                    <option value="all">All Transactions</option>
+                                    <option value="dateRange">Date Range</option>
+                                    <option value="monthly">Monthly</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Revenue Type:</label>
+                                <select id="revenueTypeFilter" onchange="applyRevenueFilter()">
+                                    <option value="all">All Revenue</option>
+                                    <option value="sales">Sales Only</option>
+                                    <option value="services">Services Only</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group" id="revenueYearGroup">
+                            <label>Year:</label>
+                            <select id="revenueYear"></select>
+                        </div>
+                        <div class="grid grid-2" id="revenueDateRangeInputs" style="display: none;">
+                            <div class="form-group">
+                                <label>From Date:</label>
+                                <input type="date" id="revenueFromDate">
+                            </div>
+                            <div class="form-group">
+                                <label>To Date:</label>
+                                <input type="date" id="revenueToDate">
+                            </div>
+                        </div>
+                        <div class="form-group" id="revenueMonthGroup" style="display: none;">
+                            <label>Month:</label>
+                            <select id="revenueMonth">
+                                <option value="0">January</option>
+                                <option value="1">February</option>
+                                <option value="2">March</option>
+                                <option value="3">April</option>
+                                <option value="4">May</option>
+                                <option value="5">June</option>
+                                <option value="6">July</option>
+                                <option value="7">August</option>
+                                <option value="8">September</option>
+                                <option value="9">October</option>
+                                <option value="10">November</option>
+                                <option value="11">December</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" id="includeExpenses" onchange="applyRevenueFilter()">
+                                Include Expenses
+                            </label>
+                        </div>
+                        <button class="btn" onclick="applyRevenueFilter()">Apply Filter</button>
+                        <button class="btn btn-danger" onclick="resetRevenueFilter()">Reset</button>
                     </div>
-                    <div class="form-group">
-                        <label>Revenue Type:</label>
-                        <select id="revenueTypeFilter" onchange="applyRevenueFilter()">
-                            <option value="all">All Revenue</option>
-                            <option value="sales">Sales Only</option>
-                            <option value="services">Services Only</option>
-                        </select>
+                    <div id="revenueFilterResults">
+                        <!-- Results will be displayed here -->
                     </div>
                 </div>
-                <div class="form-group" id="revenueYearGroup">
-                    <label>Year:</label>
-                    <select id="revenueYear"></select>
-                </div>
-                <div class="grid grid-2" id="revenueDateRangeInputs" style="display: none;">
-                    <div class="form-group">
-                        <label>From Date:</label>
-                        <input type="date" id="revenueFromDate">
-                    </div>
-                    <div class="form-group">
-                        <label>To Date:</label>
-                        <input type="date" id="revenueToDate">
-                    </div>
-                </div>
-                <div class="form-group" id="revenueMonthGroup" style="display: none;">
-                    <label>Month:</label>
-                    <select id="revenueMonth">
-                        <option value="0">January</option>
-                        <option value="1">February</option>
-                        <option value="2">March</option>
-                        <option value="3">April</option>
-                        <option value="4">May</option>
-                        <option value="5">June</option>
-                        <option value="6">July</option>
-                        <option value="7">August</option>
-                        <option value="8">September</option>
-                        <option value="9">October</option>
-                        <option value="10">November</option>
-                        <option value="11">December</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="includeExpenses" onchange="applyRevenueFilter()">
-                        Include Expenses (subtract from revenue)
-                    </label>
-                </div>
-                <button class="btn" onclick="applyRevenueFilter()">Apply Filter</button>
-                <button class="btn btn-danger" onclick="resetRevenueFilter()">Reset</button>
             </div>
-            <div id="revenueFilterResults">
-                <!-- Results will be displayed here -->
-            </div>
-        </div>
-    </div>
 
     <!-- Invoice Preview Modal -->
     <div id="invoicePreviewModal" class="modal">

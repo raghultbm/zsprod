@@ -388,6 +388,7 @@ function handleOutletChange(selectElement, originalOutlet) {
 /**
  * View movement history for a watch
  */
+
 function viewMovementHistory(watchId) {
     const watch = watches.find(w => w.id === watchId);
     if (!watch) {
@@ -420,18 +421,25 @@ function viewMovementHistory(watchId) {
 
     historyModal.innerHTML = `
         <div class="modal-content">
-            <span class="close" onclick="closeModal('movementHistoryModal')">&times;</span>
+            <span class="close" onclick="closeMovementHistoryModal()">&times;</span>
             <h2>Movement History - ${watch.brand} ${watch.model}</h2>
             <div class="movement-history">
                 ${historyHtml}
             </div>
-            <button type="button" class="btn" onclick="closeModal('movementHistoryModal')">Close</button>
+            <button type="button" class="btn" onclick="closeMovementHistoryModal()">Close</button>
         </div>
     `;
     
     document.body.appendChild(historyModal);
 }
 
+// FIXED: Global function to close movement history modal
+window.closeMovementHistoryModal = function() {
+    const modal = document.getElementById('movementHistoryModal');
+    if (modal) {
+        modal.remove();
+    }
+};
 /**
  * Get inventory statistics
  */
