@@ -1,7 +1,7 @@
-// ZEDSON WATCHCRAFT - API Utilities with Inventory API Integration
+// ZEDSON WATCHCRAFT - API Utilities for Frontend-Backend Communication (FIXED)
 
 /**
- * API configuration and utility functions (Updated with Inventory API)
+ * API configuration and utility functions
  */
 
 const API_BASE_URL = 'http://localhost:5000/api';
@@ -151,20 +151,25 @@ class APIUtils {
 // Create global API instance
 const api = new APIUtils();
 
-// Authentication API methods (existing)
+// Authentication API methods
 const AuthAPI = {
+  /**
+   * Login user
+   */
   async login(username, password) {
     try {
       const response = await api.post('/auth/login', { username, password }, { auth: false });
       
       if (response.success) {
         if (response.firstLogin) {
+          // First time login - return user data for password setup
           return {
             success: true,
             firstLogin: true,
             user: response.user
           };
         } else {
+          // Regular login - set token and return user data
           api.setToken(response.token);
           return {
             success: true,
@@ -181,6 +186,9 @@ const AuthAPI = {
     }
   },
 
+  /**
+   * Set password for first time login
+   */
   async setFirstTimePassword(username, newPassword, confirmPassword) {
     try {
       const response = await api.post('/auth/first-login', {
@@ -199,6 +207,9 @@ const AuthAPI = {
     }
   },
 
+  /**
+   * Get current user
+   */
   async getCurrentUser() {
     try {
       const response = await api.get('/auth/me');
@@ -208,17 +219,24 @@ const AuthAPI = {
     }
   },
 
+  /**
+   * Logout user
+   */
   async logout() {
     try {
       await api.post('/auth/logout');
       api.removeToken();
       return { success: true };
     } catch (error) {
+      // Even if API call fails, remove token locally
       api.removeToken();
       throw error;
     }
   },
 
+  /**
+   * Get all users (Admin only)
+   */
   async getUsers() {
     try {
       const response = await api.get('/auth/users');
@@ -228,6 +246,9 @@ const AuthAPI = {
     }
   },
 
+  /**
+   * Create new user (Admin only)
+   */
   async createUser(userData) {
     try {
       const response = await api.post('/auth/users', userData);
@@ -237,6 +258,9 @@ const AuthAPI = {
     }
   },
 
+  /**
+   * Update user (Admin only)
+   */
   async updateUser(userId, userData) {
     try {
       const response = await api.put(`/auth/users/${userId}`, userData);
@@ -246,6 +270,9 @@ const AuthAPI = {
     }
   },
 
+  /**
+   * Delete user (Admin only)
+   */
   async deleteUser(userId) {
     try {
       const response = await api.delete(`/auth/users/${userId}`);
@@ -255,6 +282,9 @@ const AuthAPI = {
     }
   },
 
+  /**
+   * Reset user password (Admin only)
+   */
   async resetUserPassword(userId) {
     try {
       const response = await api.post(`/auth/users/${userId}/reset-password`);
@@ -264,6 +294,9 @@ const AuthAPI = {
     }
   },
 
+  /**
+   * Initialize default admin (First run only)
+   */
   async initializeAdmin() {
     try {
       const response = await api.post('/auth/init', {}, { auth: false });
@@ -274,8 +307,11 @@ const AuthAPI = {
   }
 };
 
-// Customer API methods (existing)
+// Customer API methods
 const CustomerAPI = {
+  /**
+   * Get all customers
+   */
   async getCustomers(params = {}) {
     try {
       const queryString = new URLSearchParams(params).toString();
@@ -287,6 +323,9 @@ const CustomerAPI = {
     }
   },
 
+  /**
+   * Get customer statistics
+   */
   async getCustomerStats() {
     try {
       const response = await api.get('/customers/stats');
@@ -296,6 +335,9 @@ const CustomerAPI = {
     }
   },
 
+  /**
+   * Get single customer
+   */
   async getCustomer(customerId) {
     try {
       const response = await api.get(`/customers/${customerId}`);
@@ -305,6 +347,9 @@ const CustomerAPI = {
     }
   },
 
+  /**
+   * Create new customer
+   */
   async createCustomer(customerData) {
     try {
       const response = await api.post('/customers', customerData);
@@ -314,6 +359,9 @@ const CustomerAPI = {
     }
   },
 
+  /**
+   * Update customer
+   */
   async updateCustomer(customerId, customerData) {
     try {
       const response = await api.put(`/customers/${customerId}`, customerData);
@@ -323,6 +371,9 @@ const CustomerAPI = {
     }
   },
 
+  /**
+   * Delete customer
+   */
   async deleteCustomer(customerId) {
     try {
       const response = await api.delete(`/customers/${customerId}`);
@@ -332,6 +383,9 @@ const CustomerAPI = {
     }
   },
 
+  /**
+   * Update customer status
+   */
   async updateCustomerStatus(customerId, status) {
     try {
       const response = await api.patch(`/customers/${customerId}/status`, { status });
@@ -341,6 +395,9 @@ const CustomerAPI = {
     }
   },
 
+  /**
+   * Add note to customer
+   */
   async addCustomerNote(customerId, note) {
     try {
       const response = await api.post(`/customers/${customerId}/notes`, { note });
@@ -350,6 +407,9 @@ const CustomerAPI = {
     }
   },
 
+  /**
+   * Increment customer purchases (Internal use)
+   */
   async incrementPurchases(customerId) {
     try {
       const response = await api.patch(`/customers/${customerId}/increment-purchases`);
@@ -359,6 +419,9 @@ const CustomerAPI = {
     }
   },
 
+  /**
+   * Increment customer services (Internal use)
+   */
   async incrementServices(customerId) {
     try {
       const response = await api.patch(`/customers/${customerId}/increment-services`);
@@ -368,175 +431,15 @@ const CustomerAPI = {
     }
   },
 
+  /**
+   * Update customer net value (Internal use)
+   */
   async updateNetValue(customerId, salesValue, serviceValue) {
     try {
       const response = await api.patch(`/customers/${customerId}/update-net-value`, {
         salesValue,
         serviceValue
       });
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  }
-};
-
-// NEW: Inventory API methods
-const InventoryAPI = {
-  /**
-   * Get all inventory items
-   */
-  async getInventory(params = {}) {
-    try {
-      const queryString = new URLSearchParams(params).toString();
-      const endpoint = queryString ? `/inventory?${queryString}` : '/inventory';
-      const response = await api.get(endpoint);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
-   * Get inventory statistics
-   */
-  async getInventoryStats() {
-    try {
-      const response = await api.get('/inventory/stats');
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
-   * Get available items for sales
-   */
-  async getAvailableItems(outlet = null) {
-    try {
-      const params = outlet ? `?outlet=${outlet}` : '';
-      const response = await api.get(`/inventory/available${params}`);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
-   * Get low stock alerts
-   */
-  async getLowStockAlerts() {
-    try {
-      const response = await api.get('/inventory/low-stock');
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
-   * Search inventory items
-   */
-  async searchInventory(searchTerm, filters = {}) {
-    try {
-      const params = new URLSearchParams({ q: searchTerm, ...filters });
-      const response = await api.get(`/inventory/search?${params}`);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
-   * Get single inventory item
-   */
-  async getInventoryItem(itemId) {
-    try {
-      const response = await api.get(`/inventory/${itemId}`);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
-   * Create new inventory item
-   */
-  async createInventoryItem(itemData) {
-    try {
-      const response = await api.post('/inventory', itemData);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
-   * Update inventory item
-   */
-  async updateInventoryItem(itemId, itemData) {
-    try {
-      const response = await api.put(`/inventory/${itemId}`, itemData);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
-   * Delete inventory item
-   */
-  async deleteInventoryItem(itemId) {
-    try {
-      const response = await api.delete(`/inventory/${itemId}`);
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
-   * Decrease item quantity (for sales)
-   */
-  async decreaseQuantity(itemId, amount = 1) {
-    try {
-      const response = await api.patch(`/inventory/${itemId}/decrease-quantity`, { amount });
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
-   * Increase item quantity (for returns/restocking)
-   */
-  async increaseQuantity(itemId, amount = 1) {
-    try {
-      const response = await api.patch(`/inventory/${itemId}/increase-quantity`, { amount });
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
-   * Move item to different outlet
-   */
-  async moveToOutlet(itemId, outlet, reason = 'Stock Transfer') {
-    try {
-      const response = await api.patch(`/inventory/${itemId}/move-outlet`, { outlet, reason });
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  /**
-   * Get movement history for an item
-   */
-  async getMovementHistory(itemId) {
-    try {
-      const response = await api.get(`/inventory/${itemId}/movement-history`);
       return response;
     } catch (error) {
       throw error;
@@ -611,5 +514,4 @@ const APIHelpers = {
 window.API = api;
 window.AuthAPI = AuthAPI;
 window.CustomerAPI = CustomerAPI;
-window.InventoryAPI = InventoryAPI; // NEW
 window.APIHelpers = APIHelpers;

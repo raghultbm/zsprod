@@ -1,64 +1,62 @@
-// ZEDSON WATCHCRAFT - Inventory Management Module (API INTEGRATED)
+// ZEDSON WATCHCRAFT - Inventory Management Module (Enhanced with Movement Date Tracking)
 
 /**
- * Inventory and Watch Management System with MongoDB Integration
+ * Inventory and Watch Management System
  */
 
-// Local cache for inventory items (for quick access)
-let watches = [];
-
-/**
- * Reset button to original state
- */
-function resetButton(button, originalText) {
-    if (button) {
-        button.textContent = originalText;
-        button.disabled = false;
+// Watch inventory data - Updated with OUTLET field and movement history
+let watches = [
+    { 
+        id: 1, 
+        code: "ROL001", 
+        type: "Watch",
+        brand: "Rolex", 
+        model: "Submariner", 
+        size: "40mm",
+        price: 850000, 
+        quantity: 2, 
+        outlet: "Semmancheri",
+        description: "Luxury diving watch", 
+        status: "available",
+        movementHistory: [
+            { date: "2024-01-15", fromOutlet: null, toOutlet: "Semmancheri", reason: "Initial stock" }
+        ]
+    },
+    { 
+        id: 2, 
+        code: "OMG001", 
+        type: "Watch",
+        brand: "Omega", 
+        model: "Speedmaster", 
+        size: "42mm",
+        price: 450000, 
+        quantity: 1, 
+        outlet: "Navalur",
+        description: "Professional chronograph", 
+        status: "available",
+        movementHistory: [
+            { date: "2024-01-10", fromOutlet: null, toOutlet: "Navalur", reason: "Initial stock" }
+        ]
+    },
+    { 
+        id: 3, 
+        code: "CAS001", 
+        type: "Watch",
+        brand: "Casio", 
+        model: "G-Shock", 
+        size: "44mm",
+        price: 15000, 
+        quantity: 5, 
+        outlet: "Padur",
+        description: "Sports watch", 
+        status: "available",
+        movementHistory: [
+            { date: "2024-01-05", fromOutlet: null, toOutlet: "Padur", reason: "Initial stock" }
+        ]
     }
-}
+];
 
-/**
- * Set button loading state
- */
-function setButtonLoading(button, loadingText) {
-    if (button) {
-        button.dataset.originalText = button.textContent;
-        button.textContent = loadingText;
-        button.disabled = true;
-        return button.dataset.originalText;
-    }
-    return null;
-}
-
-/**
- * Initialize inventory module with API data
- */
-async function initializeInventory() {
-    try {
-        await loadInventoryFromAPI();
-        renderWatchTable();
-        console.log('Inventory module initialized with API integration');
-    } catch (error) {
-        console.error('Inventory initialization error:', error);
-        Utils.showNotification('Failed to load inventory. Please refresh the page.');
-    }
-}
-
-/**
- * Load inventory from API
- */
-async function loadInventoryFromAPI() {
-    try {
-        const response = await InventoryAPI.getInventory();
-        if (response.success) {
-            watches = response.data || [];
-            console.log(`Loaded ${watches.length} items from API`);
-        }
-    } catch (error) {
-        console.error('Load inventory error:', error);
-        throw error;
-    }
-}
+let nextWatchId = 4;
 
 /**
  * Generate watch code automatically - UPDATED to not override manually entered codes
@@ -82,19 +80,6 @@ function openAddWatchModal() {
         Utils.showNotification('You do not have permission to add items.');
         return;
     }
-    
-    // Reset the form when opening modal
-    const form = document.querySelector('#addWatchModal form');
-    if (form) {
-        form.reset();
-        
-        // Reset the submit button
-        const submitBtn = form.querySelector('button[type="submit"]');
-        if (submitBtn) {
-            resetButton(submitBtn, 'Add Item');
-        }
-    }
-    
     console.log('Opening Add Item Modal');
     document.getElementById('addWatchModal').style.display = 'block';
 }
@@ -116,7 +101,7 @@ function updateWatchCode() {
 }
 
 /**
- * Handle type change to show/hide size requirement
+ * Handle type change to show/hide size requirement - NEW FUNCTION
  */
 function handleTypeChange() {
     const typeSelect = document.getElementById('watchType') || document.getElementById('editWatchType');
@@ -141,9 +126,9 @@ function handleTypeChange() {
 }
 
 /**
- * Add new watch to inventory - UPDATED with API integration
+ * Add new watch to inventory - UPDATED size validation based on type
  */
-async function addNewWatch(event) {
+function addNewWatch(event) {
     event.preventDefault();
     
     if (!AuthModule.hasPermission('inventory')) {
@@ -162,7 +147,7 @@ async function addNewWatch(event) {
     const outlet = document.getElementById('watchOutlet').value;
     const description = document.getElementById('watchDescription').value.trim();
     
-    // Validate input
+    // Validate input - Size is mandatory only for Strap type
     if (!code || !type || !brand || !model || !price || !quantity || !outlet) {
         Utils.showNotification('Please fill in all required fields');
         return;
@@ -184,58 +169,57 @@ async function addNewWatch(event) {
         return;
     }
 
-    // Get the submit button
-    const submitBtn = event.target.querySelector('button[type="submit"]');
-    const originalText = setButtonLoading(submitBtn, 'Adding Item...');
-
-    try {
-        const itemData = {
-            code: code.toUpperCase(),
-            type,
-            brand,
-            model,
-            size: size || '-',
-            price,
-            quantity,
-            outlet,
-            description
-        };
-
-        const response = await InventoryAPI.createInventoryItem(itemData);
-
-        if (response.success) {
-            // Log action
-            if (window.logInventoryAction) {
-                logInventoryAction(`Added new item: ${brand} ${model}`, response.data);
-            }
-            
-            // Add to local cache
-            watches.push(response.data);
-            
-            // Update display
-            renderWatchTable();
-            updateDashboard();
-            
-            // Close modal and reset form
-            closeModal('addWatchModal');
-            event.target.reset();
-            
-            Utils.showNotification('Item added successfully!');
-        }
-
-    } catch (error) {
-        console.error('Add inventory item error:', error);
-        Utils.showNotification(error.message || 'Failed to add item. Please try again.');
-    } finally {
-        // Always reset button state
-        resetButton(submitBtn, originalText || 'Add Item');
+    // Check if code already exists
+    if (watches.find(w => w.code === code)) {
+        Utils.showNotification('Item code already exists. Please use a different code.');
+        return;
     }
+
+    // Create new watch object - Size can be empty for non-strap items
+    const newWatch = {
+        id: nextWatchId++,
+        code: code,
+        type: type,
+        brand: brand,
+        model: model,
+        size: size || '-', // Use '-' if size is empty
+        price: price,
+        quantity: quantity,
+        outlet: outlet,
+        description: description,
+        status: 'available',
+        addedDate: Utils.getCurrentTimestamp(),
+        addedBy: AuthModule.getCurrentUser().username,
+        movementHistory: [
+            { 
+                date: Utils.getCurrentTimestamp().split(' ')[0], 
+                fromOutlet: null, 
+                toOutlet: outlet, 
+                reason: "Initial stock",
+                movedBy: AuthModule.getCurrentUser().username
+            }
+        ]
+    };
+
+    // Add to watches array
+    watches.push(newWatch);
+    
+    // Update display
+    renderWatchTable();
+    updateDashboard();
+    
+    // Close modal and reset form
+    closeModal('addWatchModal');
+    event.target.reset();
+    
+    Utils.showNotification('Item added successfully!');
+    console.log('Item added:', newWatch);
 }
 
 /**
- * Delete watch from inventory - UPDATED with API integration
+ * Delete watch from inventory
  */
-async function deleteWatch(watchId) {
+function deleteWatch(watchId) {
     if (!AuthModule.hasPermission('inventory')) {
         Utils.showNotification('You do not have permission to delete items.');
         return;
@@ -248,27 +232,10 @@ async function deleteWatch(watchId) {
     }
 
     if (confirm(`Are you sure you want to delete "${watch.brand} ${watch.model}"?`)) {
-        try {
-            const response = await InventoryAPI.deleteInventoryItem(watchId);
-            
-            if (response.success) {
-                // Log action
-                if (window.logInventoryAction) {
-                    logInventoryAction(`Deleted item: ${watch.brand} ${watch.model}`, watch);
-                }
-                
-                // Remove from local cache
-                watches = watches.filter(w => w.id !== watchId);
-                
-                renderWatchTable();
-                updateDashboard();
-                Utils.showNotification('Item deleted successfully!');
-            }
-
-        } catch (error) {
-            console.error('Delete inventory item error:', error);
-            Utils.showNotification(error.message || 'Failed to delete item. Please try again.');
-        }
+        watches = watches.filter(w => w.id !== watchId);
+        renderWatchTable();
+        updateDashboard();
+        Utils.showNotification('Item deleted successfully!');
     }
 }
 
@@ -285,43 +252,32 @@ function updateWatchStatus(watchId, newStatus) {
 }
 
 /**
- * Decrease watch quantity (used when selling) - UPDATED with API integration
+ * Decrease watch quantity (used when selling)
  */
-async function decreaseWatchQuantity(watchId, amount = 1) {
-    try {
-        const response = await InventoryAPI.decreaseQuantity(watchId, amount);
-        if (response.success) {
-            // Update local cache
-            const watchIndex = watches.findIndex(w => w.id === watchId);
-            if (watchIndex !== -1) {
-                watches[watchIndex] = response.data;
-            }
-            renderWatchTable();
-            updateDashboard();
+function decreaseWatchQuantity(watchId, amount = 1) {
+    const watch = watches.find(w => w.id === watchId);
+    if (watch) {
+        watch.quantity = Math.max(0, watch.quantity - amount);
+        if (watch.quantity === 0) {
+            watch.status = 'sold';
         }
-    } catch (error) {
-        console.error('Decrease quantity error:', error);
-        throw error; // Re-throw for sales module to handle
+        renderWatchTable();
+        updateDashboard();
     }
 }
 
 /**
- * Increase watch quantity (used when returning or restocking) - UPDATED with API integration
+ * Increase watch quantity (used when returning or restocking)
  */
-async function increaseWatchQuantity(watchId, amount = 1) {
-    try {
-        const response = await InventoryAPI.increaseQuantity(watchId, amount);
-        if (response.success) {
-            // Update local cache
-            const watchIndex = watches.findIndex(w => w.id === watchId);
-            if (watchIndex !== -1) {
-                watches[watchIndex] = response.data;
-            }
-            renderWatchTable();
-            updateDashboard();
+function increaseWatchQuantity(watchId, amount = 1) {
+    const watch = watches.find(w => w.id === watchId);
+    if (watch) {
+        watch.quantity += amount;
+        if (watch.quantity > 0 && watch.status === 'sold') {
+            watch.status = 'available';
         }
-    } catch (error) {
-        console.error('Increase quantity error:', error);
+        renderWatchTable();
+        updateDashboard();
     }
 }
 
@@ -359,7 +315,7 @@ function searchWatches(query) {
 }
 
 /**
- * Render watch table with API data
+ * Render watch table with S.No, Type, Size and Outlet columns
  */
 function renderWatchTable() {
     const tbody = document.getElementById('watchTableBody');
@@ -371,48 +327,8 @@ function renderWatchTable() {
     console.log('Rendering watch table with', watches.length, 'items');
     tbody.innerHTML = '';
     
-    if (watches.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="11" style="text-align: center; color: #999; padding: 20px;">
-                    No items found. Click "Add New Item" to get started.
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
-    const currentUser = AuthModule.getCurrentUser();
-    const isStaff = currentUser && currentUser.role === 'staff';
-    
     watches.forEach((watch, index) => {
         const row = document.createElement('tr');
-        
-        let actionButtons = '';
-        
-        // View movement history button (available for all users)
-        actionButtons += `
-            <button class="btn btn-sm" onclick="viewMovementHistory('${watch.id}')" 
-                title="View Movement History">
-                History
-            </button>
-        `;
-        
-        // Add edit/delete buttons only for non-staff users
-        if (!isStaff) {
-            actionButtons = `
-                <button class="btn btn-sm" onclick="editWatch('${watch.id}')" 
-                    ${!AuthModule.hasPermission('inventory') ? 'disabled' : ''}>
-                    Edit
-                </button>
-                ${actionButtons}
-                <button class="btn btn-sm btn-danger" onclick="deleteWatch('${watch.id}')" 
-                    ${!AuthModule.hasPermission('inventory') ? 'disabled' : ''}>
-                    Delete
-                </button>
-            `;
-        }
-        
         // Creating 11 columns to match the header: S.No, Code, Type, Brand, Model, Size, Price, Quantity, Outlet, Status, Actions
         row.innerHTML = `
             <td class="serial-number">${index + 1}</td>
@@ -425,111 +341,137 @@ function renderWatchTable() {
             <td>${watch.quantity}</td>
             <td><span class="status in-progress">${Utils.sanitizeHtml(watch.outlet)}</span></td>
             <td><span class="status ${watch.status}">${watch.status}</span></td>
-            <td>${actionButtons}</td>
+            <td>
+                <button class="btn btn-sm" onclick="editWatch(${watch.id})" 
+                    ${!AuthModule.hasPermission('inventory') ? 'disabled' : ''}>
+                    Edit
+                </button>
+                <button class="btn btn-sm" onclick="viewMovementHistory(${watch.id})" 
+                    title="View Movement History">
+                    History
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteWatch(${watch.id})" 
+                    ${!AuthModule.hasPermission('inventory') ? 'disabled' : ''}>
+                    Delete
+                </button>
+            </td>
         `;
         tbody.appendChild(row);
     });
     
-    console.log('Watch table rendered successfully with API data');
+    console.log('Watch table rendered successfully with Outlet column');
 }
 
 /**
- * View movement history for a watch - UPDATED with API integration
+ * Handle outlet change detection in edit form
  */
-async function viewMovementHistory(watchId) {
-    try {
-        const response = await InventoryAPI.getMovementHistory(watchId);
-        
-        if (response.success) {
-            const { itemInfo, movementHistory } = response.data;
-            
-            const historyModal = document.createElement('div');
-            historyModal.className = 'modal';
-            historyModal.id = 'movementHistoryModal';
-            historyModal.style.display = 'block';
-            
-            let historyHtml = '';
-            if (movementHistory && movementHistory.length > 0) {
-                movementHistory.forEach(entry => {
-                    const formattedDate = Utils.formatDate(new Date(entry.date));
-                    const movedByName = entry.movedBy ? entry.movedBy.fullName || entry.movedBy.username : 'System';
-                    
-                    historyHtml += `
-                        <div class="movement-entry" style="padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px;">
-                            <strong>Date:</strong> ${formattedDate}<br>
-                            <strong>From:</strong> ${entry.fromOutlet || 'New Stock'}<br>
-                            <strong>To:</strong> ${entry.toOutlet}<br>
-                            <strong>Reason:</strong> ${entry.reason || 'Outlet change'}<br>
-                            <strong>Moved By:</strong> ${movedByName}<br>
-                        </div>
-                    `;
-                });
-            } else {
-                historyHtml = '<p>No movement history available.</p>';
-            }
-
-            historyModal.innerHTML = `
-                <div class="modal-content">
-                    <span class="close" onclick="closeMovementHistoryModal()">&times;</span>
-                    <h2>Movement History - ${itemInfo.name}</h2>
-                    <p><strong>Item Code:</strong> ${itemInfo.code}</p>
-                    <div class="movement-history">
-                        ${historyHtml}
-                    </div>
-                    <button type="button" class="btn" onclick="closeMovementHistoryModal()">Close</button>
-                </div>
-            `;
-            
-            document.body.appendChild(historyModal);
+function handleOutletChange(selectElement, originalOutlet) {
+    const newOutlet = selectElement.value;
+    
+    if (newOutlet !== originalOutlet) {
+        // Show movement date input
+        const movementDateContainer = document.getElementById('movementDateContainer');
+        if (movementDateContainer) {
+            movementDateContainer.style.display = 'block';
+            document.getElementById('movementDate').required = true;
         }
-        
-    } catch (error) {
-        console.error('View movement history error:', error);
-        Utils.showNotification('Failed to load movement history.');
+    } else {
+        // Hide movement date input
+        const movementDateContainer = document.getElementById('movementDateContainer');
+        if (movementDateContainer) {
+            movementDateContainer.style.display = 'none';
+            document.getElementById('movementDate').required = false;
+        }
     }
 }
 
 /**
- * Close movement history modal
+ * View movement history for a watch
  */
-function closeMovementHistoryModal() {
+
+function viewMovementHistory(watchId) {
+    const watch = watches.find(w => w.id === watchId);
+    if (!watch) {
+        Utils.showNotification('Item not found.');
+        return;
+    }
+
+    const historyModal = document.createElement('div');
+    historyModal.className = 'modal';
+    historyModal.id = 'movementHistoryModal';
+    historyModal.style.display = 'block';
+    
+    let historyHtml = '';
+    if (watch.movementHistory && watch.movementHistory.length > 0) {
+        watch.movementHistory.forEach(entry => {
+            historyHtml += `
+                <div class="movement-entry">
+                    <strong>Date:</strong> ${entry.date}<br>
+                    <strong>From:</strong> ${entry.fromOutlet || 'New Stock'}<br>
+                    <strong>To:</strong> ${entry.toOutlet}<br>
+                    <strong>Reason:</strong> ${entry.reason || 'Outlet change'}<br>
+                    <strong>Moved By:</strong> ${entry.movedBy || 'System'}<br>
+                    <hr>
+                </div>
+            `;
+        });
+    } else {
+        historyHtml = '<p>No movement history available.</p>';
+    }
+
+    historyModal.innerHTML = `
+        <div class="modal-content">
+            <span class="close" onclick="closeMovementHistoryModal()">&times;</span>
+            <h2>Movement History - ${watch.brand} ${watch.model}</h2>
+            <div class="movement-history">
+                ${historyHtml}
+            </div>
+            <button type="button" class="btn" onclick="closeMovementHistoryModal()">Close</button>
+        </div>
+    `;
+    
+    document.body.appendChild(historyModal);
+}
+
+// FIXED: Global function to close movement history modal
+window.closeMovementHistoryModal = function() {
     const modal = document.getElementById('movementHistoryModal');
     if (modal) {
         modal.remove();
     }
-}
-
+};
 /**
- * Get inventory statistics - UPDATED with API integration
+ * Get inventory statistics
  */
-async function getInventoryStats() {
-    try {
-        const response = await InventoryAPI.getInventoryStats();
-        if (response.success) {
-            return response.data;
-        }
-    } catch (error) {
-        console.error('Get inventory stats error:', error);
-    }
-    
-    // Fallback to local calculation
+function getInventoryStats() {
     const totalWatches = watches.length;
     const availableWatches = watches.filter(w => w.status === 'available').length;
     const soldWatches = watches.filter(w => w.status === 'sold').length;
     const totalValue = watches.reduce((sum, w) => sum + (w.price * w.quantity), 0);
     const lowStockWatches = watches.filter(w => w.quantity <= 2 && w.quantity > 0).length;
     
+    // Statistics by outlet
+    const outletStats = {};
+    watches.forEach(w => {
+        if (!outletStats[w.outlet]) {
+            outletStats[w.outlet] = { count: 0, value: 0 };
+        }
+        outletStats[w.outlet].count++;
+        outletStats[w.outlet].value += (w.price * w.quantity);
+    });
+    
     return {
         totalWatches,
         availableWatches,
         soldWatches,
         totalValue,
-        lowStockWatches
+        lowStockWatches,
+        outletStats
     };
 }
 
 /**
- * Edit watch - UPDATED with API integration
+ * Edit watch - UPDATED to handle optional size and movement tracking
  */
 function editWatch(watchId) {
     if (!AuthModule.hasPermission('inventory')) {
@@ -546,7 +488,7 @@ function editWatch(watchId) {
     // Store original outlet for comparison
     const originalOutlet = watch.outlet;
 
-    // Create edit modal
+    // Create edit modal with Type and Outlet fields, Size is optional based on type
     const editModal = document.createElement('div');
     editModal.className = 'modal';
     editModal.id = 'editWatchModal';
@@ -555,7 +497,7 @@ function editWatch(watchId) {
         <div class="modal-content">
             <span class="close" onclick="closeModal('editWatchModal')">&times;</span>
             <h2>Edit Item</h2>
-            <form onsubmit="InventoryModule.updateWatch(event, '${watchId}', '${originalOutlet}')">
+            <form onsubmit="InventoryModule.updateWatch(event, ${watchId}, '${originalOutlet}')">
                 <div class="grid grid-2">
                     <div class="form-group">
                         <label>Code:</label>
@@ -656,32 +598,9 @@ function editWatch(watchId) {
 }
 
 /**
- * Handle outlet change detection in edit form
+ * Update watch - UPDATED to handle optional size based on type and movement tracking
  */
-function handleOutletChange(selectElement, originalOutlet) {
-    const newOutlet = selectElement.value;
-    
-    if (newOutlet !== originalOutlet) {
-        // Show movement date input
-        const movementDateContainer = document.getElementById('movementDateContainer');
-        if (movementDateContainer) {
-            movementDateContainer.style.display = 'block';
-            document.getElementById('movementDate').required = true;
-        }
-    } else {
-        // Hide movement date input
-        const movementDateContainer = document.getElementById('movementDateContainer');
-        if (movementDateContainer) {
-            movementDateContainer.style.display = 'none';
-            document.getElementById('movementDate').required = false;
-        }
-    }
-}
-
-/**
- * Update watch - UPDATED with API integration
- */
-async function updateWatch(event, watchId, originalOutlet) {
+function updateWatch(event, watchId, originalOutlet) {
     event.preventDefault();
     
     const watch = watches.find(w => w.id === watchId);
@@ -699,8 +618,10 @@ async function updateWatch(event, watchId, originalOutlet) {
     const quantity = parseInt(document.getElementById('editWatchQuantity').value);
     const outlet = document.getElementById('editWatchOutlet').value;
     const description = document.getElementById('editWatchDescription').value.trim();
+    const movementDate = document.getElementById('movementDate').value;
+    const movementReason = document.getElementById('movementReason').value;
 
-    // Validate input
+    // Validate input - Size is mandatory only for Strap type
     if (!code || !type || !brand || !model || !price || quantity < 0 || !outlet) {
         Utils.showNotification('Please fill in all required fields');
         return;
@@ -712,144 +633,78 @@ async function updateWatch(event, watchId, originalOutlet) {
         return;
     }
 
-    // Get the submit button
-    const submitBtn = event.target.querySelector('button[type="submit"]');
-    const originalText = setButtonLoading(submitBtn, 'Updating...');
+    // Check if outlet changed and movement date is required
+    if (outlet !== originalOutlet && !movementDate) {
+        Utils.showNotification('Movement date is required when changing outlet');
+        return;
+    }
 
-    try {
-        const itemData = {
-            code: code.toUpperCase(),
-            type,
-            brand,
-            model,
-            size: size || '-',
-            price,
-            quantity,
-            outlet,
-            description
-        };
+    // Check if code already exists (excluding current watch)
+    if (watches.find(w => w.code === code && w.id !== watchId)) {
+        Utils.showNotification('Item code already exists. Please use a different code.');
+        return;
+    }
 
-        const response = await InventoryAPI.updateInventoryItem(watchId, itemData);
+    // Update watch - Size can be empty for non-strap items
+    watch.code = code;
+    watch.type = type;
+    watch.brand = brand;
+    watch.model = model;
+    watch.size = size || '-'; // Use '-' if size is empty
+    watch.price = price;
+    watch.quantity = quantity;
+    watch.description = description;
+    watch.status = quantity > 0 ? 'available' : 'sold';
 
-        if (response.success) {
-            // Log action
-            if (window.logInventoryAction) {
-                logInventoryAction(`Updated item: ${watch.brand} ${watch.model} -> ${brand} ${model}`, {
-                    id: watchId,
-                    oldName: `${watch.brand} ${watch.model}`,
-                    newName: `${brand} ${model}`,
-                    outlet: outlet
-                });
-            }
-
-            // Update local cache
-            const watchIndex = watches.findIndex(w => w.id === watchId);
-            if (watchIndex !== -1) {
-                watches[watchIndex] = response.data;
-            }
-
-            renderWatchTable();
-            updateDashboard();
-            closeModal('editWatchModal');
-            document.getElementById('editWatchModal').remove();
-            
-            if (outlet !== originalOutlet) {
-                Utils.showNotification(`Item updated and moved from ${originalOutlet} to ${outlet} successfully!`);
-            } else {
-                Utils.showNotification('Item updated successfully!');
-            }
+    // Handle outlet change and movement tracking
+    if (outlet !== originalOutlet) {
+        watch.outlet = outlet;
+        
+        // Initialize movement history if it doesn't exist
+        if (!watch.movementHistory) {
+            watch.movementHistory = [];
         }
+        
+        // Add movement record
+        watch.movementHistory.push({
+            date: movementDate,
+            fromOutlet: originalOutlet,
+            toOutlet: outlet,
+            reason: movementReason || 'Stock Transfer',
+            movedBy: AuthModule.getCurrentUser().username,
+            timestamp: Utils.getCurrentTimestamp()
+        });
+    }
 
-    } catch (error) {
-        console.error('Update inventory item error:', error);
-        Utils.showNotification(error.message || 'Failed to update item. Please try again.');
-    } finally {
-        // Always reset button state
-        resetButton(submitBtn, originalText || 'Update Item');
+    renderWatchTable();
+    updateDashboard();
+    closeModal('editWatchModal');
+    document.getElementById('editWatchModal').remove();
+    
+    if (outlet !== originalOutlet) {
+        Utils.showNotification(`Item updated and moved from ${originalOutlet} to ${outlet} successfully!`);
+    } else {
+        Utils.showNotification('Item updated successfully!');
     }
 }
 
 /**
- * Get low stock alerts - UPDATED with API integration
+ * Get low stock alerts
  */
-async function getLowStockAlerts() {
-    try {
-        const response = await InventoryAPI.getLowStockAlerts();
-        if (response.success) {
-            return response.data;
-        }
-    } catch (error) {
-        console.error('Get low stock alerts error:', error);
-    }
-    
-    // Fallback to local calculation
+function getLowStockAlerts() {
     return watches.filter(w => w.quantity <= 2 && w.quantity > 0);
 }
 
 /**
- * Refresh inventory from API
+ * Initialize inventory module
  */
-async function refreshInventory() {
-    try {
-        await loadInventoryFromAPI();
-        renderWatchTable();
-        console.log('Inventory refreshed from API');
-    } catch (error) {
-        console.error('Refresh inventory error:', error);
-        Utils.showNotification('Failed to refresh inventory data.');
-    }
+function initializeInventory() {
+    renderWatchTable();
+    console.log('Inventory module initialized');
 }
 
 /**
- * Close modal and reset form states
- */
-function closeInventoryModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        modal.style.display = 'none';
-        
-        // Reset any forms in the modal
-        const forms = modal.querySelectorAll('form');
-        forms.forEach(form => {
-            form.reset();
-            
-            // Reset submit buttons
-            const submitBtns = form.querySelectorAll('button[type="submit"]');
-            submitBtns.forEach(btn => {
-                if (btn.dataset.originalText) {
-                    resetButton(btn, btn.dataset.originalText);
-                } else {
-                    btn.disabled = false;
-                }
-            });
-        });
-    }
-}
-
-// Override the global closeModal function for inventory modals
-const originalCloseModal = window.closeModal;
-window.closeModal = function(modalId) {
-    // Check if it's an inventory modal
-    if (modalId === 'addWatchModal' || modalId === 'editWatchModal') {
-        closeInventoryModal(modalId);
-    } else {
-        // Use original close modal logic for other modals
-        if (originalCloseModal) {
-            originalCloseModal(modalId);
-        } else {
-            const modal = document.getElementById(modalId);
-            if (modal) {
-                modal.style.display = 'none';
-            }
-        }
-    }
-};
-
-// Make functions globally available
-window.closeMovementHistoryModal = closeMovementHistoryModal;
-
-/**
- * Load modal template for inventory
+ * Load modal template for inventory with Type and Outlet fields - UPDATED with size validation
  */
 function loadInventoryModal() {
     const modalHtml = `
@@ -940,8 +795,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Export functions for global use
 window.InventoryModule = {
-    initializeInventory,
-    loadInventoryFromAPI,
     openAddWatchModal,
     addNewWatch,
     editWatch,
@@ -956,13 +809,10 @@ window.InventoryModule = {
     renderWatchTable,
     getInventoryStats,
     getLowStockAlerts,
+    initializeInventory,
     updateWatchCode,
     handleOutletChange,
-    handleTypeChange,
+    handleTypeChange, // NEW FUNCTION
     viewMovementHistory,
-    refreshInventory,
-    resetButton,
-    setButtonLoading,
-    closeInventoryModal,
     watches // For access by other modules
 };
