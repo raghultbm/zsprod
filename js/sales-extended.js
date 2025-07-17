@@ -1,463 +1,537 @@
-// ZEDSON WATCHCRAFT - Sales Extended Module (Part 2)
+// ================================
+// UPDATED SALES MODULE - Replace existing js/sales-core.js and js/sales-extended.js
+// ================================
 
 /**
- * Sales Transaction Management System - Extended Functions & Modal
+ * Sales Management Module with Complete MongoDB Integration
  */
+
+// Local cache for sales
+let sales = [];
+
+/**
+ * Button state management
+ */
+function resetButton(button, originalText) {
+  if (button) {
+    button.textContent = originalText;
+    button.disabled = false;
+  }
+}
+
+function setButtonLoading(button, loadingText) {
+  if (button) {
+    button.dataset.originalText = button.textContent;
+    button.textContent = loadingText;
+    button.disabled = true;
+    return button.dataset.originalText;
+  }
+  return null;
+}
+
+/**
+ * Initialize sales module with API integration
+ */
+async function initializeSales() {
+  try {
+    await loadSalesFromAPI();
+    renderSalesTable();
+    console.log('Sales module initialized with API integration');
+  } catch (error) {
+    console.error('Sales initialization error:', error);
+    Utils.showNotification('Failed to load sales. Please refresh the page.');
+  }
+}
+
+/**
+ * Load sales from API
+ */
+async function loadSalesFromAPI() {
+  try {
+    const response = await SalesAPI.getSales();
+    if (response.success) {
+      sales = response.data || [];
+      console.log(`Loaded ${sales.length} sales from API`);
+    }
+  } catch (error) {
+    console.error('Load sales error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Open New Sale Modal
+ */
+function openNewSaleModal() {
+  if (!AuthModule.hasPermission('sales')) {
+    Utils.showNotification('You do not have permission to create sales.');
+    return;
+  }
+  
+  const modal = document.getElementById('newSaleModal');
+  if (!modal) {
+    Utils.showNotification('Sales modal not found. Please refresh the page.');
+    return;
+  }
+  
+  // Populate customer dropdown
+  if (window.CustomerModule) {
+    CustomerModule.populateCustomerDropdown('saleCustomer');
+  }
+  
+  // Populate item dropdown
+  if (window.InventoryModule) {
+    InventoryModule.populateItemDropdown('saleItem');
+  }
+  
+  // Reset form
+  const form = modal.querySelector('form');
+  if (form) {
+    form.reset();
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) {
+      resetButton(submitBtn, 'Record Sale');
+    }
+  }
+  
+  // Reset calculation displays
+  updateCalculationDisplay();
+  
+  modal.style.display = 'block';
+}
+
+/**
+ * Search item by code and auto-populate
+ */
+function searchItemByCode() {
+  const codeInput = document.getElementById('saleItemCode');
+  const itemSelect = document.getElementById('saleItem');
+  const priceInput = document.getElementById('salePrice');
+  
+  if (!codeInput || !itemSelect || !priceInput) return;
+  
+  const enteredCode = codeInput.value.trim().toUpperCase();
+  
+  if (!enteredCode) {
+    itemSelect.value = '';
+    priceInput.value = '';
+    updateCalculationDisplay();
+    return;
+  }
+  
+  // Find item by code
+  const itemOption = Array.from(itemSelect.options).find(option => 
+    option.dataset.code && option.dataset.code.toUpperCase() === enteredCode
+  );
+  
+  if (itemOption) {
+    itemSelect.value = itemOption.value;
+    priceInput.value = itemOption.dataset.price;
+    updateCalculationDisplay();
+  } else {
+    itemSelect.value = '';
+    priceInput.value = '';
+    updateCalculationDisplay();
+    Utils.showNotification('Item with this code not found or not available');
+  }
+}
+
+/**
+ * Update price when item is selected
+ */
+function updateSalePrice() {
+  const itemSelect = document.getElementById('saleItem');
+  const priceInput = document.getElementById('salePrice');
+  const codeInput = document.getElementById('saleItemCode');
+  
+  if (itemSelect && priceInput) {
+    const selectedOption = itemSelect.options[itemSelect.selectedIndex];
+    if (selectedOption && selectedOption.dataset.price) {
+      priceInput.value = selectedOption.dataset.price;
+      if (codeInput && selectedOption.dataset.code) {
+        codeInput.value = selectedOption.dataset.code;
+      }
+    } else {
+      priceInput.value = '';
+      if (codeInput) codeInput.value = '';
+    }
+    updateCalculationDisplay();
+  }
+}
+
+/**
+ * Update calculation display
+ */
+function updateCalculationDisplay() {
+  const price = parseFloat(document.getElementById('salePrice')?.value) || 0;
+  const quantity = parseInt(document.getElementById('saleQuantity')?.value) || 1;
+  const discountType = document.getElementById('saleDiscountType')?.value || '';
+  const discountValue = parseFloat(document.getElementById('saleDiscountValue')?.value) || 0;
+  
+  const subtotal = price * quantity;
+  let discountAmount = 0;
+  
+  if (discountType === 'percentage') {
+    discountAmount = Math.min((subtotal * discountValue) / 100, subtotal);
+  } else if (discountType === 'amount') {
+    discountAmount = Math.min(discountValue, subtotal);
+  }
+  
+  const totalAmount = subtotal - discountAmount;
+  
+  // Update display fields
+  const subtotalDisplay = document.getElementById('saleSubtotal');
+  const discountDisplay = document.getElementById('saleDiscountAmount');
+  const totalDisplay = document.getElementById('saleTotalAmount');
+  
+  if (subtotalDisplay) subtotalDisplay.textContent = Utils.formatCurrency(subtotal);
+  if (discountDisplay) discountDisplay.textContent = Utils.formatCurrency(discountAmount);
+  if (totalDisplay) totalDisplay.textContent = Utils.formatCurrency(totalAmount);
+}
+
+/**
+ * Add new sale with API integration
+ */
+async function addNewSale(event) {
+  event.preventDefault();
+  
+  if (!AuthModule.hasPermission('sales')) {
+    Utils.showNotification('You do not have permission to create sales.');
+    return;
+  }
+
+  const customerId = document.getElementById('saleCustomer').value;
+  const itemId = document.getElementById('saleItem').value;
+  const price = parseFloat(document.getElementById('salePrice').value);
+  const quantity = parseInt(document.getElementById('saleQuantity').value) || 1;
+  const discountType = document.getElementById('saleDiscountType').value;
+  const discountValue = parseFloat(document.getElementById('saleDiscountValue').value) || 0;
+  const paymentMethod = document.getElementById('salePaymentMethod').value;
+  
+  // Validation
+  if (!customerId || !itemId || !price || !paymentMethod) {
+    Utils.showNotification('Please fill in all required fields');
+    return;
+  }
+
+  if (price <= 0) {
+    Utils.showNotification('Price must be greater than zero');
+    return;
+  }
+
+  if (quantity <= 0) {
+    Utils.showNotification('Quantity must be greater than zero');
+    return;
+  }
+
+  const submitBtn = event.target.querySelector('button[type="submit"]');
+  const originalText = setButtonLoading(submitBtn, 'Recording Sale...');
+
+  try {
+    const saleData = {
+      customerId,
+      itemId,
+      quantity,
+      price,
+      discountType: discountType || '',
+      discountValue,
+      paymentMethod
+    };
+
+    const response = await SalesAPI.createSale(saleData);
+
+    if (response.success) {
+      sales.push(response.data);
+      
+      // Generate invoice automatically
+      try {
+        await InvoiceAPI.generateSalesInvoice(response.data.id);
+      } catch (invoiceError) {
+        console.warn('Failed to generate invoice automatically:', invoiceError);
+      }
+      
+      renderSalesTable();
+      if (window.updateDashboard) {
+        updateDashboard();
+      }
+      
+      // Refresh inventory to update quantities
+      if (window.InventoryModule) {
+        InventoryModule.refreshInventory();
+      }
+      
+      closeModal('newSaleModal');
+      event.target.reset();
+      
+      const customer = response.data.customerId;
+      const item = response.data.itemId;
+      Utils.showNotification(`Sale recorded successfully! Customer: ${customer.name}, Item: ${item.brand} ${item.model}, Total: ${Utils.formatCurrency(response.data.totalAmount)}`);
+    }
+
+  } catch (error) {
+    console.error('Add sale error:', error);
+    Utils.showNotification(error.message || 'Failed to record sale. Please try again.');
+  } finally {
+    resetButton(submitBtn, originalText || 'Record Sale');
+  }
+}
 
 /**
  * Edit sale
  */
 function editSale(saleId) {
-    if (!AuthModule.hasPermission('sales')) {
-        Utils.showNotification('You do not have permission to edit sales.');
-        return;
-    }
-
-    const sale = window.SalesCoreModule.sales.find(s => s.id === saleId);
-    if (!sale) {
-        Utils.showNotification('Sale not found.');
-        return;
-    }
-
-    // Create edit modal with discount fields
-    const editModal = document.createElement('div');
-    editModal.className = 'modal';
-    editModal.id = 'editSaleModal';
-    editModal.style.display = 'block';
-    editModal.innerHTML = `
-        <div class="modal-content">
-            <span class="close" onclick="SalesModule.closeEditSaleModal()">&times;</span>
-            <h2>Edit Sale</h2>
-            <form onsubmit="SalesModule.updateSale(event, ${saleId})">
-                <div class="form-group">
-                    <label>Customer:</label>
-                    <select id="editSaleCustomer" required>
-                        <option value="">Select Customer</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Item:</label>
-                    <select id="editSaleWatch" required onchange="SalesModule.updateEditSalePrice()">
-                        <option value="">Select Item</option>
-                    </select>
-                </div>
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Quantity:</label>
-                        <input type="number" id="editSaleQuantity" value="${sale.quantity}" required min="1" onchange="SalesModule.calculateEditTotalAmount()">
-                    </div>
-                    <div class="form-group">
-                        <label>Price (₹):</label>
-                        <input type="number" id="editSalePrice" value="${sale.price}" required min="0" step="0.01" onchange="SalesModule.calculateEditTotalAmount()">
-                    </div>
-                </div>
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Discount Type:</label>
-                        <select id="editSaleDiscountType" onchange="SalesModule.calculateEditTotalAmount()">
-                            <option value="">No Discount</option>
-                            <option value="percentage" ${sale.discountType === 'percentage' ? 'selected' : ''}>Percentage (%)</option>
-                            <option value="amount" ${sale.discountType === 'amount' ? 'selected' : ''}>Amount (₹)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Discount Value:</label>
-                        <input type="number" id="editSaleDiscountValue" value="${sale.discountValue || 0}" min="0" step="0.01" onchange="SalesModule.calculateEditTotalAmount()">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Payment Method:</label>
-                    <select id="editSalePaymentMethod" required>
-                        <option value="Cash" ${sale.paymentMethod === 'Cash' ? 'selected' : ''}>Cash</option>
-                        <option value="Card" ${sale.paymentMethod === 'Card' ? 'selected' : ''}>Card</option>
-                        <option value="UPI" ${sale.paymentMethod === 'UPI' ? 'selected' : ''}>UPI</option>
-                        <option value="Bank Transfer" ${sale.paymentMethod === 'Bank Transfer' ? 'selected' : ''}>Bank Transfer</option>
-                    </select>
-                </div>
-                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
-                    <div style="display: flex; justify-content: space-between; margin: 5px 0;">
-                        <span>Subtotal:</span>
-                        <span id="editSaleSubtotal">${Utils.formatCurrency(sale.subtotal || sale.price * sale.quantity)}</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin: 5px 0;">
-                        <span>Discount:</span>
-                        <span id="editSaleDiscountAmount">${Utils.formatCurrency(sale.discountAmount || 0)}</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin: 5px 0; font-weight: bold; border-top: 1px solid #ddd; padding-top: 5px;">
-                        <span>Total Amount:</span>
-                        <span id="editSaleTotalAmount">${Utils.formatCurrency(sale.totalAmount)}</span>
-                    </div>
-                </div>
-                <button type="submit" class="btn">Update Sale</button>
-                <button type="button" class="btn btn-danger" onclick="SalesModule.closeEditSaleModal()">Cancel</button>
-            </form>
-        </div>
-    `;
-    
-    document.body.appendChild(editModal);
-    
-    // Populate dropdowns
-    CustomerModule.populateCustomerDropdown('editSaleCustomer');
-    populateEditWatchDropdown('editSaleWatch');
-    
-    // Set current values
-    setTimeout(() => {
-        document.getElementById('editSaleCustomer').value = sale.customerId;
-        document.getElementById('editSaleWatch').value = sale.watchId;
-        calculateEditTotalAmount();
-    }, 50);
+  const currentUser = AuthModule.getCurrentUser();
+  const isStaff = currentUser && currentUser.role === 'staff';
+  
+  if (isStaff) {
+    Utils.showNotification('Staff users cannot edit sales.');
+    return;
+  }
+  
+  Utils.showNotification('Edit sale functionality - to be implemented');
 }
 
 /**
- * Calculate total amount in edit modal
+ * Delete sale
  */
-function calculateEditTotalAmount() {
-    const price = parseFloat(document.getElementById('editSalePrice')?.value) || 0;
-    const quantity = parseInt(document.getElementById('editSaleQuantity')?.value) || 1;
-    const discountType = document.getElementById('editSaleDiscountType')?.value;
-    const discountValue = parseFloat(document.getElementById('editSaleDiscountValue')?.value) || 0;
-    
-    const subtotal = price * quantity;
-    let discountAmount = 0;
-    
-    if (discountType === 'percentage') {
-        discountAmount = Math.min((subtotal * discountValue) / 100, subtotal);
-    } else if (discountType === 'amount') {
-        discountAmount = Math.min(discountValue, subtotal);
-    }
-    
-    const totalAmount = subtotal - discountAmount;
-    
-    // Update display fields
-    const subtotalDisplay = document.getElementById('editSaleSubtotal');
-    const discountDisplay = document.getElementById('editSaleDiscountAmount');
-    const totalDisplay = document.getElementById('editSaleTotalAmount');
-    
-    if (subtotalDisplay) subtotalDisplay.textContent = Utils.formatCurrency(subtotal);
-    if (discountDisplay) discountDisplay.textContent = Utils.formatCurrency(discountAmount);
-    if (totalDisplay) totalDisplay.textContent = Utils.formatCurrency(totalAmount);
-}
+async function deleteSale(saleId) {
+  const currentUser = AuthModule.getCurrentUser();
+  const isStaff = currentUser && currentUser.role === 'staff';
+  
+  if (isStaff) {
+    Utils.showNotification('Staff users cannot delete sales.');
+    return;
+  }
 
-/**
- * Populate watch dropdown for edit modal
- */
-function populateEditWatchDropdown(selectId) {
-    const select = document.getElementById(selectId);
-    if (!select) return;
-    
-    select.innerHTML = '<option value="">Select Item</option>';
-    
-    if (window.InventoryModule && InventoryModule.watches) {
-        InventoryModule.watches.forEach(watch => {
-            select.innerHTML += `<option value="${watch.id}" data-price="${watch.price}">
-                ${Utils.sanitizeHtml(watch.code)} - ${Utils.sanitizeHtml(watch.brand)} ${Utils.sanitizeHtml(watch.model)} (₹${watch.price})
-            </option>`;
-        });
-    }
-}
+  const sale = sales.find(s => s.id === saleId);
+  if (!sale) {
+    Utils.showNotification('Sale not found.');
+    return;
+  }
 
-/**
- * Close edit sale modal
- */
-function closeEditSaleModal() {
-    const modal = document.getElementById('editSaleModal');
-    if (modal) {
-        modal.remove();
-    }
-}
-
-/**
- * Update price in edit modal when watch is selected
- */
-function updateEditSalePrice() {
-    const watchSelect = document.getElementById('editSaleWatch');
-    const priceInput = document.getElementById('editSalePrice');
-    
-    if (watchSelect && priceInput) {
-        const selectedOption = watchSelect.options[watchSelect.selectedIndex];
-        if (selectedOption && selectedOption.dataset.price) {
-            priceInput.value = selectedOption.dataset.price;
-            calculateEditTotalAmount();
+  if (confirm(`Are you sure you want to delete the sale for ${sale.itemId.brand} ${sale.itemId.model}?`)) {
+    try {
+      const response = await SalesAPI.deleteSale(saleId);
+      
+      if (response.success) {
+        sales = sales.filter(s => s.id !== saleId);
+        renderSalesTable();
+        if (window.updateDashboard) {
+          updateDashboard();
         }
+        
+        // Refresh inventory to update quantities
+        if (window.InventoryModule) {
+          InventoryModule.refreshInventory();
+        }
+        
+        Utils.showNotification('Sale deleted successfully!');
+      }
+
+    } catch (error) {
+      console.error('Delete sale error:', error);
+      Utils.showNotification(error.message || 'Failed to delete sale. Please try again.');
     }
+  }
 }
 
 /**
- * Update sale
+ * View sale invoice
  */
-function updateSale(event, saleId) {
-    event.preventDefault();
-    
-    const sale = window.SalesCoreModule.sales.find(s => s.id === saleId);
-    if (!sale) {
-        Utils.showNotification('Sale not found.');
-        return;
+async function viewSaleInvoice(saleId) {
+  try {
+    const response = await InvoiceAPI.getInvoicesByTransaction(saleId, 'sale');
+    if (response.success && response.data.length > 0) {
+      const invoice = response.data.find(inv => inv.type === 'Sales');
+      if (invoice && window.InvoiceModule) {
+        InvoiceModule.viewInvoice(invoice.id);
+      } else {
+        Utils.showNotification('Sales invoice not found for this sale.');
+      }
+    } else {
+      Utils.showNotification('No invoice found for this sale.');
     }
+  } catch (error) {
+    console.error('View sale invoice error:', error);
+    Utils.showNotification('Failed to view invoice.');
+  }
+}
 
-    const customerId = parseInt(document.getElementById('editSaleCustomer').value);
-    const watchId = parseInt(document.getElementById('editSaleWatch').value);
-    const price = parseFloat(document.getElementById('editSalePrice').value);
-    const quantity = parseInt(document.getElementById('editSaleQuantity').value);
-    const discountType = document.getElementById('editSaleDiscountType').value;
-    const discountValue = parseFloat(document.getElementById('editSaleDiscountValue').value) || 0;
-    const paymentMethod = document.getElementById('editSalePaymentMethod').value;
-
-    // Validate input
-    if (!customerId || !watchId || !price || !paymentMethod || quantity <= 0) {
-        Utils.showNotification('Please fill in all required fields correctly');
-        return;
+/**
+ * Search sales
+ */
+function searchSales(query) {
+  const tbody = document.getElementById('salesTableBody');
+  if (!tbody) return;
+  
+  const rows = tbody.querySelectorAll('tr');
+  
+  rows.forEach(row => {
+    const text = row.textContent.toLowerCase();
+    if (text.includes(query.toLowerCase())) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
     }
-
-    const customer = CustomerModule.getCustomerById(customerId);
-    const watch = InventoryModule.getWatchById(watchId);
-    
-    if (!customer || !watch) {
-        Utils.showNotification('Selected customer or item not found');
-        return;
-    }
-
-    // Check stock availability (considering the current sale's quantity)
-    const availableStock = watch.quantity + sale.quantity;
-    if (availableStock < quantity) {
-        Utils.showNotification(`Insufficient stock. Only ${availableStock} available.`);
-        return;
-    }
-
-    // Calculate amounts
-    const subtotal = price * quantity;
-    let discountAmount = 0;
-    
-    if (discountType === 'percentage') {
-        discountAmount = Math.min((subtotal * discountValue) / 100, subtotal);
-    } else if (discountType === 'amount') {
-        discountAmount = Math.min(discountValue, subtotal);
-    }
-    
-    const totalAmount = subtotal - discountAmount;
-
-    // Restore previous inventory and customer counts
-    InventoryModule.increaseWatchQuantity(sale.watchId, sale.quantity);
-    CustomerModule.decrementCustomerPurchases(sale.customerId);
-
-    // Update sale
-    sale.customerId = customerId;
-    sale.customerName = customer.name;
-    sale.watchId = watchId;
-    sale.watchName = `${watch.brand} ${watch.model}`;
-    sale.watchCode = watch.code;
-    sale.price = price;
-    sale.quantity = quantity;
-    sale.subtotal = subtotal;
-    sale.discountType = discountType;
-    sale.discountValue = discountValue;
-    sale.discountAmount = discountAmount;
-    sale.totalAmount = totalAmount;
-    sale.paymentMethod = paymentMethod;
-
-    // Apply new inventory and customer counts
-    InventoryModule.decreaseWatchQuantity(watchId, quantity);
-    CustomerModule.incrementCustomerPurchases(customerId);
-
-    window.SalesCoreModule.renderSalesTable();
-    if (window.updateDashboard) {
-        updateDashboard();
-    }
-    closeEditSaleModal();
-    Utils.showNotification('Sale updated successfully!');
+  });
 }
 
 /**
  * Get sales statistics
  */
-function getSalesStats() {
-    const totalSales = window.SalesCoreModule.sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
-    const totalTransactions = window.SalesCoreModule.sales.length;
-    const averageSaleValue = totalTransactions > 0 ? totalSales / totalTransactions : 0;
-    const totalDiscounts = window.SalesCoreModule.sales.reduce((sum, sale) => sum + (sale.discountAmount || 0), 0);
+async function getSalesStats() {
+  try {
+    const response = await SalesAPI.getSalesStats();
+    if (response.success) {
+      return response.data;
+    }
+  } catch (error) {
+    console.error('Get sales stats error:', error);
+  }
+  
+  // Fallback to local calculation
+  const totalSales = sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+  const totalTransactions = sales.length;
+  const averageSaleValue = totalTransactions > 0 ? totalSales / totalTransactions : 0;
+  const totalDiscounts = sales.reduce((sum, sale) => sum + (sale.discountAmount || 0), 0);
+  
+  return {
+    totalSales,
+    totalTransactions,
+    averageSaleValue,
+    totalDiscounts
+  };
+}
+
+/**
+ * Get recent sales
+ */
+function getRecentSales(limit = 5) {
+  return sales
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, limit);
+}
+
+/**
+ * Render sales table
+ */
+function renderSalesTable() {
+  const tbody = document.getElementById('salesTableBody');
+  if (!tbody) {
+    console.error('Sales table body not found');
+    return;
+  }
+  
+  const currentUser = AuthModule.getCurrentUser();
+  const isStaff = currentUser && currentUser.role === 'staff';
+  
+  tbody.innerHTML = '';
+  
+  if (sales.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" style="text-align: center; color: #999; padding: 20px;">
+          No sales recorded yet. Click "New Sale" to get started.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+  
+  // Sort sales by date (newest first)
+  const sortedSales = [...sales].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  
+  sortedSales.forEach((sale, index) => {
+    const row = document.createElement('tr');
     
-    return {
-        totalSales,
-        totalTransactions,
-        averageSaleValue,
-        totalDiscounts
-    };
-}
-
-/**
- * Filter sales by date range
- */
-function filterSalesByDateRange(fromDate, toDate) {
-    const from = new Date(fromDate);
-    const to = new Date(toDate);
+    let actionButtons = '';
     
-    return window.SalesCoreModule.sales.filter(sale => {
-        const saleDate = new Date(sale.timestamp);
-        return saleDate >= from && saleDate <= to;
-    });
-}
-
-/**
- * Filter sales by month and year
- */
-function filterSalesByMonth(month, year) {
-    return window.SalesCoreModule.sales.filter(sale => {
-        const saleDate = new Date(sale.timestamp);
-        return saleDate.getMonth() === parseInt(month) && saleDate.getFullYear() === parseInt(year);
-    });
-}
-
-/**
- * Create Sales Modal
- */
-function createSalesModal() {
-    if (document.getElementById('newSaleModal')) {
-        return; // Modal already exists
+    // Check if invoice exists for this sale
+    const hasInvoice = true; // Assume invoice exists for now
+    
+    if (!isStaff) {
+      actionButtons = `
+        <button class="btn btn-sm" onclick="editSale('${sale.id}')" title="Edit Sale">Edit</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteSale('${sale.id}')" title="Delete Sale">Delete</button>
+      `;
     }
     
-    const modalsContainer = document.getElementById('modals-container') || document.body;
+    if (hasInvoice) {
+      actionButtons += `
+        <button class="btn btn-sm btn-success" onclick="viewSaleInvoice('${sale.id}')" title="View Invoice">Invoice</button>
+      `;
+    }
     
-    const modalHtml = `
-        <!-- New Sale Modal -->
-        <div id="newSaleModal" class="modal">
-            <div class="modal-content">
-                <span class="close" onclick="document.getElementById('newSaleModal').style.display='none'">&times;</span>
-                <h2>New Sale</h2>
-                <form onsubmit="SalesModule.addNewSale(event)">
-                    <div class="form-group">
-                        <label>Customer:</label>
-                        <select id="saleCustomer" required>
-                            <option value="">Select Customer</option>
-                        </select>
-                    </div>
-                    <div class="grid grid-2">
-                        <div class="form-group">
-                            <label>Code:</label>
-                            <input type="text" id="saleWatchCode" placeholder="Enter item code" onchange="searchWatchByCode()" style="text-transform: uppercase;">
-                        </div>
-                        <div class="form-group">
-                            <label>Item:</label>
-                            <select id="saleWatch" required onchange="updateSalePrice()">
-                                <option value="">Select Item</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="grid grid-2">
-                        <div class="form-group">
-                            <label>Quantity:</label>
-                            <input type="number" id="saleQuantity" value="1" required min="1" onchange="updateCalculationDisplay()">
-                        </div>
-                        <div class="form-group">
-                            <label>Price (₹):</label>
-                            <input type="number" id="salePrice" required min="0" step="0.01" readonly style="background-color: #f0f0f0;">
-                        </div>
-                    </div>
-                    <div class="grid grid-2">
-                        <div class="form-group">
-                            <label>Discount Type:</label>
-                            <select id="saleDiscountType" onchange="updateCalculationDisplay()">
-                                <option value="">No Discount</option>
-                                <option value="percentage">Percentage (%)</option>
-                                <option value="amount">Amount (₹)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Discount Value:</label>
-                            <input type="number" id="saleDiscountValue" value="0" min="0" step="0.01" onchange="updateCalculationDisplay()">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Payment Method:</label>
-                        <select id="salePaymentMethod" required>
-                            <option value="">Select Payment Method</option>
-                            <option value="Cash">Cash</option>
-                            <option value="Card">Card</option>
-                            <option value="UPI">UPI</option>
-                            <option value="Bank Transfer">Bank Transfer</option>
-                        </select>
-                    </div>
-                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
-                        <div style="display: flex; justify-content: space-between; margin: 5px 0;">
-                            <span>Subtotal:</span>
-                            <span id="saleSubtotal">₹0.00</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin: 5px 0;">
-                            <span>Discount:</span>
-                            <span id="saleDiscountAmount">₹0.00</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin: 5px 0; font-weight: bold; border-top: 1px solid #ddd; padding-top: 5px;">
-                            <span>Total Amount:</span>
-                            <span id="saleTotalAmount">₹0.00</span>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn">Record Sale</button>
-                </form>
-            </div>
-        </div>
+    // Display discount info if applicable
+    let discountInfo = '';
+    if (sale.discountAmount && sale.discountAmount > 0) {
+      discountInfo = `<br><small style="color: #dc3545;">Discount: ${Utils.formatCurrency(sale.discountAmount)}</small>`;
+    }
+    
+    const date = new Date(sale.createdAt);
+    const formattedDate = date.toLocaleDateString('en-IN');
+    const formattedTime = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    
+    row.innerHTML = `
+      <td class="serial-number">${index + 1}</td>
+      <td>${formattedDate}</td>
+      <td>${formattedTime}</td>
+      <td class="customer-info">
+        <div class="customer-name">${Utils.sanitizeHtml(sale.customerId.name)}</div>
+        <div class="customer-mobile">${Utils.sanitizeHtml(sale.customerId.phone)}</div>
+      </td>
+      <td>
+        <strong>${Utils.sanitizeHtml(sale.itemId.brand)} ${Utils.sanitizeHtml(sale.itemId.model)}</strong><br>
+        <small>Code: ${Utils.sanitizeHtml(sale.itemId.code)}</small><br>
+        <small>Qty: ${sale.quantity}</small>
+      </td>
+      <td>
+        ${Utils.formatCurrency(sale.totalAmount)}
+        ${discountInfo}
+      </td>
+      <td><span class="status available">${Utils.sanitizeHtml(sale.paymentMethod)}</span></td>
+      <td>${actionButtons}</td>
     `;
-    
-    modalsContainer.innerHTML += modalHtml;
+    tbody.appendChild(row);
+  });
+  
+  console.log('Sales table rendered successfully with API data');
 }
 
 /**
- * Initialize sales module with modal creation
+ * Refresh sales from API
  */
-function initializeSales() {
-    createSalesModal();
-    window.SalesCoreModule.renderSalesTable();
-    console.log('Sales module initialized');
+async function refreshSales() {
+  try {
+    await loadSalesFromAPI();
+    renderSalesTable();
+    console.log('Sales refreshed from API');
+  } catch (error) {
+    console.error('Refresh sales error:', error);
+    Utils.showNotification('Failed to refresh sales data.');
+  }
 }
+
+// Make functions globally available
+window.searchItemByCode = searchItemByCode;
+window.updateSalePrice = updateSalePrice;
+window.updateCalculationDisplay = updateCalculationDisplay;
 
 // Export functions for global use
 window.SalesModule = {
-    // Core functions from Part 1
-    openNewSaleModal: window.SalesCoreModule.openNewSaleModal,
-    populateWatchDropdown: window.SalesCoreModule.populateWatchDropdown,
-    searchWatchByCode: window.SalesCoreModule.searchWatchByCode,
-    updateSalePrice: window.SalesCoreModule.updateSalePrice,
-    updateCalculationDisplay: window.SalesCoreModule.updateCalculationDisplay,
-    addNewSale: window.SalesCoreModule.addNewSale,
-    deleteSale: window.SalesCoreModule.deleteSale,
-    viewSaleInvoice: window.SalesCoreModule.viewSaleInvoice,
-    getSaleById: window.SalesCoreModule.getSaleById,
-    getRecentSales: window.SalesCoreModule.getRecentSales,
-    getSalesByCustomer: window.SalesCoreModule.getSalesByCustomer,
-    searchSales: window.SalesCoreModule.searchSales,
-    renderSalesTable: window.SalesCoreModule.renderSalesTable,
-    
-    // Extended functions from Part 2
-    editSale,
-    updateSale,
-    calculateEditTotalAmount,
-    closeEditSaleModal,
-    updateEditSalePrice,
-    getSalesStats,
-    filterSalesByDateRange,
-    filterSalesByMonth,
-    createSalesModal,
-    initializeSales,
-    
-    // Data access
-    sales: window.SalesCoreModule.sales
+  initializeSales,
+  loadSalesFromAPI,
+  openNewSaleModal,
+  addNewSale,
+  editSale,
+  deleteSale,
+  viewSaleInvoice,
+  searchSales,
+  getSalesStats,
+  getRecentSales,
+  renderSalesTable,
+  refreshSales,
+  resetButton,
+  setButtonLoading,
+  sales // For access by other modules
 };
-
-// Make functions globally available for modal events
-window.searchWatchByCode = function() {
-    SalesModule.searchWatchByCode();
-};
-
-window.updateSalePrice = function() {
-    SalesModule.updateSalePrice();
-};
-
-window.updateCalculationDisplay = function() {
-    SalesModule.updateCalculationDisplay();
-};
-
-// Auto-initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(() => {
-        if (window.SalesModule) {
-            SalesModule.initializeSales();
-        }
-    }, 100);
-});

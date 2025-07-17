@@ -1,452 +1,537 @@
-// ZEDSON WATCHCRAFT - Sales Core Module (Part 1)
+// ================================
+// UPDATED SALES MODULE - Replace existing js/sales-core.js and js/sales-extended.js
+// ================================
 
 /**
- * Sales Transaction Management System - Core Functions
+ * Sales Management Module with Complete MongoDB Integration
  */
 
-// Sales database
+// Local cache for sales
 let sales = [];
-let nextSaleId = 1;
 
 /**
- * Open New Sale Modal - FIXED
+ * Button state management
+ */
+function resetButton(button, originalText) {
+  if (button) {
+    button.textContent = originalText;
+    button.disabled = false;
+  }
+}
+
+function setButtonLoading(button, loadingText) {
+  if (button) {
+    button.dataset.originalText = button.textContent;
+    button.textContent = loadingText;
+    button.disabled = true;
+    return button.dataset.originalText;
+  }
+  return null;
+}
+
+/**
+ * Initialize sales module with API integration
+ */
+async function initializeSales() {
+  try {
+    await loadSalesFromAPI();
+    renderSalesTable();
+    console.log('Sales module initialized with API integration');
+  } catch (error) {
+    console.error('Sales initialization error:', error);
+    Utils.showNotification('Failed to load sales. Please refresh the page.');
+  }
+}
+
+/**
+ * Load sales from API
+ */
+async function loadSalesFromAPI() {
+  try {
+    const response = await SalesAPI.getSales();
+    if (response.success) {
+      sales = response.data || [];
+      console.log(`Loaded ${sales.length} sales from API`);
+    }
+  } catch (error) {
+    console.error('Load sales error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Open New Sale Modal
  */
 function openNewSaleModal() {
-    if (!AuthModule.hasPermission('sales')) {
-        Utils.showNotification('You do not have permission to create sales.');
-        return;
+  if (!AuthModule.hasPermission('sales')) {
+    Utils.showNotification('You do not have permission to create sales.');
+    return;
+  }
+  
+  const modal = document.getElementById('newSaleModal');
+  if (!modal) {
+    Utils.showNotification('Sales modal not found. Please refresh the page.');
+    return;
+  }
+  
+  // Populate customer dropdown
+  if (window.CustomerModule) {
+    CustomerModule.populateCustomerDropdown('saleCustomer');
+  }
+  
+  // Populate item dropdown
+  if (window.InventoryModule) {
+    InventoryModule.populateItemDropdown('saleItem');
+  }
+  
+  // Reset form
+  const form = modal.querySelector('form');
+  if (form) {
+    form.reset();
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) {
+      resetButton(submitBtn, 'Record Sale');
     }
-    
-    console.log('Opening New Sale Modal');
-    
-    // Ensure modal exists before trying to open it
-    const modal = document.getElementById('newSaleModal');
-    if (!modal) {
-        Utils.showNotification('Sales modal not found. Please refresh the page.');
-        return;
-    }
-    
-    // Populate customer dropdown
-    if (window.CustomerModule && CustomerModule.populateCustomerDropdown) {
-        CustomerModule.populateCustomerDropdown('saleCustomer');
-    }
-    
-    // Populate watch dropdown
-    populateWatchDropdown('saleWatch');
-    
-    // Reset form
-    const form = modal.querySelector('form');
-    if (form) {
-        form.reset();
-    }
-    
-    // Reset calculation displays
+  }
+  
+  // Reset calculation displays
+  updateCalculationDisplay();
+  
+  modal.style.display = 'block';
+}
+
+/**
+ * Search item by code and auto-populate
+ */
+function searchItemByCode() {
+  const codeInput = document.getElementById('saleItemCode');
+  const itemSelect = document.getElementById('saleItem');
+  const priceInput = document.getElementById('salePrice');
+  
+  if (!codeInput || !itemSelect || !priceInput) return;
+  
+  const enteredCode = codeInput.value.trim().toUpperCase();
+  
+  if (!enteredCode) {
+    itemSelect.value = '';
+    priceInput.value = '';
     updateCalculationDisplay();
-    
-    modal.style.display = 'block';
+    return;
+  }
+  
+  // Find item by code
+  const itemOption = Array.from(itemSelect.options).find(option => 
+    option.dataset.code && option.dataset.code.toUpperCase() === enteredCode
+  );
+  
+  if (itemOption) {
+    itemSelect.value = itemOption.value;
+    priceInput.value = itemOption.dataset.price;
+    updateCalculationDisplay();
+  } else {
+    itemSelect.value = '';
+    priceInput.value = '';
+    updateCalculationDisplay();
+    Utils.showNotification('Item with this code not found or not available');
+  }
 }
 
 /**
- * Populate watch dropdown with available watches
- */
-function populateWatchDropdown(selectId) {
-    const select = document.getElementById(selectId);
-    if (!select) return;
-    
-    select.innerHTML = '<option value="">Select Item</option>';
-    
-    if (window.InventoryModule && InventoryModule.watches) {
-        const availableWatches = InventoryModule.getAvailableWatches();
-        availableWatches.forEach(watch => {
-            select.innerHTML += `<option value="${watch.id}" data-price="${watch.price}" data-code="${watch.code}">
-                ${Utils.sanitizeHtml(watch.code)} - ${Utils.sanitizeHtml(watch.brand)} ${Utils.sanitizeHtml(watch.model)} (₹${watch.price})
-            </option>`;
-        });
-    }
-}
-
-/**
- * Search watch by code and auto-populate
- */
-function searchWatchByCode() {
-    const codeInput = document.getElementById('saleWatchCode');
-    const watchSelect = document.getElementById('saleWatch');
-    const priceInput = document.getElementById('salePrice');
-    
-    if (!codeInput || !watchSelect || !priceInput) return;
-    
-    const enteredCode = codeInput.value.trim().toUpperCase();
-    
-    if (!enteredCode) {
-        watchSelect.value = '';
-        priceInput.value = '';
-        updateCalculationDisplay();
-        return;
-    }
-    
-    // Find watch by code
-    const watchOption = Array.from(watchSelect.options).find(option => 
-        option.dataset.code && option.dataset.code.toUpperCase() === enteredCode
-    );
-    
-    if (watchOption) {
-        watchSelect.value = watchOption.value;
-        priceInput.value = watchOption.dataset.price;
-        updateCalculationDisplay();
-    } else {
-        watchSelect.value = '';
-        priceInput.value = '';
-        updateCalculationDisplay();
-        Utils.showNotification('Item with this code not found or not available');
-    }
-}
-
-/**
- * Update price when watch is selected
+ * Update price when item is selected
  */
 function updateSalePrice() {
-    const watchSelect = document.getElementById('saleWatch');
-    const priceInput = document.getElementById('salePrice');
-    const codeInput = document.getElementById('saleWatchCode');
-    
-    if (watchSelect && priceInput) {
-        const selectedOption = watchSelect.options[watchSelect.selectedIndex];
-        if (selectedOption && selectedOption.dataset.price) {
-            priceInput.value = selectedOption.dataset.price;
-            if (codeInput && selectedOption.dataset.code) {
-                codeInput.value = selectedOption.dataset.code;
-            }
-        } else {
-            priceInput.value = '';
-            if (codeInput) codeInput.value = '';
-        }
-        updateCalculationDisplay();
+  const itemSelect = document.getElementById('saleItem');
+  const priceInput = document.getElementById('salePrice');
+  const codeInput = document.getElementById('saleItemCode');
+  
+  if (itemSelect && priceInput) {
+    const selectedOption = itemSelect.options[itemSelect.selectedIndex];
+    if (selectedOption && selectedOption.dataset.price) {
+      priceInput.value = selectedOption.dataset.price;
+      if (codeInput && selectedOption.dataset.code) {
+        codeInput.value = selectedOption.dataset.code;
+      }
+    } else {
+      priceInput.value = '';
+      if (codeInput) codeInput.value = '';
     }
+    updateCalculationDisplay();
+  }
 }
 
 /**
  * Update calculation display
  */
 function updateCalculationDisplay() {
-    const price = parseFloat(document.getElementById('salePrice')?.value) || 0;
-    const quantity = parseInt(document.getElementById('saleQuantity')?.value) || 1;
-    const discountType = document.getElementById('saleDiscountType')?.value || '';
-    const discountValue = parseFloat(document.getElementById('saleDiscountValue')?.value) || 0;
-    
-    const subtotal = price * quantity;
-    let discountAmount = 0;
-    
-    if (discountType === 'percentage') {
-        discountAmount = Math.min((subtotal * discountValue) / 100, subtotal);
-    } else if (discountType === 'amount') {
-        discountAmount = Math.min(discountValue, subtotal);
-    }
-    
-    const totalAmount = subtotal - discountAmount;
-    
-    // Update display fields
-    const subtotalDisplay = document.getElementById('saleSubtotal');
-    const discountDisplay = document.getElementById('saleDiscountAmount');
-    const totalDisplay = document.getElementById('saleTotalAmount');
-    
-    if (subtotalDisplay) subtotalDisplay.textContent = Utils.formatCurrency(subtotal);
-    if (discountDisplay) discountDisplay.textContent = Utils.formatCurrency(discountAmount);
-    if (totalDisplay) totalDisplay.textContent = Utils.formatCurrency(totalAmount);
+  const price = parseFloat(document.getElementById('salePrice')?.value) || 0;
+  const quantity = parseInt(document.getElementById('saleQuantity')?.value) || 1;
+  const discountType = document.getElementById('saleDiscountType')?.value || '';
+  const discountValue = parseFloat(document.getElementById('saleDiscountValue')?.value) || 0;
+  
+  const subtotal = price * quantity;
+  let discountAmount = 0;
+  
+  if (discountType === 'percentage') {
+    discountAmount = Math.min((subtotal * discountValue) / 100, subtotal);
+  } else if (discountType === 'amount') {
+    discountAmount = Math.min(discountValue, subtotal);
+  }
+  
+  const totalAmount = subtotal - discountAmount;
+  
+  // Update display fields
+  const subtotalDisplay = document.getElementById('saleSubtotal');
+  const discountDisplay = document.getElementById('saleDiscountAmount');
+  const totalDisplay = document.getElementById('saleTotalAmount');
+  
+  if (subtotalDisplay) subtotalDisplay.textContent = Utils.formatCurrency(subtotal);
+  if (discountDisplay) discountDisplay.textContent = Utils.formatCurrency(discountAmount);
+  if (totalDisplay) totalDisplay.textContent = Utils.formatCurrency(totalAmount);
 }
 
 /**
- * Add new sale
+ * Add new sale with API integration
  */
-function addNewSale(event) {
-    event.preventDefault();
-    
-    console.log('Adding new sale...');
-    
-    if (!AuthModule.hasPermission('sales')) {
-        Utils.showNotification('You do not have permission to create sales.');
-        return;
-    }
+async function addNewSale(event) {
+  event.preventDefault();
+  
+  if (!AuthModule.hasPermission('sales')) {
+    Utils.showNotification('You do not have permission to create sales.');
+    return;
+  }
 
-    // Get form data
-    const customerId = parseInt(document.getElementById('saleCustomer').value);
-    const watchId = parseInt(document.getElementById('saleWatch').value);
-    const price = parseFloat(document.getElementById('salePrice').value);
-    const quantity = parseInt(document.getElementById('saleQuantity').value) || 1;
-    const discountType = document.getElementById('saleDiscountType').value;
-    const discountValue = parseFloat(document.getElementById('saleDiscountValue').value) || 0;
-    const paymentMethod = document.getElementById('salePaymentMethod').value;
-    
-    // Validate input
-    if (!customerId || !watchId || !price || !paymentMethod) {
-        Utils.showNotification('Please fill in all required fields');
-        return;
-    }
+  const customerId = document.getElementById('saleCustomer').value;
+  const itemId = document.getElementById('saleItem').value;
+  const price = parseFloat(document.getElementById('salePrice').value);
+  const quantity = parseInt(document.getElementById('saleQuantity').value) || 1;
+  const discountType = document.getElementById('saleDiscountType').value;
+  const discountValue = parseFloat(document.getElementById('saleDiscountValue').value) || 0;
+  const paymentMethod = document.getElementById('salePaymentMethod').value;
+  
+  // Validation
+  if (!customerId || !itemId || !price || !paymentMethod) {
+    Utils.showNotification('Please fill in all required fields');
+    return;
+  }
 
-    if (price <= 0) {
-        Utils.showNotification('Price must be greater than zero');
-        return;
-    }
+  if (price <= 0) {
+    Utils.showNotification('Price must be greater than zero');
+    return;
+  }
 
-    if (quantity <= 0) {
-        Utils.showNotification('Quantity must be greater than zero');
-        return;
-    }
+  if (quantity <= 0) {
+    Utils.showNotification('Quantity must be greater than zero');
+    return;
+  }
 
-    // Get customer and watch details
-    const customer = CustomerModule.getCustomerById(customerId);
-    const watch = InventoryModule.getWatchById(watchId);
-    
-    if (!customer) {
-        Utils.showNotification('Selected customer not found');
-        return;
-    }
+  const submitBtn = event.target.querySelector('button[type="submit"]');
+  const originalText = setButtonLoading(submitBtn, 'Recording Sale...');
 
-    if (!watch) {
-        Utils.showNotification('Selected item not found');
-        return;
-    }
-
-    if (watch.quantity < quantity) {
-        Utils.showNotification(`Insufficient stock. Only ${watch.quantity} available.`);
-        return;
-    }
-
-    // Calculate amounts
-    const subtotal = price * quantity;
-    let discountAmount = 0;
-    
-    if (discountType === 'percentage') {
-        discountAmount = Math.min((subtotal * discountValue) / 100, subtotal);
-    } else if (discountType === 'amount') {
-        discountAmount = Math.min(discountValue, subtotal);
-    }
-    
-    const totalAmount = subtotal - discountAmount;
-
-    // Create sale object with time and discount details
-    const now = new Date();
-    const newSale = {
-        id: nextSaleId++,
-        date: Utils.formatDate(now),
-        time: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-        timestamp: Utils.getCurrentTimestamp(),
-        customerId: customerId,
-        customerName: customer.name,
-        watchId: watchId,
-        watchName: `${watch.brand} ${watch.model}`,
-        watchCode: watch.code,
-        price: price,
-        quantity: quantity,
-        subtotal: subtotal,
-        discountType: discountType,
-        discountValue: discountValue,
-        discountAmount: discountAmount,
-        totalAmount: totalAmount,
-        paymentMethod: paymentMethod,
-        status: 'completed',
-        createdBy: AuthModule.getCurrentUser().username,
-        invoiceGenerated: false,
-        notes: []
+  try {
+    const saleData = {
+      customerId,
+      itemId,
+      quantity,
+      price,
+      discountType: discountType || '',
+      discountValue,
+      paymentMethod
     };
 
-    // Add to sales array
-    sales.push(newSale);
-    
-    // Update inventory (decrease quantity)
-    InventoryModule.decreaseWatchQuantity(watchId, quantity);
-    
-    // Update customer purchase count
-    CustomerModule.incrementCustomerPurchases(customerId);
-    
-    // Generate Sales Invoice automatically
-    if (window.InvoiceModule) {
-        const invoice = InvoiceModule.generateSalesInvoice(newSale);
-        if (invoice) {
-            newSale.invoiceGenerated = true;
-            newSale.invoiceId = invoice.id;
-        }
-    }
-    
-    // Update displays
-    renderSalesTable();
-    if (window.updateDashboard) {
+    const response = await SalesAPI.createSale(saleData);
+
+    if (response.success) {
+      sales.push(response.data);
+      
+      // Generate invoice automatically
+      try {
+        await InvoiceAPI.generateSalesInvoice(response.data.id);
+      } catch (invoiceError) {
+        console.warn('Failed to generate invoice automatically:', invoiceError);
+      }
+      
+      renderSalesTable();
+      if (window.updateDashboard) {
         updateDashboard();
+      }
+      
+      // Refresh inventory to update quantities
+      if (window.InventoryModule) {
+        InventoryModule.refreshInventory();
+      }
+      
+      closeModal('newSaleModal');
+      event.target.reset();
+      
+      const customer = response.data.customerId;
+      const item = response.data.itemId;
+      Utils.showNotification(`Sale recorded successfully! Customer: ${customer.name}, Item: ${item.brand} ${item.model}, Total: ${Utils.formatCurrency(response.data.totalAmount)}`);
     }
-    
-    // Close modal and reset form
-    document.getElementById('newSaleModal').style.display = 'none';
-    event.target.reset();
-    
-    Utils.showNotification(`Sale recorded successfully! Sale ID: ${newSale.id}. Total: ${Utils.formatCurrency(totalAmount)}. Invoice automatically generated.`);
-    console.log('Sale added:', newSale);
+
+  } catch (error) {
+    console.error('Add sale error:', error);
+    Utils.showNotification(error.message || 'Failed to record sale. Please try again.');
+  } finally {
+    resetButton(submitBtn, originalText || 'Record Sale');
+  }
+}
+
+/**
+ * Edit sale
+ */
+function editSale(saleId) {
+  const currentUser = AuthModule.getCurrentUser();
+  const isStaff = currentUser && currentUser.role === 'staff';
+  
+  if (isStaff) {
+    Utils.showNotification('Staff users cannot edit sales.');
+    return;
+  }
+  
+  Utils.showNotification('Edit sale functionality - to be implemented');
 }
 
 /**
  * Delete sale
  */
-function deleteSale(saleId) {
-    if (!AuthModule.hasPermission('sales')) {
-        Utils.showNotification('You do not have permission to delete sales.');
-        return;
-    }
+async function deleteSale(saleId) {
+  const currentUser = AuthModule.getCurrentUser();
+  const isStaff = currentUser && currentUser.role === 'staff';
+  
+  if (isStaff) {
+    Utils.showNotification('Staff users cannot delete sales.');
+    return;
+  }
 
-    const sale = sales.find(s => s.id === saleId);
-    if (!sale) {
-        Utils.showNotification('Sale not found.');
-        return;
-    }
+  const sale = sales.find(s => s.id === saleId);
+  if (!sale) {
+    Utils.showNotification('Sale not found.');
+    return;
+  }
 
-    if (confirm(`Are you sure you want to delete the sale for ${sale.watchName}?`)) {
-        // Restore inventory and customer counts
-        InventoryModule.increaseWatchQuantity(sale.watchId, sale.quantity);
-        CustomerModule.decrementCustomerPurchases(sale.customerId);
-        
-        // Remove from sales array
+  if (confirm(`Are you sure you want to delete the sale for ${sale.itemId.brand} ${sale.itemId.model}?`)) {
+    try {
+      const response = await SalesAPI.deleteSale(saleId);
+      
+      if (response.success) {
         sales = sales.filter(s => s.id !== saleId);
-        
         renderSalesTable();
         if (window.updateDashboard) {
-            updateDashboard();
+          updateDashboard();
         }
+        
+        // Refresh inventory to update quantities
+        if (window.InventoryModule) {
+          InventoryModule.refreshInventory();
+        }
+        
         Utils.showNotification('Sale deleted successfully!');
+      }
+
+    } catch (error) {
+      console.error('Delete sale error:', error);
+      Utils.showNotification(error.message || 'Failed to delete sale. Please try again.');
     }
+  }
 }
 
 /**
  * View sale invoice
  */
-function viewSaleInvoice(saleId) {
-    if (!window.InvoiceModule) {
-        Utils.showNotification('Invoice module not available.');
-        return;
-    }
-    
-    const invoices = InvoiceModule.getInvoicesForTransaction(saleId, 'sale');
-    if (invoices.length > 0) {
-        InvoiceModule.viewInvoice(invoices[0].id);
+async function viewSaleInvoice(saleId) {
+  try {
+    const response = await InvoiceAPI.getInvoicesByTransaction(saleId, 'sale');
+    if (response.success && response.data.length > 0) {
+      const invoice = response.data.find(inv => inv.type === 'Sales');
+      if (invoice && window.InvoiceModule) {
+        InvoiceModule.viewInvoice(invoice.id);
+      } else {
+        Utils.showNotification('Sales invoice not found for this sale.');
+      }
     } else {
-        Utils.showNotification('No invoice found for this sale.');
+      Utils.showNotification('No invoice found for this sale.');
     }
-}
-
-/**
- * Get sale by ID
- */
-function getSaleById(saleId) {
-    return sales.find(s => s.id === saleId);
-}
-
-/**
- * Get recent sales
- */
-function getRecentSales(limit = 5) {
-    return sales
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-        .slice(0, limit);
-}
-
-/**
- * Get sales by customer
- */
-function getSalesByCustomer(customerId) {
-    return sales.filter(sale => sale.customerId === customerId);
+  } catch (error) {
+    console.error('View sale invoice error:', error);
+    Utils.showNotification('Failed to view invoice.');
+  }
 }
 
 /**
  * Search sales
  */
 function searchSales(query) {
-    const tbody = document.getElementById('salesTableBody');
-    if (!tbody) return;
-    
-    const rows = tbody.querySelectorAll('tr');
-    
-    rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        if (text.includes(query.toLowerCase())) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
-    });
+  const tbody = document.getElementById('salesTableBody');
+  if (!tbody) return;
+  
+  const rows = tbody.querySelectorAll('tr');
+  
+  rows.forEach(row => {
+    const text = row.textContent.toLowerCase();
+    if (text.includes(query.toLowerCase())) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+}
+
+/**
+ * Get sales statistics
+ */
+async function getSalesStats() {
+  try {
+    const response = await SalesAPI.getSalesStats();
+    if (response.success) {
+      return response.data;
+    }
+  } catch (error) {
+    console.error('Get sales stats error:', error);
+  }
+  
+  // Fallback to local calculation
+  const totalSales = sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+  const totalTransactions = sales.length;
+  const averageSaleValue = totalTransactions > 0 ? totalSales / totalTransactions : 0;
+  const totalDiscounts = sales.reduce((sum, sale) => sum + (sale.discountAmount || 0), 0);
+  
+  return {
+    totalSales,
+    totalTransactions,
+    averageSaleValue,
+    totalDiscounts
+  };
+}
+
+/**
+ * Get recent sales
+ */
+function getRecentSales(limit = 5) {
+  return sales
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, limit);
 }
 
 /**
  * Render sales table
  */
 function renderSalesTable() {
-    const tbody = document.getElementById('salesTableBody');
-    if (!tbody) return;
+  const tbody = document.getElementById('salesTableBody');
+  if (!tbody) {
+    console.error('Sales table body not found');
+    return;
+  }
+  
+  const currentUser = AuthModule.getCurrentUser();
+  const isStaff = currentUser && currentUser.role === 'staff';
+  
+  tbody.innerHTML = '';
+  
+  if (sales.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" style="text-align: center; color: #999; padding: 20px;">
+          No sales recorded yet. Click "New Sale" to get started.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+  
+  // Sort sales by date (newest first)
+  const sortedSales = [...sales].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  
+  sortedSales.forEach((sale, index) => {
+    const row = document.createElement('tr');
     
-    tbody.innerHTML = '';
+    let actionButtons = '';
     
-    // Sort sales by date (newest first)
-    const sortedSales = sales.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    // Check if invoice exists for this sale
+    const hasInvoice = true; // Assume invoice exists for now
     
-    sortedSales.forEach((sale, index) => {
-        const row = document.createElement('tr');
-        
-        // Check if invoice exists for this sale
-        const hasInvoice = window.InvoiceModule && 
-            InvoiceModule.getInvoicesForTransaction(sale.id, 'sale').length > 0;
-        
-        // Display discount info if applicable
-        let discountInfo = '';
-        if (sale.discountAmount && sale.discountAmount > 0) {
-            discountInfo = `<br><small style="color: #dc3545;">Discount: ${Utils.formatCurrency(sale.discountAmount)}</small>`;
-        }
-        
-        // Get customer mobile number
-        const customer = window.CustomerModule ? CustomerModule.getCustomerById(sale.customerId) : null;
-        const customerMobile = customer ? customer.phone : 'N/A';
-        
-        row.innerHTML = `
-            <td class="serial-number">${index + 1}</td>
-            <td>${Utils.sanitizeHtml(sale.date)}</td>
-            <td>${Utils.sanitizeHtml(sale.time)}</td>
-            <td class="customer-info">
-                <div class="customer-name">${Utils.sanitizeHtml(sale.customerName)}</div>
-                <div class="customer-mobile">${Utils.sanitizeHtml(customerMobile)}</div>
-            </td>
-            <td>
-                <strong>${Utils.sanitizeHtml(sale.watchName)}</strong><br>
-                <small>Code: ${Utils.sanitizeHtml(sale.watchCode)}</small><br>
-                <small>Qty: ${sale.quantity}</small>
-            </td>
-            <td>
-                ${Utils.formatCurrency(sale.totalAmount)}
-                ${discountInfo}
-            </td>
-            <td><span class="status available">${Utils.sanitizeHtml(sale.paymentMethod)}</span></td>
-            <td>
-                <button class="btn btn-sm" onclick="SalesModule.editSale(${sale.id})" 
-                    ${!AuthModule.hasPermission('sales') ? 'disabled' : ''}>Edit</button>
-                <button class="btn btn-sm btn-danger" onclick="confirmTransaction('Are you sure you want to delete this sale?', () => SalesModule.deleteSale(${sale.id}))" 
-                    ${!AuthModule.hasPermission('sales') ? 'disabled' : ''}>Delete</button>
-                ${hasInvoice ? 
-                    `<button class="btn btn-sm btn-success" onclick="SalesModule.viewSaleInvoice(${sale.id})" title="View Invoice">Invoice</button>` : 
-                    ''
-                }
-            </td>
-        `;
-        tbody.appendChild(row);
-    });
+    if (!isStaff) {
+      actionButtons = `
+        <button class="btn btn-sm" onclick="editSale('${sale.id}')" title="Edit Sale">Edit</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteSale('${sale.id}')" title="Delete Sale">Delete</button>
+      `;
+    }
+    
+    if (hasInvoice) {
+      actionButtons += `
+        <button class="btn btn-sm btn-success" onclick="viewSaleInvoice('${sale.id}')" title="View Invoice">Invoice</button>
+      `;
+    }
+    
+    // Display discount info if applicable
+    let discountInfo = '';
+    if (sale.discountAmount && sale.discountAmount > 0) {
+      discountInfo = `<br><small style="color: #dc3545;">Discount: ${Utils.formatCurrency(sale.discountAmount)}</small>`;
+    }
+    
+    const date = new Date(sale.createdAt);
+    const formattedDate = date.toLocaleDateString('en-IN');
+    const formattedTime = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    
+    row.innerHTML = `
+      <td class="serial-number">${index + 1}</td>
+      <td>${formattedDate}</td>
+      <td>${formattedTime}</td>
+      <td class="customer-info">
+        <div class="customer-name">${Utils.sanitizeHtml(sale.customerId.name)}</div>
+        <div class="customer-mobile">${Utils.sanitizeHtml(sale.customerId.phone)}</div>
+      </td>
+      <td>
+        <strong>${Utils.sanitizeHtml(sale.itemId.brand)} ${Utils.sanitizeHtml(sale.itemId.model)}</strong><br>
+        <small>Code: ${Utils.sanitizeHtml(sale.itemId.code)}</small><br>
+        <small>Qty: ${sale.quantity}</small>
+      </td>
+      <td>
+        ${Utils.formatCurrency(sale.totalAmount)}
+        ${discountInfo}
+      </td>
+      <td><span class="status available">${Utils.sanitizeHtml(sale.paymentMethod)}</span></td>
+      <td>${actionButtons}</td>
+    `;
+    tbody.appendChild(row);
+  });
+  
+  console.log('Sales table rendered successfully with API data');
 }
 
-// Export core functions for Part 2
-window.SalesCoreModule = {
-    openNewSaleModal,
-    populateWatchDropdown,
-    searchWatchByCode,
-    updateSalePrice,
-    updateCalculationDisplay,
-    addNewSale,
-    deleteSale,
-    viewSaleInvoice,
-    getSaleById,
-    getRecentSales,
-    getSalesByCustomer,
-    searchSales,
-    renderSalesTable,
-    sales // For access by other modules
+/**
+ * Refresh sales from API
+ */
+async function refreshSales() {
+  try {
+    await loadSalesFromAPI();
+    renderSalesTable();
+    console.log('Sales refreshed from API');
+  } catch (error) {
+    console.error('Refresh sales error:', error);
+    Utils.showNotification('Failed to refresh sales data.');
+  }
+}
+
+// Make functions globally available
+window.searchItemByCode = searchItemByCode;
+window.updateSalePrice = updateSalePrice;
+window.updateCalculationDisplay = updateCalculationDisplay;
+
+// Export functions for global use
+window.SalesModule = {
+  initializeSales,
+  loadSalesFromAPI,
+  openNewSaleModal,
+  addNewSale,
+  editSale,
+  deleteSale,
+  viewSaleInvoice,
+  searchSales,
+  getSalesStats,
+  getRecentSales,
+  renderSalesTable,
+  refreshSales,
+  resetButton,
+  setButtonLoading,
+  sales // For access by other modules
 };
