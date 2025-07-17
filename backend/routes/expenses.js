@@ -1,692 +1,527 @@
 // ================================
-// EXPENSE ROUTES - backend/routes/expenses.js
+// FIXED EXPENSE MODULE - js/expenses.js (COMPLETE WORKING VERSION)
 // ================================
-const express = require('express');
-const Expense = require('../models/Expense');
-const { auth, authorize, checkPermission } = require('../middleware/auth');
 
-const router = express.Router();
+/**
+ * Expense Management Module with Complete MongoDB Integration
+ */
 
-// @route   GET /api/expenses
-// @desc    Get all expenses
-// @access  Private
-router.get('/', auth, checkPermission('expenses'), async (req, res) => {
+// Local cache for expenses
+let expenses = [];
+
+/**
+ * Button state management
+ */
+function resetButton(button, originalText) {
+  if (button) {
+    button.textContent = originalText;
+    button.disabled = false;
+  }
+}
+
+function setButtonLoading(button, loadingText) {
+  if (button) {
+    button.dataset.originalText = button.textContent;
+    button.textContent = loadingText;
+    button.disabled = true;
+    return button.dataset.originalText;
+  }
+  return null;
+}
+
+/**
+ * Initialize expense module with API integration
+ */
+async function initializeExpenses() {
   try {
-    const { page = 1, limit = 50, search, category, fromDate, toDate } = req.query;
+    await loadExpensesFromAPI();
+    renderExpenseTable();
+    console.log('Expense module initialized with API integration');
+  } catch (error) {
+    console.error('Expense initialization error:', error);
+    Utils.showNotification('Failed to load expenses. Please refresh the page.');
+  }
+}
 
-    let query = {};
+/**
+ * Load expenses from API
+ */
+async function loadExpensesFromAPI() {
+  try {
+    const response = await ExpenseAPI.getExpenses();
+    if (response.success) {
+      expenses = response.data || [];
+      console.log(`Loaded ${expenses.length} expenses from API`);
+    }
+  } catch (error) {
+    console.error('Load expenses error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Open Add Expense Modal
+ */
+function openAddExpenseModal() {
+  if (!AuthModule.hasPermission('expenses')) {
+    Utils.showNotification('You do not have permission to add expenses.');
+    return;
+  }
+  
+  const modal = document.getElementById('addExpenseModal');
+  if (!modal) {
+    Utils.showNotification('Expense modal not found. Please refresh the page.');
+    return;
+  }
+  
+  // Reset form
+  const form = modal.querySelector('form');
+  if (form) {
+    form.reset();
     
-    // Category filter
-    if (category) {
-      query.category = category;
+    // Set today's date as default
+    const dateInput = document.getElementById('expenseDate');
+    if (dateInput) {
+      const today = new Date().toISOString().split('T')[0];
+      dateInput.value = today;
     }
-
-    // Date range filter
-    if (fromDate || toDate) {
-      query.date = {};
-      if (fromDate) query.date.$gte = new Date(fromDate);
-      if (toDate) query.date.$lte = new Date(toDate);
+    
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) {
+      resetButton(submitBtn, 'Add Expense');
     }
-
-    // Search functionality
-    if (search) {
-      query.$or = [
-        { description: { $regex: search, $options: 'i' } },
-        { category: { $regex: search, $options: 'i' } },
-        { paymentMethod: { $regex: search, $options: 'i' } }
-      ];
-    }
-
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-    const skip = (pageNum - 1) * limitNum;
-
-    const expenses = await Expense.find(query)
-      .populate('createdBy', 'username fullName')
-      .sort({ date: -1 })
-      .skip(skip)
-      .limit(limitNum);
-
-    const total = await Expense.countDocuments(query);
-
-    res.status(200).json({
-      success: true,
-      count: expenses.length,
-      total,
-      page: pageNum,
-      pages: Math.ceil(total / limitNum),
-      data: expenses
-    });
-
-  } catch (error) {
-    console.error('Get expenses error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while fetching expenses'
-    });
   }
-});
+  
+  modal.style.display = 'block';
+}
 
-// @route   GET /api/expenses/stats
-// @desc    Get expense statistics
-// @access  Private
-router.get('/stats', auth, checkPermission('expenses'), async (req, res) => {
-  try {
-    const stats = await Expense.getStats();
-    res.status(200).json({
-      success: true,
-      data: stats
-    });
-  } catch (error) {
-    console.error('Get expense stats error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while fetching expense statistics'
-    });
+/**
+ * Add new expense with API integration
+ */
+async function addNewExpense(event) {
+  event.preventDefault();
+  
+  if (!AuthModule.hasPermission('expenses')) {
+    Utils.showNotification('You do not have permission to add expenses.');
+    return;
   }
-});
 
-// @route   GET /api/expenses/:id
-// @desc    Get single expense
-// @access  Private
-router.get('/:id', auth, checkPermission('expenses'), async (req, res) => {
-  try {
-    const expense = await Expense.findById(req.params.id)
-      .populate('createdBy', 'username fullName');
-
-    if (!expense) {
-      return res.status(404).json({
-        success: false,
-        message: 'Expense not found'
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: expense
-    });
-
-  } catch (error) {
-    console.error('Get expense error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while fetching expense'
-    });
+  const date = document.getElementById('expenseDate').value;
+  const description = document.getElementById('expenseDescription').value.trim();
+  const amount = parseFloat(document.getElementById('expenseAmount').value);
+  const category = document.getElementById('expenseCategory').value || 'Other';
+  const paymentMethod = document.getElementById('expensePaymentMethod').value || 'Cash';
+  const notes = document.getElementById('expenseNotes').value.trim();
+  
+  // Validation
+  if (!date || !description || !amount) {
+    Utils.showNotification('Please fill in all required fields');
+    return;
   }
-});
 
-// @route   POST /api/expenses
-// @desc    Create new expense
-// @access  Private
-router.post('/', auth, checkPermission('expenses'), async (req, res) => {
-  try {
-    const { date, description, amount, category, paymentMethod, notes } = req.body;
-
-    // Validation
-    if (!date || !description || !amount) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide date, description, and amount'
-      });
-    }
-
-    if (parseFloat(amount) <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Amount must be greater than 0'
-      });
-    }
-
-    // Create expense
-    const expense = new Expense({
-      date: new Date(date),
-      description: description.trim(),
-      amount: parseFloat(amount),
-      category: category || 'Other',
-      paymentMethod: paymentMethod || 'Cash',
-      notes: notes ? notes.trim() : '',
-      createdBy: req.user._id
-    });
-
-    await expense.save();
-    await expense.populate('createdBy', 'username fullName');
-
-    res.status(201).json({
-      success: true,
-      message: 'Expense created successfully',
-      data: expense
-    });
-
-  } catch (error) {
-    console.error('Create expense error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while creating expense'
-    });
+  if (amount <= 0) {
+    Utils.showNotification('Amount must be greater than zero');
+    return;
   }
-});
 
-// @route   PUT /api/expenses/:id
-// @desc    Update expense
-// @access  Private (Non-staff only)
-router.put('/:id', auth, authorize('admin', 'owner'), async (req, res) => {
+  const submitBtn = event.target.querySelector('button[type="submit"]');
+  const originalText = setButtonLoading(submitBtn, 'Adding Expense...');
+
   try {
-    const { date, description, amount, category, paymentMethod, notes } = req.body;
+    const expenseData = {
+      date,
+      description,
+      amount,
+      category,
+      paymentMethod,
+      notes
+    };
 
-    const expense = await Expense.findById(req.params.id);
-    if (!expense) {
-      return res.status(404).json({
-        success: false,
-        message: 'Expense not found'
-      });
-    }
+    const response = await ExpenseAPI.createExpense(expenseData);
 
-    // Update expense
-    if (date) expense.date = new Date(date);
-    if (description) expense.description = description.trim();
-    if (amount !== undefined) {
-      if (parseFloat(amount) <= 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'Amount must be greater than 0'
-        });
+    if (response.success) {
+      expenses.push(response.data);
+      renderExpenseTable();
+      if (window.updateDashboard) {
+        updateDashboard();
       }
-      expense.amount = parseFloat(amount);
+      
+      closeModal('addExpenseModal');
+      event.target.reset();
+      
+      Utils.showNotification(`Expense added successfully! ${description} - ${Utils.formatCurrency(amount)}`);
     }
-    if (category) expense.category = category;
-    if (paymentMethod) expense.paymentMethod = paymentMethod;
-    if (notes !== undefined) expense.notes = notes.trim();
 
-    await expense.save();
-    await expense.populate('createdBy', 'username fullName');
+  } catch (error) {
+    console.error('Add expense error:', error);
+    Utils.showNotification(error.message || 'Failed to add expense. Please try again.');
+  } finally {
+    resetButton(submitBtn, originalText || 'Add Expense');
+  }
+}
 
-    res.status(200).json({
-      success: true,
-      message: 'Expense updated successfully',
-      data: expense
-    });
+/**
+ * Edit expense
+ */
+function editExpense(expenseId) {
+  const currentUser = AuthModule.getCurrentUser();
+  const isStaff = currentUser && currentUser.role === 'staff';
+  
+  if (isStaff) {
+    Utils.showNotification('Staff users cannot edit expenses.');
+    return;
+  }
+  
+  const expense = expenses.find(e => e.id === expenseId);
+  if (!expense) {
+    Utils.showNotification('Expense not found.');
+    return;
+  }
+
+  // Create edit modal
+  const editModal = document.createElement('div');
+  editModal.className = 'modal';
+  editModal.id = 'editExpenseModal';
+  editModal.style.display = 'block';
+  editModal.innerHTML = `
+    <div class="modal-content">
+      <span class="close" onclick="closeEditExpenseModal()">&times;</span>
+      <h2>Edit Expense</h2>
+      <form onsubmit="updateExpense(event, '${expenseId}')">
+        <div class="form-group">
+          <label>Date:</label>
+          <input type="date" id="editExpenseDate" value="${expense.date.split('T')[0]}" required>
+        </div>
+        <div class="form-group">
+          <label>Description:</label>
+          <textarea id="editExpenseDescription" rows="3" required>${expense.description}</textarea>
+        </div>
+        <div class="grid grid-2">
+          <div class="form-group">
+            <label>Amount (₹):</label>
+            <input type="number" id="editExpenseAmount" value="${expense.amount}" required min="0.01" step="0.01">
+          </div>
+          <div class="form-group">
+            <label>Category:</label>
+            <select id="editExpenseCategory">
+              <option value="Office Supplies" ${expense.category === 'Office Supplies' ? 'selected' : ''}>Office Supplies</option>
+              <option value="Rent" ${expense.category === 'Rent' ? 'selected' : ''}>Rent</option>
+              <option value="Utilities" ${expense.category === 'Utilities' ? 'selected' : ''}>Utilities</option>
+              <option value="Marketing" ${expense.category === 'Marketing' ? 'selected' : ''}>Marketing</option>
+              <option value="Travel" ${expense.category === 'Travel' ? 'selected' : ''}>Travel</option>
+              <option value="Equipment" ${expense.category === 'Equipment' ? 'selected' : ''}>Equipment</option>
+              <option value="Maintenance" ${expense.category === 'Maintenance' ? 'selected' : ''}>Maintenance</option>
+              <option value="Other" ${expense.category === 'Other' ? 'selected' : ''}>Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-2">
+          <div class="form-group">
+            <label>Payment Method:</label>
+            <select id="editExpensePaymentMethod">
+              <option value="Cash" ${expense.paymentMethod === 'Cash' ? 'selected' : ''}>Cash</option>
+              <option value="Bank Transfer" ${expense.paymentMethod === 'Bank Transfer' ? 'selected' : ''}>Bank Transfer</option>
+              <option value="Card" ${expense.paymentMethod === 'Card' ? 'selected' : ''}>Card</option>
+              <option value="Cheque" ${expense.paymentMethod === 'Cheque' ? 'selected' : ''}>Cheque</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Notes:</label>
+            <textarea id="editExpenseNotes" rows="2">${expense.notes || ''}</textarea>
+          </div>
+        </div>
+        <div class="grid grid-2">
+          <button type="button" class="btn btn-danger" onclick="closeEditExpenseModal()">Cancel</button>
+          <button type="submit" class="btn">Update Expense</button>
+        </div>
+      </form>
+    </div>
+  `;
+  
+  document.body.appendChild(editModal);
+}
+
+/**
+ * Close edit expense modal
+ */
+function closeEditExpenseModal() {
+  const modal = document.getElementById('editExpenseModal');
+  if (modal) {
+    modal.remove();
+  }
+}
+
+/**
+ * Update expense
+ */
+async function updateExpense(event, expenseId) {
+  event.preventDefault();
+  
+  const expense = expenses.find(e => e.id === expenseId);
+  if (!expense) {
+    Utils.showNotification('Expense not found.');
+    return;
+  }
+
+  const date = document.getElementById('editExpenseDate').value;
+  const description = document.getElementById('editExpenseDescription').value.trim();
+  const amount = parseFloat(document.getElementById('editExpenseAmount').value);
+  const category = document.getElementById('editExpenseCategory').value;
+  const paymentMethod = document.getElementById('editExpensePaymentMethod').value;
+  const notes = document.getElementById('editExpenseNotes').value.trim();
+
+  // Validation
+  if (!date || !description || !amount || amount <= 0) {
+    Utils.showNotification('Please fill in all fields correctly.');
+    return;
+  }
+
+  const submitBtn = event.target.querySelector('button[type="submit"]');
+  const originalText = setButtonLoading(submitBtn, 'Updating...');
+
+  try {
+    const expenseData = {
+      date,
+      description,
+      amount,
+      category,
+      paymentMethod,
+      notes
+    };
+
+    const response = await ExpenseAPI.updateExpense(expenseId, expenseData);
+
+    if (response.success) {
+      // Update local cache
+      const expenseIndex = expenses.findIndex(e => e.id === expenseId);
+      if (expenseIndex !== -1) {
+        expenses[expenseIndex] = response.data;
+      }
+      
+      renderExpenseTable();
+      if (window.updateDashboard) {
+        updateDashboard();
+      }
+      
+      closeEditExpenseModal();
+      Utils.showNotification('Expense updated successfully!');
+    }
 
   } catch (error) {
     console.error('Update expense error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while updating expense'
-    });
+    Utils.showNotification(error.message || 'Failed to update expense. Please try again.');
+  } finally {
+    resetButton(submitBtn, originalText || 'Update Expense');
   }
-});
+}
 
-// @route   DELETE /api/expenses/:id
-// @desc    Delete expense
-// @access  Private (Non-staff only)
-router.delete('/:id', auth, authorize('admin', 'owner'), async (req, res) => {
-  try {
-    const expense = await Expense.findById(req.params.id);
-    if (!expense) {
-      return res.status(404).json({
-        success: false,
-        message: 'Expense not found'
-      });
+/**
+ * Delete expense
+ */
+async function deleteExpense(expenseId) {
+  const currentUser = AuthModule.getCurrentUser();
+  const isStaff = currentUser && currentUser.role === 'staff';
+  
+  if (isStaff) {
+    Utils.showNotification('Staff users cannot delete expenses.');
+    return;
+  }
+
+  const expense = expenses.find(e => e.id === expenseId);
+  if (!expense) {
+    Utils.showNotification('Expense not found.');
+    return;
+  }
+
+  if (confirm(`Are you sure you want to delete expense "${expense.description}"?`)) {
+    try {
+      const response = await ExpenseAPI.deleteExpense(expenseId);
+      
+      if (response.success) {
+        expenses = expenses.filter(e => e.id !== expenseId);
+        renderExpenseTable();
+        if (window.updateDashboard) {
+          updateDashboard();
+        }
+        Utils.showNotification('Expense deleted successfully!');
+      }
+
+    } catch (error) {
+      console.error('Delete expense error:', error);
+      Utils.showNotification(error.message || 'Failed to delete expense. Please try again.');
     }
-
-    await Expense.findByIdAndDelete(req.params.id);
-
-    res.status(200).json({
-      success: true,
-      message: 'Expense deleted successfully'
-    });
-
-  } catch (error) {
-    console.error('Delete expense error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while deleting expense'
-    });
   }
-});
+}
 
-module.exports = router;
+/**
+ * Search expenses
+ */
+function searchExpenses(query) {
+  const tbody = document.getElementById('expenseTableBody');
+  if (!tbody) return;
+  
+  const rows = tbody.querySelectorAll('tr');
+  
+  rows.forEach(row => {
+    const text = row.textContent.toLowerCase();
+    if (text.includes(query.toLowerCase())) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+}
 
-// ================================
-// INVOICE ROUTES - backend/routes/invoices.js
-// ================================
-const express = require('express');
-const Invoice = require('../models/Invoice');
-const Sales = require('../models/Sales');
-const Service = require('../models/Service');
-const Customer = require('../models/Customer');
-const { auth, authorize, checkPermission } = require('../middleware/auth');
-
-const router = express.Router();
-
-// @route   GET /api/invoices
-// @desc    Get all invoices
-// @access  Private
-router.get('/', auth, checkPermission('invoices'), async (req, res) => {
+/**
+ * Get expense statistics
+ */
+async function getExpenseStats() {
   try {
-    const { page = 1, limit = 50, search, type, status } = req.query;
+    const response = await ExpenseAPI.getExpenseStats();
+    if (response.success) {
+      return response.data;
+    }
+  } catch (error) {
+    console.error('Get expense stats error:', error);
+  }
+  
+  // Fallback to local calculation
+  const totalExpenses = expenses.length;
+  const totalAmount = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const averageExpense = totalExpenses > 0 ? totalAmount / totalExpenses : 0;
+  
+  // Today's expenses
+  const today = new Date().toISOString().split('T')[0];
+  const todayExpenses = expenses
+    .filter(expense => expense.date.split('T')[0] === today)
+    .reduce((sum, expense) => sum + expense.amount, 0);
+  
+  return {
+    totalExpenses,
+    totalAmount,
+    averageExpense,
+    todayExpenses
+  };
+}
 
-    let query = {};
+/**
+ * Get expenses by date range
+ */
+function getExpensesByDateRange(fromDate, toDate) {
+  const from = new Date(fromDate);
+  const to = new Date(toDate);
+  
+  return expenses.filter(expense => {
+    const expenseDate = new Date(expense.date);
+    return expenseDate >= from && expenseDate <= to;
+  });
+}
+
+/**
+ * Get expenses by month and year
+ */
+function getExpensesByMonth(month, year) {
+  return expenses.filter(expense => {
+    const expenseDate = new Date(expense.date);
+    return expenseDate.getMonth() === parseInt(month) && expenseDate.getFullYear() === parseInt(year);
+  });
+}
+
+/**
+ * Render expense table
+ */
+function renderExpenseTable() {
+  const tbody = document.getElementById('expenseTableBody');
+  if (!tbody) {
+    console.error('Expense table body not found');
+    return;
+  }
+  
+  const currentUser = AuthModule.getCurrentUser();
+  const isStaff = currentUser && currentUser.role === 'staff';
+  
+  tbody.innerHTML = '';
+  
+  if (expenses.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="5" style="text-align: center; color: #999; padding: 20px;">
+          No expenses recorded yet. Click "Add New Expense" to get started.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+  
+  // Sort expenses by date (newest first)
+  const sortedExpenses = [...expenses].sort((a, b) => new Date(b.date) - new Date(a.date));
+  
+  sortedExpenses.forEach((expense, index) => {
+    const row = document.createElement('tr');
     
-    // Type filter
-    if (type) {
-      query.type = type;
+    let actionButtons = '';
+    if (!isStaff) {
+      actionButtons = `
+        <button class="btn btn-sm" onclick="editExpense('${expense.id}')" title="Edit Expense">Edit</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteExpense('${expense.id}')" title="Delete Expense">Delete</button>
+      `;
+    } else {
+      actionButtons = '<span style="color: #999; font-size: 12px;">View Only</span>';
     }
+    
+    const formattedDate = new Date(expense.date).toLocaleDateString('en-IN');
+    
+    row.innerHTML = `
+      <td class="serial-number">${index + 1}</td>
+      <td>${formattedDate}</td>
+      <td>
+        ${Utils.sanitizeHtml(expense.description)}<br>
+        <small style="color: #666;">Category: ${Utils.sanitizeHtml(expense.category)}</small>
+      </td>
+      <td><strong style="color: #dc3545;">${Utils.formatCurrency(expense.amount)}</strong></td>
+      <td>${actionButtons}</td>
+    `;
+    
+    tbody.appendChild(row);
+  });
+  
+  console.log('Expense table rendered successfully with API data');
+}
 
-    // Status filter
-    if (status) {
-      query.status = status;
-    }
-
-    // Search functionality
-    if (search) {
-      const customers = await Customer.find({
-        $or: [
-          { name: { $regex: search, $options: 'i' } },
-          { phone: { $regex: search, $options: 'i' } }
-        ]
-      }).select('_id');
-      
-      const customerIds = customers.map(c => c._id);
-      
-      query.$or = [
-        { invoiceNo: { $regex: search, $options: 'i' } },
-        { customerId: { $in: customerIds } },
-        { type: { $regex: search, $options: 'i' } }
-      ];
-    }
-
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-    const skip = (pageNum - 1) * limitNum;
-
-    const invoices = await Invoice.find(query)
-      .populate('customerId', 'name phone email')
-      .populate('createdBy', 'username fullName')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limitNum);
-
-    const total = await Invoice.countDocuments(query);
-
-    res.status(200).json({
-      success: true,
-      count: invoices.length,
-      total,
-      page: pageNum,
-      pages: Math.ceil(total / limitNum),
-      data: invoices
-    });
-
-  } catch (error) {
-    console.error('Get invoices error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while fetching invoices'
-    });
-  }
-});
-
-// @route   GET /api/invoices/stats
-// @desc    Get invoice statistics
-// @access  Private
-router.get('/stats', auth, checkPermission('invoices'), async (req, res) => {
+/**
+ * Refresh expenses from API
+ */
+async function refreshExpenses() {
   try {
-    const stats = await Invoice.getStats();
-    res.status(200).json({
-      success: true,
-      data: stats
-    });
+    await loadExpensesFromAPI();
+    renderExpenseTable();
+    console.log('Expenses refreshed from API');
   } catch (error) {
-    console.error('Get invoice stats error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while fetching invoice statistics'
-    });
+    console.error('Refresh expenses error:', error);
+    Utils.showNotification('Failed to refresh expenses data.');
   }
-});
+}
 
-// @route   GET /api/invoices/:id
-// @desc    Get single invoice
-// @access  Private
-router.get('/:id', auth, checkPermission('invoices'), async (req, res) => {
-  try {
-    const invoice = await Invoice.findById(req.params.id)
-      .populate('customerId', 'name phone email address')
-      .populate('createdBy', 'username fullName');
+// Make functions globally available
+window.updateExpense = updateExpense;
+window.closeEditExpenseModal = closeEditExpenseModal;
 
-    if (!invoice) {
-      return res.status(404).json({
-        success: false,
-        message: 'Invoice not found'
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: invoice
-    });
-
-  } catch (error) {
-    console.error('Get invoice error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while fetching invoice'
-    });
-  }
-});
-
-// @route   POST /api/invoices/generate-sales
-// @desc    Generate sales invoice
-// @access  Private
-router.post('/generate-sales', auth, checkPermission('invoices'), async (req, res) => {
-  try {
-    const { saleId } = req.body;
-
-    if (!saleId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Sale ID is required'
-      });
-    }
-
-    // Get sale data
-    const sale = await Sales.findById(saleId)
-      .populate('customerId', 'name phone email address')
-      .populate('itemId', 'code brand model');
-
-    if (!sale) {
-      return res.status(404).json({
-        success: false,
-        message: 'Sale not found'
-      });
-    }
-
-    // Check if invoice already exists
-    const existingInvoice = await Invoice.findOne({ 
-      relatedId: saleId, 
-      relatedType: 'sale',
-      type: 'Sales'
-    });
-
-    if (existingInvoice) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invoice already exists for this sale'
-      });
-    }
-
-    // Generate invoice number
-    const invoiceNo = Invoice.generateInvoiceNumber('Sales');
-
-    // Prepare invoice data
-    const invoiceData = {
-      customerName: sale.customerId.name,
-      customerPhone: sale.customerId.phone,
-      customerEmail: sale.customerId.email,
-      customerAddress: sale.customerId.address || '',
-      watchName: `${sale.itemId.brand} ${sale.itemId.model}`,
-      watchCode: sale.itemId.code,
-      quantity: sale.quantity,
-      price: sale.price,
-      paymentMethod: sale.paymentMethod,
-      discountAmount: sale.discountAmount || 0,
-      amount: sale.totalAmount,
-      date: new Date().toLocaleDateString('en-IN')
-    };
-
-    // Create invoice
-    const invoice = new Invoice({
-      invoiceNo,
-      type: 'Sales',
-      customerId: sale.customerId._id,
-      relatedId: saleId,
-      relatedType: 'sale',
-      amount: sale.totalAmount,
-      invoiceData,
-      createdBy: req.user._id
-    });
-
-    await invoice.save();
-    await invoice.populate([
-      { path: 'customerId', select: 'name phone email' },
-      { path: 'createdBy', select: 'username fullName' }
-    ]);
-
-    res.status(201).json({
-      success: true,
-      message: 'Sales invoice generated successfully',
-      data: invoice
-    });
-
-  } catch (error) {
-    console.error('Generate sales invoice error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while generating sales invoice'
-    });
-  }
-});
-
-// @route   POST /api/invoices/generate-service
-// @desc    Generate service invoice
-// @access  Private
-router.post('/generate-service', auth, checkPermission('invoices'), async (req, res) => {
-  try {
-    const { serviceId, type } = req.body;
-
-    if (!serviceId || !type) {
-      return res.status(400).json({
-        success: false,
-        message: 'Service ID and type are required'
-      });
-    }
-
-    if (!['Service Acknowledgement', 'Service Completion'].includes(type)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid invoice type'
-      });
-    }
-
-    // Get service data
-    const service = await Service.findById(serviceId)
-      .populate('customerId', 'name phone email address');
-
-    if (!service) {
-      return res.status(404).json({
-        success: false,
-        message: 'Service not found'
-      });
-    }
-
-    // Check if invoice already exists
-    const existingInvoice = await Invoice.findOne({ 
-      relatedId: serviceId, 
-      relatedType: 'service',
-      type: type
-    });
-
-    if (existingInvoice) {
-      return res.status(400).json({
-        success: false,
-        message: `${type} already exists for this service`
-      });
-    }
-
-    // For completion invoice, service must be completed
-    if (type === 'Service Completion' && service.status !== 'completed') {
-      return res.status(400).json({
-        success: false,
-        message: 'Service must be completed to generate completion invoice'
-      });
-    }
-
-    // Generate invoice number
-    const invoiceNo = Invoice.generateInvoiceNumber(type);
-
-    // Prepare invoice data
-    const invoiceData = {
-      customerName: service.customerId.name,
-      customerPhone: service.customerId.phone,
-      customerEmail: service.customerId.email,
-      customerAddress: service.customerId.address || '',
-      watchName: `${service.brand} ${service.model}`,
-      brand: service.brand,
-      model: service.model,
-      dialColor: service.dialColor,
-      movementNo: service.movementNo,
-      gender: service.gender,
-      caseType: service.caseType,
-      strapType: service.strapType,
-      issue: service.issue,
-      amount: type === 'Service Acknowledgement' ? 0 : service.cost,
-      estimatedCost: service.cost,
-      date: new Date().toLocaleDateString('en-IN')
-    };
-
-    // Additional data for completion invoice
-    if (type === 'Service Completion') {
-      invoiceData.workPerformed = service.completionDescription || '';
-      invoiceData.warrantyPeriod = service.warrantyPeriod || 0;
-      invoiceData.completionDate = service.actualDelivery ? 
-        new Date(service.actualDelivery).toLocaleDateString('en-IN') : 
-        new Date().toLocaleDateString('en-IN');
-    }
-
-    // Create invoice
-    const invoice = new Invoice({
-      invoiceNo,
-      type,
-      customerId: service.customerId._id,
-      relatedId: serviceId,
-      relatedType: 'service',
-      amount: invoiceData.amount,
-      invoiceData,
-      createdBy: req.user._id
-    });
-
-    await invoice.save();
-    await invoice.populate([
-      { path: 'customerId', select: 'name phone email' },
-      { path: 'createdBy', select: 'username fullName' }
-    ]);
-
-    res.status(201).json({
-      success: true,
-      message: `${type} generated successfully`,
-      data: invoice
-    });
-
-  } catch (error) {
-    console.error('Generate service invoice error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while generating service invoice'
-    });
-  }
-});
-
-// @route   GET /api/invoices/by-transaction/:relatedId/:relatedType
-// @desc    Get invoices for a specific transaction
-// @access  Private
-router.get('/by-transaction/:relatedId/:relatedType', auth, checkPermission('invoices'), async (req, res) => {
-  try {
-    const { relatedId, relatedType } = req.params;
-
-    const invoices = await Invoice.find({ 
-      relatedId, 
-      relatedType 
-    })
-    .populate('customerId', 'name phone email')
-    .populate('createdBy', 'username fullName')
-    .sort({ createdAt: -1 });
-
-    res.status(200).json({
-      success: true,
-      data: invoices
-    });
-
-  } catch (error) {
-    console.error('Get invoices by transaction error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while fetching invoices'
-    });
-  }
-});
-
-// @route   PATCH /api/invoices/:id/status
-// @desc    Update invoice status
-// @access  Private (Non-staff only)
-router.patch('/:id/status', auth, authorize('admin', 'owner'), async (req, res) => {
-  try {
-    const { status } = req.body;
-
-    if (!status) {
-      return res.status(400).json({
-        success: false,
-        message: 'Status is required'
-      });
-    }
-
-    const invoice = await Invoice.findById(req.params.id);
-    if (!invoice) {
-      return res.status(404).json({
-        success: false,
-        message: 'Invoice not found'
-      });
-    }
-
-    invoice.status = status;
-    await invoice.save();
-
-    await invoice.populate([
-      { path: 'customerId', select: 'name phone email' },
-      { path: 'createdBy', select: 'username fullName' }
-    ]);
-
-    res.status(200).json({
-      success: true,
-      message: 'Invoice status updated successfully',
-      data: invoice
-    });
-
-  } catch (error) {
-    console.error('Update invoice status error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while updating invoice status'
-    });
-  }
-});
-
-// @route   DELETE /api/invoices/:id
-// @desc    Delete invoice
-// @access  Private (Admin only)
-router.delete('/:id', auth, authorize('admin'), async (req, res) => {
-  try {
-    const invoice = await Invoice.findById(req.params.id);
-    if (!invoice) {
-      return res.status(404).json({
-        success: false,
-        message: 'Invoice not found'
-      });
-    }
-
-    await Invoice.findByIdAndDelete(req.params.id);
-
-    res.status(200).json({
-      success: true,
-      message: 'Invoice deleted successfully'
-    });
-
-  } catch (error) {
-    console.error('Delete invoice error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error while deleting invoice'
-    });
-  }
-});
-
-module.exports = router;
+// Export functions for global use
+window.ExpenseModule = {
+  initializeExpenses,
+  loadExpensesFromAPI,
+  openAddExpenseModal,
+  addNewExpense,
+  editExpense,
+  updateExpense,
+  deleteExpense,
+  searchExpenses,
+  getExpenseStats,
+  getExpensesByDateRange,
+  getExpensesByMonth,
+  renderExpenseTable,
+  refreshExpenses,
+  resetButton,
+  setButtonLoading,
+  expenses // For access by other modules
+};

@@ -1,8 +1,10 @@
 // ================================
-// INVENTORY MODEL - backend/models/inventory.js
+// COMPLETE MODELS FILE - backend/models/inventory.js (UPDATE EXISTING)
 // ================================
+
 const mongoose = require('mongoose');
 
+// Movement History Schema
 const movementHistorySchema = new mongoose.Schema({
   date: {
     type: Date,
@@ -33,6 +35,7 @@ const movementHistorySchema = new mongoose.Schema({
   }
 });
 
+// Inventory Schema
 const inventorySchema = new mongoose.Schema({
   code: {
     type: String,
@@ -111,19 +114,13 @@ inventorySchema.index({ outlet: 1 });
 inventorySchema.index({ status: 1 });
 inventorySchema.index({ type: 1 });
 
-// Virtual for formatted name
-inventorySchema.virtual('fullName').get(function() {
-  return `${this.brand} ${this.model}`;
-});
-
-// Method to update quantity
+// Methods
 inventorySchema.methods.updateQuantity = async function(newQuantity) {
   this.quantity = Math.max(0, newQuantity);
   this.status = this.quantity > 0 ? 'available' : 'sold';
   return await this.save();
 };
 
-// Method to move to different outlet
 inventorySchema.methods.moveToOutlet = async function(newOutlet, reason, movedBy) {
   const oldOutlet = this.outlet;
   this.outlet = newOutlet;
@@ -182,10 +179,10 @@ inventorySchema.statics.getStats = async function() {
   }
 };
 
-module.exports = mongoose.model('Inventory', inventorySchema);
+const Inventory = mongoose.model('Inventory', inventorySchema);
 
 // ================================
-// SALES MODEL - backend/models/sales.js
+// SALES MODEL
 // ================================
 const salesSchema = new mongoose.Schema({
   customerId: {
@@ -336,10 +333,10 @@ salesSchema.statics.getStats = async function() {
   }
 };
 
-module.exports = mongoose.model('Sales', salesSchema);
+const Sales = mongoose.model('Sales', salesSchema);
 
 // ================================
-// SERVICE MODEL - backend/models/service.js
+// SERVICE MODEL
 // ================================
 const serviceSchema = new mongoose.Schema({
   customerId: {
@@ -516,10 +513,10 @@ serviceSchema.statics.getStats = async function() {
   }
 };
 
-module.exports = mongoose.model('Service', serviceSchema);
+const Service = mongoose.model('Service', serviceSchema);
 
 // ================================
-// EXPENSE MODEL - backend/models/expense.js
+// EXPENSE MODEL
 // ================================
 const expenseSchema = new mongoose.Schema({
   date: {
@@ -639,10 +636,10 @@ expenseSchema.statics.getStats = async function() {
   }
 };
 
-module.exports = mongoose.model('Expense', expenseSchema);
+const Expense = mongoose.model('Expense', expenseSchema);
 
 // ================================
-// INVOICE MODEL - backend/models/invoice.js
+// INVOICE MODEL
 // ================================
 const invoiceSchema = new mongoose.Schema({
   invoiceNo: {
@@ -746,4 +743,13 @@ invoiceSchema.statics.getStats = async function() {
   }
 };
 
-module.exports = mongoose.model('Invoice', invoiceSchema);
+const Invoice = mongoose.model('Invoice', invoiceSchema);
+
+// Export all models
+module.exports = {
+  Inventory,
+  Sales,
+  Service,
+  Expense,
+  Invoice
+};
