@@ -1,4 +1,4 @@
-// ZEDSON WATCHCRAFT - Services Routes
+// ZEDSON WATCHCRAFT - Services Routes (Complete)
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
@@ -405,3 +405,490 @@ router.post('/', auth, checkPermission('service'), async (req, res) => {
       balanceAmount: Math.max(0, estimatedCost - advancePaid),
       createdBy: req.user._id
     });
+
+    // Add notes if provided
+    if (notes.length > 0) {
+      notes.forEach(note => {
+        service.addNote(note, req.user._id);
+      });
+    }
+
+    await service.save();
+
+    // Update customer service count
+    await customer.incrementServices();
+
+    // Populate for response
+    await service.populate([
+      { path: 'customerId', select: 'name email phone' },
+      { path: 'createdBy', select: 'username fullName' }
+    ]);
+
+    res.status(201).json({
+      success: true,
+      message: 'Service request created successfully',
+      data: service
+    });
+
+  } catch (error) {
+    console.error('Create service error:', error);
+
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const message = Object.values(error.errors).map(err => err.message).join(', ');
+      return res.status(400).json({
+        success: false,
+        message: message
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Server error while creating service request'
+    });
+  }
+});
+
+// @route   PUT /api/services/:id
+// @desc    Update service details
+// @access  Private (Non-staff only)
+router.put('/:id', auth, authorize('admin', 'owner'), async (req, res) => {
+  try {
+    const {
+      customerId,
+      watchDetails,
+      issue,
+      priority,
+      category,
+      estimatedCost,
+      estimatedDelivery,
+      advancePaid
+    } = req.body;
+
+    // Find service
+    const service = await Service.findById(req.params.id);
+
+    if (!service || service.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service not found'
+      });
+    }
+
+    // If customer is being changed
+    if (customerId && customerId !== service.customerId.toString()) {
+      const newCustomer = await Customer.findById(customerId);
+      if (!newCustomer) {
+        return res.status(404).json({
+          success: false,
+          message: 'New customer not found'
+        });
+      }
+
+      // Update customer counts
+      const oldCustomer = await Customer.findById(service.customerId);
+      if (oldCustomer) {
+        await oldCustomer.decrementServices();
+      }
+
+      await newCustomer.incrementServices();
+
+      service.customerId = customerId;
+      service.customerName = newCustomer.name;
+    }
+
+    // Update other fields
+    if (watchDetails) {
+      service.watchDetails = watchDetails;
+      service.watchName = `${watchDetails.brand} ${watchDetails.model}`;
+    }
+    if (issue) service.issue = issue;
+    if (priority) service.priority = priority;
+    if (category) service.category = category;
+    if (estimatedCost !== undefined) service.estimatedCost = estimatedCost;
+    if (estimatedDelivery) service.estimatedDelivery = new Date(estimatedDelivery);
+    if (advancePaid !== undefined) service.advancePaid = advancePaid;
+
+    service.updatedBy = req.user._id;
+
+    await service.save();
+
+    // Populate for response
+    await service.populate([
+      { path: 'customerId', select: 'name email phone' },
+      { path: 'createdBy', select: 'username fullName' }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: 'Service updated successfully',
+      data: service
+    });
+
+  } catch (error) {
+    console.error('Update service error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while updating service'
+    });
+  }
+});
+
+// @route   DELETE /api/services/:id
+// @desc    Soft delete service
+// @access  Private (Non-staff only)
+router.delete('/:id', auth, authorize('admin', 'owner'), async (req, res) => {
+  try {
+    const { reason = 'Service deleted via API' } = req.body;
+
+    const service = await Service.findById(req.params.id);
+
+    if (!service || service.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service not found'
+      });
+    }
+
+    // Update customer service count
+    const customer = await Customer.findById(service.customerId);
+    if (customer) {
+      await customer.decrementServices();
+    }
+
+    // Soft delete service
+    await service.softDelete(req.user._id, reason);
+
+    res.status(200).json({
+      success: true,
+      message: 'Service deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Delete service error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while deleting service'
+    });
+  }
+});
+
+// @route   PATCH /api/services/:id/status
+// @desc    Update service status with history tracking
+// @access  Private
+router.patch('/:id/status', auth, checkPermission('service'), async (req, res) => {
+  try {
+    const { status, reason = '', notes = '' } = req.body;
+
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a status'
+      });
+    }
+
+    const service = await Service.findById(req.params.id);
+
+    if (!service || service.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service not found'
+      });
+    }
+
+    await service.updateStatus(status, req.user._id, reason, notes);
+
+    res.status(200).json({
+      success: true,
+      message: 'Service status updated successfully',
+      data: {
+        id: service._id,
+        serviceNumber: service.serviceNumber,
+        status: service.status,
+        updatedAt: service.updatedAt
+      }
+    });
+
+  } catch (error) {
+    console.error('Update service status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while updating service status'
+    });
+  }
+});
+
+// @route   POST /api/services/:id/complete
+// @desc    Complete service with image upload, final cost, and warranty
+// @access  Private
+router.post('/:id/complete', auth, checkPermission('service'), upload.single('completionImage'), async (req, res) => {
+  try {
+    const {
+      workPerformed,
+      actualCost,
+      warrantyPeriod = 0,
+      partsReplaced,
+      qualityNotes,
+      completionNotes
+    } = req.body;
+
+    if (!workPerformed || !actualCost) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide work description and actual cost'
+      });
+    }
+
+    const service = await Service.findById(req.params.id);
+
+    if (!service || service.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service not found'
+      });
+    }
+
+    if (service.status === 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Service is already completed'
+      });
+    }
+
+    // Parse parts replaced if provided as JSON string
+    let parsedPartsReplaced = [];
+    if (partsReplaced) {
+      try {
+        parsedPartsReplaced = JSON.parse(partsReplaced);
+      } catch (error) {
+        parsedPartsReplaced = [];
+      }
+    }
+
+    const completionData = {
+      workPerformed,
+      actualCost: parseFloat(actualCost),
+      warrantyPeriod: parseInt(warrantyPeriod),
+      partsReplaced: parsedPartsReplaced,
+      qualityNotes: qualityNotes || '',
+      completionImage: req.file ? req.file.path : null,
+      completionNotes: completionNotes || ''
+    };
+
+    await service.completeService(completionData, req.user._id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Service completed successfully',
+      data: {
+        id: service._id,
+        serviceNumber: service.serviceNumber,
+        status: service.status,
+        actualCost: service.actualCost,
+        completedAt: service.completedAt,
+        warrantyPeriod: service.completionDetails?.warrantyPeriod
+      }
+    });
+
+  } catch (error) {
+    console.error('Complete service error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while completing service'
+    });
+  }
+});
+
+// @route   POST /api/services/:id/notes
+// @desc    Add note to service
+// @access  Private
+router.post('/:id/notes', auth, checkPermission('service'), async (req, res) => {
+  try {
+    const { note, isInternal = false } = req.body;
+
+    if (!note || !note.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a note'
+      });
+    }
+
+    const service = await Service.findById(req.params.id);
+
+    if (!service || service.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service not found'
+      });
+    }
+
+    await service.addNote(note.trim(), req.user._id, isInternal);
+    await service.populate('notes.addedBy', 'username fullName');
+
+    res.status(200).json({
+      success: true,
+      message: 'Note added successfully',
+      data: service
+    });
+
+  } catch (error) {
+    console.error('Add service note error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while adding note'
+    });
+  }
+});
+
+// @route   POST /api/services/:id/rating
+// @desc    Add customer rating and feedback
+// @access  Private
+router.post('/:id/rating', auth, checkPermission('service'), async (req, res) => {
+  try {
+    const { rating, feedback = '' } = req.body;
+
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid rating between 1 and 5'
+      });
+    }
+
+    const service = await Service.findById(req.params.id);
+
+    if (!service || service.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service not found'
+      });
+    }
+
+    if (service.status !== 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot rate incomplete service'
+      });
+    }
+
+    await service.setRating(rating, feedback);
+
+    res.status(200).json({
+      success: true,
+      message: 'Rating submitted successfully',
+      data: {
+        id: service._id,
+        serviceNumber: service.serviceNumber,
+        rating: service.rating,
+        feedback: service.feedback
+      }
+    });
+
+  } catch (error) {
+    console.error('Add service rating error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while adding rating'
+    });
+  }
+});
+
+// @route   POST /api/services/:id/acknowledgement
+// @desc    Generate service acknowledgement
+// @access  Private
+router.post('/:id/acknowledgement', auth, checkPermission('service'), async (req, res) => {
+  try {
+    const service = await Service.findById(req.params.id)
+      .populate('customerId', 'name email phone address');
+
+    if (!service || service.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service not found'
+      });
+    }
+
+    if (service.acknowledgementGenerated) {
+      return res.status(400).json({
+        success: false,
+        message: 'Acknowledgement already generated for this service'
+      });
+    }
+
+    // Here you would integrate with Invoice model to generate acknowledgement
+    // For now, just mark as generated
+    service.acknowledgementGenerated = true;
+    await service.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Service acknowledgement generated successfully',
+      data: {
+        id: service._id,
+        serviceNumber: service.serviceNumber,
+        acknowledgementGenerated: service.acknowledgementGenerated
+      }
+    });
+
+  } catch (error) {
+    console.error('Generate acknowledgement error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while generating acknowledgement'
+    });
+  }
+});
+
+// @route   POST /api/services/:id/completion-invoice
+// @desc    Generate service completion invoice
+// @access  Private
+router.post('/:id/completion-invoice', auth, checkPermission('service'), async (req, res) => {
+  try {
+    const service = await Service.findById(req.params.id)
+      .populate('customerId', 'name email phone address');
+
+    if (!service || service.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service not found'
+      });
+    }
+
+    if (service.status !== 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot generate invoice for incomplete service'
+      });
+    }
+
+    if (service.completionInvoiceGenerated) {
+      return res.status(400).json({
+        success: false,
+        message: 'Completion invoice already generated for this service'
+      });
+    }
+
+    // Here you would integrate with Invoice model to generate completion invoice
+    // For now, just mark as generated
+    service.completionInvoiceGenerated = true;
+    await service.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Service completion invoice generated successfully',
+      data: {
+        id: service._id,
+        serviceNumber: service.serviceNumber,
+        completionInvoiceGenerated: service.completionInvoiceGenerated
+      }
+    });
+
+  } catch (error) {
+    console.error('Generate completion invoice error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while generating completion invoice'
+    });
+  }
+});
+
+module.exports = router;
