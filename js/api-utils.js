@@ -1,103 +1,508 @@
-// ================================
-// COMPLETE API UTILS - js/api-utils.js (REPLACE EXISTING)
-// ================================
+// ZEDSON WATCHCRAFT - API Utilities for Frontend-Backend Communication (FIXED)
 
 /**
- * Complete API Integration Layer for ZEDSON WATCHCRAFT
+ * API configuration and utility functions
  */
 
-// Base API configuration
 const API_BASE_URL = 'http://localhost:5000/api';
 
-// Token management
-const API = {
-  setToken(token) {
-    localStorage.setItem('zedson_auth_token', token);
-  },
-  
-  getToken() {
-    return localStorage.getItem('zedson_auth_token');
-  },
-  
-  removeToken() {
-    localStorage.removeItem('zedson_auth_token');
-  },
+class APIUtils {
+  constructor() {
+    this.baseURL = API_BASE_URL;
+    this.token = localStorage.getItem('zedson_token');
+  }
 
-  async request(endpoint, options = {}) {
-    const url = `${API_BASE_URL}${endpoint}`;
-    const token = this.getToken();
+  /**
+   * Set authentication token
+   */
+  setToken(token) {
+    this.token = token;
+    if (token) {
+      localStorage.setItem('zedson_token', token);
+    } else {
+      localStorage.removeItem('zedson_token');
+    }
+  }
+
+  /**
+   * Get authentication token
+   */
+  getToken() {
+    return this.token || localStorage.getItem('zedson_token');
+  }
+
+  /**
+   * Remove authentication token
+   */
+  removeToken() {
+    this.token = null;
+    localStorage.removeItem('zedson_token');
+  }
+
+  /**
+   * Get default headers for API requests
+   */
+  getHeaders(includeAuth = true) {
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+
+    if (includeAuth && this.getToken()) {
+      headers['Authorization'] = `Bearer ${this.getToken()}`;
+    }
+
+    return headers;
+  }
+
+  /**
+   * Handle API response
+   */
+  async handleResponse(response) {
+    const data = await response.json();
     
+    if (!response.ok) {
+      // Handle specific error cases
+      if (response.status === 401) {
+        // Unauthorized - remove token and redirect to login
+        this.removeToken();
+        window.location.reload();
+        throw new Error('Session expired. Please login again.');
+      }
+      
+      throw new Error(data.message || `HTTP error! status: ${response.status}`);
+    }
+    
+    return data;
+  }
+
+  /**
+   * Make API request
+   */
+  async request(endpoint, options = {}) {
+    const url = `${this.baseURL}${endpoint}`;
     const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` }),
-        ...options.headers
-      },
-      ...options
+      headers: this.getHeaders(options.auth !== false),
+      ...options,
     };
 
     try {
       const response = await fetch(url, config);
-      const data = await response.json();
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          // Token expired or invalid
-          this.removeToken();
-          if (window.location.pathname !== '/') {
-            window.location.reload();
-          }
-        }
-        throw new Error(data.message || `HTTP error! status: ${response.status}`);
-      }
-
-      return data;
+      return await this.handleResponse(response);
     } catch (error) {
       console.error('API request failed:', error);
       throw error;
     }
-  },
+  }
 
-  async get(endpoint) {
-    return this.request(endpoint, { method: 'GET' });
-  },
+  /**
+   * GET request
+   */
+  async get(endpoint, options = {}) {
+    return this.request(endpoint, {
+      method: 'GET',
+      ...options,
+    });
+  }
 
-  async post(endpoint, data) {
+  /**
+   * POST request
+   */
+  async post(endpoint, data = null, options = {}) {
     return this.request(endpoint, {
       method: 'POST',
-      body: JSON.stringify(data)
+      body: data ? JSON.stringify(data) : null,
+      ...options,
     });
-  },
+  }
 
-  async put(endpoint, data) {
+  /**
+   * PUT request
+   */
+  async put(endpoint, data = null, options = {}) {
     return this.request(endpoint, {
       method: 'PUT',
-      body: JSON.stringify(data)
+      body: data ? JSON.stringify(data) : null,
+      ...options,
     });
-  },
+  }
 
-  async patch(endpoint, data) {
+  /**
+   * PATCH request
+   */
+  async patch(endpoint, data = null, options = {}) {
     return this.request(endpoint, {
       method: 'PATCH',
-      body: JSON.stringify(data)
+      body: data ? JSON.stringify(data) : null,
+      ...options,
     });
+  }
+
+  /**
+   * DELETE request
+   */
+  async delete(endpoint, options = {}) {
+    return this.request(endpoint, {
+      method: 'DELETE',
+      ...options,
+    });
+  }
+}
+
+// Create global API instance
+const api = new APIUtils();
+
+// Authentication API methods
+const AuthAPI = {
+  /**
+   * Login user
+   */
+  async login(username, password) {
+    try {
+      const response = await api.post('/auth/login', { username, password }, { auth: false });
+      
+      if (response.success) {
+        if (response.firstLogin) {
+          // First time login - return user data for password setup
+          return {
+            success: true,
+            firstLogin: true,
+            user: response.user
+          };
+        } else {
+          // Regular login - set token and return user data
+          api.setToken(response.token);
+          return {
+            success: true,
+            firstLogin: false,
+            user: response.user,
+            token: response.token
+          };
+        }
+      }
+      
+      return response;
+    } catch (error) {
+      throw error;
+    }
   },
 
-  async delete(endpoint) {
-    return this.request(endpoint, { method: 'DELETE' });
+  /**
+   * Set password for first time login
+   */
+  async setFirstTimePassword(username, newPassword, confirmPassword) {
+    try {
+      const response = await api.post('/auth/first-login', {
+        username,
+        newPassword,
+        confirmPassword
+      }, { auth: false });
+      
+      if (response.success && response.token) {
+        api.setToken(response.token);
+      }
+      
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Get current user
+   */
+  async getCurrentUser() {
+    try {
+      const response = await api.get('/auth/me');
+      return response.success ? response.user : null;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Logout user
+   */
+  async logout() {
+    try {
+      await api.post('/auth/logout');
+      api.removeToken();
+      return { success: true };
+    } catch (error) {
+      // Even if API call fails, remove token locally
+      api.removeToken();
+      throw error;
+    }
+  },
+
+  /**
+   * Get all users (Admin only)
+   */
+  async getUsers() {
+    try {
+      const response = await api.get('/auth/users');
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Create new user (Admin only)
+   */
+  async createUser(userData) {
+    try {
+      const response = await api.post('/auth/users', userData);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Update user (Admin only)
+   */
+  async updateUser(userId, userData) {
+    try {
+      const response = await api.put(`/auth/users/${userId}`, userData);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Delete user (Admin only)
+   */
+  async deleteUser(userId) {
+    try {
+      const response = await api.delete(`/auth/users/${userId}`);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Reset user password (Admin only)
+   */
+  async resetUserPassword(userId) {
+    try {
+      const response = await api.post(`/auth/users/${userId}/reset-password`);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Initialize default admin (First run only)
+   */
+  async initializeAdmin() {
+    try {
+      const response = await api.post('/auth/init', {}, { auth: false });
+      return response;
+    } catch (error) {
+      throw error;
+    }
   }
 };
 
-// API Helper functions
-const APIHelpers = {
-  isAuthenticated() {
-    return !!API.getToken();
+// Customer API methods
+const CustomerAPI = {
+  /**
+   * Get all customers
+   */
+  async getCustomers(params = {}) {
+    try {
+      const queryString = new URLSearchParams(params).toString();
+      const endpoint = queryString ? `/customers?${queryString}` : '/customers';
+      const response = await api.get(endpoint);
+      return response;
+    } catch (error) {
+      throw error;
+    }
   },
 
+  /**
+   * Get customer statistics
+   */
+  async getCustomerStats() {
+    try {
+      const response = await api.get('/customers/stats');
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Get single customer
+   */
+  async getCustomer(customerId) {
+    try {
+      const response = await api.get(`/customers/${customerId}`);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Create new customer
+   */
+  async createCustomer(customerData) {
+    try {
+      const response = await api.post('/customers', customerData);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Update customer
+   */
+  async updateCustomer(customerId, customerData) {
+    try {
+      const response = await api.put(`/customers/${customerId}`, customerData);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Delete customer
+   */
+  async deleteCustomer(customerId) {
+    try {
+      const response = await api.delete(`/customers/${customerId}`);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Update customer status
+   */
+  async updateCustomerStatus(customerId, status) {
+    try {
+      const response = await api.patch(`/customers/${customerId}/status`, { status });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Add note to customer
+   */
+  async addCustomerNote(customerId, note) {
+    try {
+      const response = await api.post(`/customers/${customerId}/notes`, { note });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Increment customer purchases (Internal use)
+   */
+  async incrementPurchases(customerId) {
+    try {
+      const response = await api.patch(`/customers/${customerId}/increment-purchases`);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Increment customer services (Internal use)
+   */
+  async incrementServices(customerId) {
+    try {
+      const response = await api.patch(`/customers/${customerId}/increment-services`);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  /**
+   * Update customer net value (Internal use)
+   */
+  async updateNetValue(customerId, salesValue, serviceValue) {
+    try {
+      const response = await api.patch(`/customers/${customerId}/update-net-value`, {
+        salesValue,
+        serviceValue
+      });
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  }
+};
+
+// Utility functions
+const APIHelpers = {
+  /**
+   * Check if user is authenticated
+   */
+  isAuthenticated() {
+    return !!api.getToken();
+  },
+
+  /**
+   * Show error message to user
+   */
+  showError(error) {
+    const message = error.message || 'An unexpected error occurred';
+    if (window.Utils && Utils.showNotification) {
+      Utils.showNotification(message);
+    } else {
+      alert(message);
+    }
+  },
+
+  /**
+   * Show success message to user
+   */
+  showSuccess(message) {
+    if (window.Utils && Utils.showNotification) {
+      Utils.showNotification(message);
+    } else {
+      alert(message);
+    }
+  },
+
+  /**
+   * Handle API errors with user feedback
+   */
+  async handleAPICall(apiCall, successMessage = null) {
+    try {
+      const result = await apiCall();
+      if (successMessage) {
+        this.showSuccess(successMessage);
+      }
+      return result;
+    } catch (error) {
+      this.showError(error);
+      throw error;
+    }
+  },
+
+  /**
+   * Check server health
+   */
   async checkServerHealth() {
     try {
       const response = await fetch(`${API_BASE_URL}/health`);
-      return response.ok;
+      const data = await response.json();
+      return data.success;
     } catch (error) {
       console.error('Server health check failed:', error);
       return false;
@@ -105,282 +510,8 @@ const APIHelpers = {
   }
 };
 
-// Authentication API
-const AuthAPI = {
-  async login(username, password) {
-    const response = await API.post('/auth/login', { username, password });
-    if (response.success && response.token) {
-      API.setToken(response.token);
-    }
-    return response;
-  },
-
-  async setFirstTimePassword(username, newPassword, confirmPassword) {
-    const response = await API.post('/auth/first-login', { 
-      username, newPassword, confirmPassword 
-    });
-    if (response.success && response.token) {
-      API.setToken(response.token);
-    }
-    return response;
-  },
-
-  async logout() {
-    try {
-      await API.post('/auth/logout');
-    } finally {
-      API.removeToken();
-    }
-  },
-
-  async getCurrentUser() {
-    return await API.get('/auth/me');
-  },
-
-  async getUsers() {
-    return await API.get('/auth/users');
-  },
-
-  async createUser(userData) {
-    return await API.post('/auth/users', userData);
-  },
-
-  async updateUser(userId, userData) {
-    return await API.put(`/auth/users/${userId}`, userData);
-  },
-
-  async deleteUser(userId) {
-    return await API.delete(`/auth/users/${userId}`);
-  },
-
-  async resetUserPassword(userId) {
-    return await API.post(`/auth/users/${userId}/reset-password`);
-  }
-};
-
-// Customer API
-const CustomerAPI = {
-  async getCustomers(params = {}) {
-    const queryString = new URLSearchParams(params).toString();
-    const endpoint = queryString ? `/customers?${queryString}` : '/customers';
-    return await API.get(endpoint);
-  },
-
-  async getCustomerStats() {
-    return await API.get('/customers/stats');
-  },
-
-  async getCustomer(customerId) {
-    return await API.get(`/customers/${customerId}`);
-  },
-
-  async createCustomer(customerData) {
-    return await API.post('/customers', customerData);
-  },
-
-  async updateCustomer(customerId, customerData) {
-    return await API.put(`/customers/${customerId}`, customerData);
-  },
-
-  async deleteCustomer(customerId) {
-    return await API.delete(`/customers/${customerId}`);
-  },
-
-  async updateCustomerStatus(customerId, status) {
-    return await API.patch(`/customers/${customerId}/status`, { status });
-  },
-
-  async addCustomerNote(customerId, note) {
-    return await API.post(`/customers/${customerId}/notes`, { note });
-  },
-
-  async incrementPurchases(customerId) {
-    return await API.patch(`/customers/${customerId}/increment-purchases`);
-  },
-
-  async incrementServices(customerId) {
-    return await API.patch(`/customers/${customerId}/increment-services`);
-  },
-
-  async updateNetValue(customerId, salesValue, serviceValue) {
-    return await API.patch(`/customers/${customerId}/update-net-value`, { 
-      salesValue, serviceValue 
-    });
-  }
-};
-
-// Inventory API
-const InventoryAPI = {
-  async getInventory(params = {}) {
-    const queryString = new URLSearchParams(params).toString();
-    const endpoint = queryString ? `/inventory?${queryString}` : '/inventory';
-    return await API.get(endpoint);
-  },
-
-  async getInventoryStats() {
-    return await API.get('/inventory/stats');
-  },
-
-  async getAvailableItems() {
-    return await API.get('/inventory/available');
-  },
-
-  async getInventoryItem(itemId) {
-    return await API.get(`/inventory/${itemId}`);
-  },
-
-  async createInventoryItem(itemData) {
-    return await API.post('/inventory', itemData);
-  },
-
-  async updateInventoryItem(itemId, itemData) {
-    return await API.put(`/inventory/${itemId}`, itemData);
-  },
-
-  async deleteInventoryItem(itemId) {
-    return await API.delete(`/inventory/${itemId}`);
-  },
-
-  async updateQuantity(itemId, quantity, operation = 'set') {
-    return await API.patch(`/inventory/${itemId}/quantity`, { quantity, operation });
-  }
-};
-
-// Sales API
-const SalesAPI = {
-  async getSales(params = {}) {
-    const queryString = new URLSearchParams(params).toString();
-    const endpoint = queryString ? `/sales?${queryString}` : '/sales';
-    return await API.get(endpoint);
-  },
-
-  async getSalesStats() {
-    return await API.get('/sales/stats');
-  },
-
-  async getSale(saleId) {
-    return await API.get(`/sales/${saleId}`);
-  },
-
-  async createSale(saleData) {
-    return await API.post('/sales', saleData);
-  },
-
-  async updateSale(saleId, saleData) {
-    return await API.put(`/sales/${saleId}`, saleData);
-  },
-
-  async deleteSale(saleId) {
-    return await API.delete(`/sales/${saleId}`);
-  }
-};
-
-// Service API
-const ServiceAPI = {
-  async getServices(params = {}) {
-    const queryString = new URLSearchParams(params).toString();
-    const endpoint = queryString ? `/services?${queryString}` : '/services';
-    return await API.get(endpoint);
-  },
-
-  async getServiceStats() {
-    return await API.get('/services/stats');
-  },
-
-  async getService(serviceId) {
-    return await API.get(`/services/${serviceId}`);
-  },
-
-  async createService(serviceData) {
-    return await API.post('/services', serviceData);
-  },
-
-  async updateService(serviceId, serviceData) {
-    return await API.put(`/services/${serviceId}`, serviceData);
-  },
-
-  async updateServiceStatus(serviceId, status, completionData = null) {
-    return await API.patch(`/services/${serviceId}/status`, { status, completionData });
-  },
-
-  async deleteService(serviceId) {
-    return await API.delete(`/services/${serviceId}`);
-  }
-};
-
-// Expense API
-const ExpenseAPI = {
-  async getExpenses(params = {}) {
-    const queryString = new URLSearchParams(params).toString();
-    const endpoint = queryString ? `/expenses?${queryString}` : '/expenses';
-    return await API.get(endpoint);
-  },
-
-  async getExpenseStats() {
-    return await API.get('/expenses/stats');
-  },
-
-  async getExpense(expenseId) {
-    return await API.get(`/expenses/${expenseId}`);
-  },
-
-  async createExpense(expenseData) {
-    return await API.post('/expenses', expenseData);
-  },
-
-  async updateExpense(expenseId, expenseData) {
-    return await API.put(`/expenses/${expenseId}`, expenseData);
-  },
-
-  async deleteExpense(expenseId) {
-    return await API.delete(`/expenses/${expenseId}`);
-  }
-};
-
-// Invoice API
-const InvoiceAPI = {
-  async getInvoices(params = {}) {
-    const queryString = new URLSearchParams(params).toString();
-    const endpoint = queryString ? `/invoices?${queryString}` : '/invoices';
-    return await API.get(endpoint);
-  },
-
-  async getInvoiceStats() {
-    return await API.get('/invoices/stats');
-  },
-
-  async getInvoice(invoiceId) {
-    return await API.get(`/invoices/${invoiceId}`);
-  },
-
-  async generateSalesInvoice(saleId) {
-    return await API.post('/invoices/generate-sales', { saleId });
-  },
-
-  async generateServiceInvoice(serviceId, type) {
-    return await API.post('/invoices/generate-service', { serviceId, type });
-  },
-
-  async getInvoicesByTransaction(relatedId, relatedType) {
-    return await API.get(`/invoices/by-transaction/${relatedId}/${relatedType}`);
-  },
-
-  async updateInvoiceStatus(invoiceId, status) {
-    return await API.patch(`/invoices/${invoiceId}/status`, { status });
-  },
-
-  async deleteInvoice(invoiceId) {
-    return await API.delete(`/invoices/${invoiceId}`);
-  }
-};
-
-// Export all APIs for global use
-window.API = API;
-window.APIHelpers = APIHelpers;
+// Export for global use
+window.API = api;
 window.AuthAPI = AuthAPI;
 window.CustomerAPI = CustomerAPI;
-window.InventoryAPI = InventoryAPI;
-window.SalesAPI = SalesAPI;
-window.ServiceAPI = ServiceAPI;
-window.ExpenseAPI = ExpenseAPI;
-window.InvoiceAPI = InvoiceAPI;
+window.APIHelpers = APIHelpers;

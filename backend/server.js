@@ -1,4 +1,4 @@
-// ZEDSON WATCHCRAFT - Updated Backend API Server with All Routes
+// ZEDSON WATCHCRAFT - Backend API Server
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -11,11 +11,6 @@ const connectDB = require('./config/database');
 // Import routes
 const authRoutes = require('./routes/auth');
 const customerRoutes = require('./routes/customers');
-const inventoryRoutes = require('./routes/inventory');
-const salesRoutes = require('./routes/sales');
-const serviceRoutes = require('./routes/services');
-const expenseRoutes = require('./routes/expenses');
-const invoiceRoutes = require('./routes/invoices');
 
 // Initialize Express app
 const app = express();
@@ -48,11 +43,6 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/customers', customerRoutes);
-app.use('/api/inventory', inventoryRoutes);
-app.use('/api/sales', salesRoutes);
-app.use('/api/services', serviceRoutes);
-app.use('/api/expenses', expenseRoutes);
-app.use('/api/invoices', invoiceRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -60,16 +50,7 @@ app.get('/api/health', (req, res) => {
     success: true,
     message: 'ZEDSON WATCHCRAFT API is running',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV,
-    modules: {
-      auth: 'Active',
-      customers: 'Active',
-      inventory: 'Active',
-      sales: 'Active',
-      services: 'Active',
-      expenses: 'Active',
-      invoices: 'Active'
-    }
+    environment: process.env.NODE_ENV
   });
 });
 
@@ -98,12 +79,4 @@ app.listen(PORT, () => {
   console.log(`📊 Environment: ${process.env.NODE_ENV}`);
   console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL}`);
   console.log(`📝 Health check: http://localhost:${PORT}/api/health`);
-  console.log('📋 Available endpoints:');
-  console.log('   - /api/auth (Authentication & User Management)');
-  console.log('   - /api/customers (Customer Management)');
-  console.log('   - /api/inventory (Inventory Management)');
-  console.log('   - /api/sales (Sales Management)');
-  console.log('   - /api/services (Service Management)');
-  console.log('   - /api/expenses (Expense Management)');
-  console.log('   - /api/invoices (Invoice Management)');
 });
