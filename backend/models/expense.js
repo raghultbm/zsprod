@@ -1,4 +1,4 @@
-// ZEDSON WATCHCRAFT - Expense Model
+// ZEDSON WATCHCRAFT - Expense Model (FIXED)
 const mongoose = require('mongoose');
 
 const receiptSchema = new mongoose.Schema({
@@ -282,11 +282,11 @@ expenseSchema.index({ createdBy: 1 });
 expenseSchema.index({ isDeleted: 1 });
 expenseSchema.index({ createdAt: -1 });
 
-// Compound indexes
+// Compound indexes - FIXED: Added quotes around keys with dots
 expenseSchema.index({ expenseDate: -1, category: 1 });
 expenseSchema.index({ createdBy: 1, expenseDate: -1 });
 expenseSchema.index({ approvalStatus: 1, expenseDate: -1 });
-expenseSchema.index({ allocation.department: 1, expenseDate: -1 });
+expenseSchema.index({ 'allocation.department': 1, expenseDate: -1 });
 
 // Virtual for total amount including tax
 expenseSchema.virtual('totalAmount').get(function() {

@@ -123,6 +123,17 @@ if errorlevel 1 (
     echo ✓ morgan installed globally
 )
 
+REM Install morgan globally for development
+echo.
+echo Installing multer for development (optional)...
+call npm install multer
+if errorlevel 1 (
+    echo ! Could not install multer globally
+    echo   This is not critical - you can still run the server
+    echo   To install manually later: npm install -g nodemon
+) else (
+    echo ✓ multer installed globally
+)
 
 echo.
 echo ========================================
