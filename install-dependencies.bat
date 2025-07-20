@@ -111,6 +111,19 @@ if errorlevel 1 (
     echo ✓ nodemon installed globally
 )
 
+REM Install morgan globally for development
+echo.
+echo Installing morgan for development (optional)...
+call npm install morgan
+if errorlevel 1 (
+    echo ! Could not install morgan globally
+    echo   This is not critical - you can still run the server
+    echo   To install manually later: npm install -g nodemon
+) else (
+    echo ✓ morgan installed globally
+)
+
+
 echo.
 echo ========================================
 echo      DEPENDENCIES INSTALLATION COMPLETE!

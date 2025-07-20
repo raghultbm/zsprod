@@ -1408,3 +1408,4 @@ window.ServiceModule = {
     // Data access for other modules
     services
 };
+window.updateServiceStatus = updateServiceStatus;

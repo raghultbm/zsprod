@@ -764,3 +764,4 @@ window.CustomerModule = {
     closeCustomerModal,
     customers // For access by other modules
 };
+window.openAddCustomerModal = openAddCustomerModal;

@@ -872,3 +872,7 @@ window.SalesCoreModule = {
     // Data access for other modules
     sales
 };
+window.openNewSaleModal = openNewSaleModal;
+window.searchWatchByCode = searchWatchByCode;
+window.updateSalePrice = updateSalePrice;
+window.updateCalculationDisplay = updateCalculationDisplay;
