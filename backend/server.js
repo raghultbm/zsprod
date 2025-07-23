@@ -1,4 +1,4 @@
-// ZEDSON WATCHCRAFT - Main Server File (Updated with New Routes)
+// ZEDSON WATCHCRAFT - Main Server File (FIXED - Prevents Model Overwrite)
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -10,17 +10,6 @@ require('dotenv').config();
 
 // Database connection
 const connectDB = require('./config/database');
-
-// Route imports - Existing
-const authRoutes = require('./routes/auth');
-const customerRoutes = require('./routes/customers');
-
-// Route imports - New Phase 2 Routes
-const watchRoutes = require('./routes/watches');
-const saleRoutes = require('./routes/sales');
-const serviceRoutes = require('./routes/services');
-const expenseRoutes = require('./routes/expenses');
-const invoiceRoutes = require('./routes/invoices');
 
 // Initialize Express app
 const app = express();
@@ -262,6 +251,15 @@ app.get('/health/invoices', (req, res) => {
 // API Routes - Apply API rate limiting to all API routes
 app.use('/api', apiLimiter);
 
+// Route imports - Import them after middleware setup to prevent early model compilation
+const authRoutes = require('./routes/auth');
+const customerRoutes = require('./routes/customers');
+const watchRoutes = require('./routes/watches');
+const saleRoutes = require('./routes/sales');
+const serviceRoutes = require('./routes/services');
+const expenseRoutes = require('./routes/expenses');
+const invoiceRoutes = require('./routes/invoices');
+
 // Existing routes
 app.use('/api/auth', authRoutes);
 app.use('/api/customers', customerRoutes);
@@ -416,9 +414,11 @@ process.on('unhandledRejection', (err, promise) => {
   console.error('Unhandled Promise Rejection:', err.message);
   if (process.env.NODE_ENV === 'production') {
     // Close server & exit process
-    server.close(() => {
-      process.exit(1);
-    });
+    if (global.server) {
+      global.server.close(() => {
+        process.exit(1);
+      });
+    }
   }
 });
 
@@ -432,18 +432,22 @@ process.on('uncaughtException', (err) => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('🛑 SIGTERM received. Shutting down gracefully...');
-  server.close(() => {
-    console.log('💤 Process terminated');
-    process.exit(0);
-  });
+  if (global.server) {
+    global.server.close(() => {
+      console.log('💤 Process terminated');
+      process.exit(0);
+    });
+  }
 });
 
 process.on('SIGINT', () => {
   console.log('🛑 SIGINT received. Shutting down gracefully...');
-  server.close(() => {
-    console.log('💤 Process terminated');
-    process.exit(0);
-  });
+  if (global.server) {
+    global.server.close(() => {
+      console.log('💤 Process terminated');
+      process.exit(0);
+    });
+  }
 });
 
 // Start server
@@ -452,7 +456,7 @@ const startServer = async () => {
     // Connect to database
     await connectDB();
     
-    // Initialize default admin user
+    // Initialize default admin user ONLY AFTER database connection
     const User = require('./models/User');
     await User.createDefaultAdmin();
     

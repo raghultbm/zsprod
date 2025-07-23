@@ -2,7 +2,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const User = require('../models/user'); // Fixed: lowercase filename
+const User = require('../models/User'); // Fixed: Capital U for User model
 const { auth, authorize } = require('../middleware/auth');
 
 const router = express.Router();
