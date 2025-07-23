@@ -1,8 +1,8 @@
-// ZEDSON WATCHCRAFT - Authentication Routes
+// ZEDSON WATCHCRAFT - Authentication Routes (FIXED)
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const User = require('../models/User');
+const User = require('../models/user'); // Fixed: lowercase filename
 const { auth, authorize } = require('../middleware/auth');
 
 const router = express.Router();

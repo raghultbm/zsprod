@@ -3,8 +3,8 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const Service = require('../models/Service');
-const Customer = require('../models/Customer');
+const Service = require('../models/service');
+const Customer = require('../models/customer');
 const { auth, authorize, checkPermission } = require('../middleware/auth');
 
 const router = express.Router();

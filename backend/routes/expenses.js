@@ -1,9 +1,9 @@
-// ZEDSON WATCHCRAFT - Expenses Routes
+// ZEDSON WATCHCRAFT - Expenses Routes (FIXED)
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const Expense = require('../models/Expense');
+const Expense = require('../models/expense'); // Fixed: lowercase filename
 const { auth, authorize, checkPermission } = require('../middleware/auth');
 
 const router = express.Router();

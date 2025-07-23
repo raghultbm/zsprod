@@ -1,11 +1,11 @@
-// ZEDSON WATCHCRAFT - Invoice Routes
+// ZEDSON WATCHCRAFT - Invoice Routes (FIXED)
 const express = require('express');
 const router = express.Router();
-const Invoice = require('../models/Invoice');
-const Sale = require('../models/Sale');
-const Service = require('../models/Service');
-const Customer = require('../models/Customer');
-const User = require('../models/User');
+const Invoice = require('../models/invoice'); // Fixed: lowercase filename
+const Sale = require('../models/sale'); // Fixed: lowercase filename
+const Service = require('../models/service'); // Fixed: lowercase filename
+const Customer = require('../models/customer'); // Fixed: lowercase filename
+const User = require('../models/user'); // Fixed: lowercase filename
 const { auth, authorize, checkPermission } = require('../middleware/auth');
 
 // Apply authentication to all routes

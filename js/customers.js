@@ -49,7 +49,7 @@ async function initializeCustomers() {
  */
 async function loadCustomersFromAPI() {
     try {
-        const response = await CustomerAPI.getCustomers();
+        const response = await api.customers.getCustomers();
         if (response.success) {
             customers = response.data || [];
             console.log(`Loaded ${customers.length} customers from API`);
@@ -92,7 +92,7 @@ async function updateCustomerNetValue(customerId) {
         const salesValue = 0; // This would come from sales module
         const serviceValue = 0; // This would come from service module
         
-        const response = await CustomerAPI.updateNetValue(customerId, salesValue, serviceValue);
+        const response = await api.customers.updateNetValue(customerId, salesValue, serviceValue);
         if (response.success) {
             // Update local cache
             const customerIndex = customers.findIndex(c => c.id === customerId);
@@ -181,7 +181,7 @@ async function addNewCustomer(event) {
             address
         };
 
-        const response = await CustomerAPI.createCustomer(customerData);
+        const response = await api.customers.createCustomer(customerData);
 
         if (response.success) {
             // Log action
@@ -327,7 +327,7 @@ async function updateCustomer(event, customerId) {
             address
         };
 
-        const response = await CustomerAPI.updateCustomer(customerId, customerData);
+        const response = await api.customers.updateCustomer(customerId, customerData);
 
         if (response.success) {
             // Log action
@@ -388,7 +388,7 @@ async function deleteCustomer(customerId) {
 
     if (confirm('Are you sure you want to delete customer "' + customer.name + '"?')) {
         try {
-            const response = await CustomerAPI.deleteCustomer(customerId);
+            const response = await api.customers.deleteCustomer(customerId);
             
             if (response.success) {
                 // Log action
@@ -416,7 +416,7 @@ async function deleteCustomer(customerId) {
  */
 async function incrementCustomerPurchases(customerId) {
     try {
-        const response = await CustomerAPI.incrementPurchases(customerId);
+        const response = await api.customers.incrementPurchases(customerId);
         if (response.success) {
             // Update local cache
             const customerIndex = customers.findIndex(c => c.id === customerId);
@@ -435,7 +435,7 @@ async function incrementCustomerPurchases(customerId) {
  */
 async function incrementCustomerServices(customerId) {
     try {
-        const response = await CustomerAPI.incrementServices(customerId);
+        const response = await api.customers.incrementServices(customerId);
         if (response.success) {
             // Update local cache
             const customerIndex = customers.findIndex(c => c.id === customerId);
@@ -643,7 +643,7 @@ function renderCustomerTable() {
  */
 async function getCustomerStats() {
     try {
-        const response = await CustomerAPI.getCustomerStats();
+        const response = await api.customers.getCustomerStats();
         if (response.success) {
             return response.data;
         }

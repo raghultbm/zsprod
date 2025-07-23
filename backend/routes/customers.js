@@ -1,6 +1,6 @@
 // ZEDSON WATCHCRAFT - Customer Routes
 const express = require('express');
-const Customer = require('../models/Customer');
+const Customer = require('../models/customer');
 const { auth, authorize } = require('../middleware/auth');
 
 const router = express.Router();

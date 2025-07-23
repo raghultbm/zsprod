@@ -1,6 +1,6 @@
 // ZEDSON WATCHCRAFT - Watches/Inventory Routes
 const express = require('express');
-const Watch = require('../models/Watch');
+const Watch = require('../models/watch');
 const { auth, authorize, checkPermission } = require('../middleware/auth');
 
 const router = express.Router();

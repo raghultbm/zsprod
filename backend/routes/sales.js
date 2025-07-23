@@ -1,9 +1,9 @@
 // ZEDSON WATCHCRAFT - Sales Routes
 const express = require('express');
 const mongoose = require('mongoose');
-const Sale = require('../models/Sale');
-const Customer = require('../models/Customer');
-const Watch = require('../models/Watch');
+const Sale = require('../models/sale');
+const Customer = require('../models/customer');
+const Watch = require('../models/watch');
 const { auth, authorize, checkPermission } = require('../middleware/auth');
 
 const router = express.Router();
