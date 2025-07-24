@@ -54,6 +54,20 @@
         </div>
     </div>
 
+    <!-- Database Initialization Loading Screen -->
+    <div id="dbLoadingScreen" class="modal" style="z-index: 4000; display: none;">
+        <div class="modal-content" style="text-align: center; max-width: 500px;">
+            <h2>🔧 Initializing Database</h2>
+            <div style="margin: 20px 0;">
+                <div id="dbLoadingProgress" style="width: 100%; background: #f0f0f0; border-radius: 10px; overflow: hidden;">
+                    <div id="dbProgressBar" style="width: 0%; height: 20px; background: linear-gradient(45deg, #1a237e, #283593); transition: width 0.3s ease;"></div>
+                </div>
+                <p id="dbLoadingStatus" style="margin-top: 10px; color: #666;">Preparing database...</p>
+            </div>
+            <p style="font-size: 14px; color: #999;">Please wait while we set up your data storage.</p>
+        </div>
+    </div>
+
     <!-- Main Application -->
     <div id="mainApp" class="app-container">
         <div class="container">
@@ -421,10 +435,20 @@
     <!-- Include all modal templates -->
     <div id="modals-container"></div>
 
-    <!-- JavaScript Files -->
+    <!-- SQLite.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+    
+    <!-- Database Layer -->
+    <script src="js/database/db-config.js"></script>
+    <script src="js/database/migration-manager.js"></script>
+    <script src="js/database/sqlite-core.js"></script>
+
+    <!-- Utility and Core JavaScript Files -->
     <script src="js/utils.js"></script>
     <script src="js/logging.js"></script>
     <script src="js/auth.js"></script>
+    
+    <!-- Business Logic Modules -->
     <script src="js/inventory.js"></script>
     <script src="js/sales-core.js"></script>
     <script src="js/sales-extended.js"></script>
@@ -433,9 +457,12 @@
     <script src="js/customers.js"></script>
     <script src="js/invoice-templates.js"></script>
     <script src="js/invoices.js"></script>
+    
+    <!-- Application Controllers -->
     <script src="js/app-core.js"></script>
     <script src="js/app-extended.js"></script>
 
+    <!-- Firebase Configuration -->
     <script type="module">
   // Import the functions you need from the SDKs you need
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
@@ -458,6 +485,131 @@
   // Initialize Firebase
   const app = initializeApp(firebaseConfig);
   const analytics = getAnalytics(app);
+</script>
+
+    <!-- Database Initialization Script -->
+    <script>
+        // Database initialization with UI feedback
+        async function initializeDatabase() {
+            const loadingScreen = document.getElementById('dbLoadingScreen');
+            const progressBar = document.getElementById('dbProgressBar');
+            const statusText = document.getElementById('dbLoadingStatus');
+            
+            try {
+                // Show loading screen
+                loadingScreen.style.display = 'block';
+                
+                // Update progress
+                const updateProgress = (percent, status) => {
+                    progressBar.style.width = percent + '%';
+                    statusText.textContent = status;
+                };
+                
+                updateProgress(10, 'Loading SQLite library...');
+                
+                // Wait for SQLite library to load
+                if (!window.initSqlJs) {
+                    throw new Error('SQLite library not loaded');
+                }
+                
+                updateProgress(30, 'Initializing SQL.js...');
+                
+                // Initialize SQL.js
+                window.SQL = await initSqlJs({
+                    locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
+                });
+                
+                updateProgress(50, 'Creating database connection...');
+                
+                // Wait for SQLite core to be ready
+                while (!window.SQLiteCore) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                
+                updateProgress(70, 'Running migrations...');
+                
+                // Initialize database
+                const success = await window.SQLiteCore.initializeDatabase();
+                
+                if (!success) {
+                    throw new Error('Database initialization failed');
+                }
+                
+                updateProgress(90, 'Finalizing setup...');
+                
+                // Initialize migration manager
+                if (window.MigrationManager) {
+                    const migrationManager = new MigrationManager(window.SQLiteCore);
+                    const needsMigration = await migrationManager.needsMigration();
+                    
+                    if (needsMigration) {
+                        updateProgress(95, 'Running database migrations...');
+                        await migrationManager.migrate();
+                    }
+                }
+                
+                updateProgress(100, 'Database ready!');
+                
+                // Wait a moment then hide loading screen
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                    console.log('✅ Database initialization completed successfully');
+                }, 500);
+                
+            } catch (error) {
+                console.error('❌ Database initialization failed:', error);
+                statusText.textContent = 'Database initialization failed: ' + error.message;
+                statusText.style.color = '#dc3545';
+                
+                // Hide loading screen after showing error
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                    alert('Database initialization failed. The application may not work properly. Please refresh the page.');
+                }, 3000);
+            }
+        }
+        
+        // Initialize database when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Start database initialization
+            initializeDatabase();
+        });
+    </script>
+
+<script>
+// Simple SQLite integration
+let db = null;
+
+async function initDB() {
+    // For web app, we'll use in-memory SQLite with localStorage backup
+    const SQL = await initSqlJs({
+        locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
+    });
+    
+    // Try to load existing data from localStorage
+    const savedDb = localStorage.getItem('zedson_db');
+    if (savedDb) {
+        const dbData = new Uint8Array(JSON.parse(savedDb));
+        db = new SQL.Database(dbData);
+    } else {
+        db = new SQL.Database();
+        // Create tables here or import your .db file
+    }
+}
+
+// Save database to localStorage
+function saveDB() {
+    if (db) {
+        const data = db.export();
+        localStorage.setItem('zedson_db', JSON.stringify(Array.from(data)));
+    }
+}
+
+// Initialize on page load
+window.addEventListener('load', async () => {
+    await initDB();
+    console.log('Database ready');
+});
 </script>
 
 </body>

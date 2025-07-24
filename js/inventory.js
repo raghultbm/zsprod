@@ -5,58 +5,26 @@
  */
 
 // Watch inventory data - Updated with OUTLET field and movement history
-let watches = [
-    { 
-        id: 1, 
-        code: "ROL001", 
-        type: "Watch",
-        brand: "Rolex", 
-        model: "Submariner", 
-        size: "40mm",
-        price: 850000, 
-        quantity: 2, 
-        outlet: "Semmancheri",
-        description: "Luxury diving watch", 
-        status: "available",
-        movementHistory: [
-            { date: "2024-01-15", fromOutlet: null, toOutlet: "Semmancheri", reason: "Initial stock" }
-        ]
-    },
-    { 
-        id: 2, 
-        code: "OMG001", 
-        type: "Watch",
-        brand: "Omega", 
-        model: "Speedmaster", 
-        size: "42mm",
-        price: 450000, 
-        quantity: 1, 
-        outlet: "Navalur",
-        description: "Professional chronograph", 
-        status: "available",
-        movementHistory: [
-            { date: "2024-01-10", fromOutlet: null, toOutlet: "Navalur", reason: "Initial stock" }
-        ]
-    },
-    { 
-        id: 3, 
-        code: "CAS001", 
-        type: "Watch",
-        brand: "Casio", 
-        model: "G-Shock", 
-        size: "44mm",
-        price: 15000, 
-        quantity: 5, 
-        outlet: "Padur",
-        description: "Sports watch", 
-        status: "available",
-        movementHistory: [
-            { date: "2024-01-05", fromOutlet: null, toOutlet: "Padur", reason: "Initial stock" }
-        ]
-    }
-];
+async function addInventoryToDB(itemData) {
+    const stmt = db.prepare(`
+        INSERT INTO inventory (code, type, brand, model, size, price, quantity, outlet) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    stmt.run([itemData.code, itemData.type, itemData.brand, itemData.model, 
+              itemData.size, itemData.price, itemData.quantity, itemData.outlet]);
+    stmt.free();
+    saveDB();
+}
 
-let nextWatchId = 4;
+async function getInventoryFromDB() {
+    const stmt = db.prepare("SELECT * FROM inventory ORDER BY brand, model");
+    const items = [];
+    while (stmt.step()) {
+        items.push(stmt.getAsObject());
+    }
+    stmt.free();
+    return items;
+}
 
 /**
  * Generate watch code automatically - UPDATED to not override manually entered codes

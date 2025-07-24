@@ -5,32 +5,25 @@
  */
 
 // Customer database
-let customers = [
-    { 
-        id: 1, 
-        name: "Raj Kumar", 
-        email: "raj@email.com", 
-        phone: "+91-9876543210", 
-        address: "Chennai, Tamil Nadu", 
-        purchases: 0, 
-        serviceCount: 0,
-        netValue: 0,
-        addedDate: "2024-01-01"
-    },
-    { 
-        id: 2, 
-        name: "Priya Sharma", 
-        email: "priya@email.com", 
-        phone: "+91-9876543211", 
-        address: "Mumbai, Maharashtra", 
-        purchases: 0, 
-        serviceCount: 0,
-        netValue: 0,
-        addedDate: "2024-01-01"
-    }
-];
+async function addCustomerToDB(customerData) {
+    const stmt = db.prepare(`
+        INSERT INTO customers (name, email, phone, address) 
+        VALUES (?, ?, ?, ?)
+    `);
+    stmt.run([customerData.name, customerData.email, customerData.phone, customerData.address]);
+    stmt.free();
+    saveDB();
+}
 
-let nextCustomerId = 3;
+async function getCustomersFromDB() {
+    const stmt = db.prepare("SELECT * FROM customers ORDER BY name");
+    const customers = [];
+    while (stmt.step()) {
+        customers.push(stmt.getAsObject());
+    }
+    stmt.free();
+    return customers;
+}
 
 /**
  * Calculate customer's net value from sales and services
