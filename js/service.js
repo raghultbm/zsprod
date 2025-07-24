@@ -1,93 +1,13 @@
-// ZEDSON WATCHCRAFT - Service Management Module (Phase 4 - API Integration)
+// ZEDSON WATCHCRAFT - Service Management Module with Image Upload (FIXED)
 
 /**
- * Service Request Management System with API Integration
- * Updated to use backend APIs instead of local data
+ * Service Request Management System with Image Upload and Final Service Cost
+ * FIXED: Invoice button functionality and invoice viewing
  */
 
-// Local cache for services and offline fallback
+// Service requests database
 let services = [];
 let nextServiceId = 1;
-let isLoading = false;
-let lastSyncTime = null;
-
-/**
- * Initialize service module with API integration
- */
-async function initializeServices() {
-    try {
-        showLoadingState('services');
-        await loadServicesFromAPI();
-        renderServiceTable();
-        lastSyncTime = new Date();
-        console.log('Service module initialized with API integration');
-    } catch (error) {
-        console.error('Service initialization error:', error);
-        // Fall back to local data if API fails
-        if (services.length === 0) {
-            loadSampleServices();
-        }
-        renderServiceTable();
-        showAPIError('Failed to load services from server. Using offline data.');
-    } finally {
-        hideLoadingState('services');
-    }
-}
-
-/**
- * Load services from API with caching
- */
-async function loadServicesFromAPI() {
-    try {
-        const response = await api.services.getServices();
-        if (response.success) {
-            services = response.data || [];
-            console.log(`Loaded ${services.length} services from API`);
-            
-            // Update nextServiceId for local operations
-            if (services.length > 0) {
-                nextServiceId = Math.max(...services.map(s => s.id || 0)) + 1;
-            }
-            
-            // Cache the data
-            cacheManager.set('services_data', services, 10 * 60 * 1000); // 10 minutes cache
-            return services;
-        } else {
-            throw new Error(response.message || 'Failed to load services');
-        }
-    } catch (error) {
-        console.error('Load services API error:', error);
-        
-        // Try to use cached data
-        const cachedServices = cacheManager.get('services_data');
-        if (cachedServices) {
-            services = cachedServices;
-            console.log('Using cached service data');
-            return services;
-        }
-        
-        throw error;
-    }
-}
-
-/**
- * Refresh services from API
- */
-async function refreshServices() {
-    try {
-        showLoadingState('refresh');
-        cacheManager.clear('services_data'); // Clear cache to force fresh load
-        await loadServicesFromAPI();
-        renderServiceTable();
-        lastSyncTime = new Date();
-        showSuccessMessage('Services refreshed successfully');
-    } catch (error) {
-        console.error('Refresh services error:', error);
-        showAPIError('Failed to refresh service data');
-    } finally {
-        hideLoadingState('refresh');
-    }
-}
 
 /**
  * Open New Service Modal
@@ -103,17 +23,15 @@ function openNewServiceModal() {
     }
     
     // Populate customer dropdown
-    if (window.CustomerModule) {
-        CustomerModule.populateCustomerDropdown('serviceCustomer');
-    }
+    CustomerModule.populateCustomerDropdown('serviceCustomer');
     
     document.getElementById('newServiceModal').style.display = 'block';
 }
 
 /**
- * Add new service request with API integration
+ * Add new service request
  */
-async function addNewService(event) {
+function addNewService(event) {
     event.preventDefault();
     
     if (!AuthModule.hasPermission('service')) {
@@ -152,87 +70,74 @@ async function addNewService(event) {
         return;
     }
 
-    const submitBtn = event.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.textContent;
-    
-    try {
-        // Show loading state
-        submitBtn.textContent = 'Creating...';
-        submitBtn.disabled = true;
-        
-        // Prepare service data
-        const serviceData = {
-            customerId: customerId,
-            watchDetails: {
-                brand: brand,
-                model: model,
-                dialColor: dialColor,
-                movementNo: movementNo,
-                gender: gender,
-                caseType: caseType,
-                strapType: strapType
-            },
-            issue: issue,
-            estimatedCost: cost
-        };
+    // Create service object
+    const now = new Date();
+    const newService = {
+        id: nextServiceId++,
+        date: Utils.formatDate(now),
+        time: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+        timestamp: Utils.getCurrentTimestamp(),
+        customerId: customerId,
+        customerName: customer.name,
+        watchName: `${brand} ${model}`,
+        brand: brand,
+        model: model,
+        dialColor: dialColor,
+        movementNo: movementNo,
+        gender: gender,
+        caseType: caseType,
+        strapType: strapType,
+        issue: issue,
+        cost: cost,
+        status: 'pending',
+        createdBy: AuthModule.getCurrentUser().username,
+        estimatedDelivery: null,
+        actualDelivery: null,
+        completionImage: null,
+        completionDescription: null,
+        warrantyPeriod: 0, // Default to 0 months warranty
+        notes: [],
+        acknowledgementGenerated: false,
+        completionInvoiceGenerated: false,
+        acknowledgementInvoiceId: null,
+        completionInvoiceId: null
+    };
 
-        // Call API
-        const response = await api.services.createService(serviceData);
-        
-        if (response.success) {
-            // Log action
-            if (window.logServiceAction) {
-                logServiceAction(`Created service request for ${customer.name}'s ${brand} ${model}. Estimated cost: ${Utils.formatCurrency(cost)}`, response.data);
-            }
-            
-            // Add to local cache
-            services.push(response.data);
-            
-            // Update customer service count
-            if (window.CustomerModule) {
-                CustomerModule.incrementCustomerServices(customerId);
-            }
-            
-            // Generate Service Acknowledgement automatically
-            if (window.InvoiceModule) {
-                const acknowledgement = InvoiceModule.generateServiceAcknowledgement(response.data);
-                if (acknowledgement) {
-                    response.data.acknowledgementGenerated = true;
-                    response.data.acknowledgementInvoiceId = acknowledgement.id;
-                }
-            }
-            
-            // Update displays
-            renderServiceTable();
-            if (window.updateDashboard) {
-                updateDashboard();
-            }
-            
-            // Close modal and reset form
-            closeModal('newServiceModal');
-            event.target.reset();
-            
-            Utils.showNotification(`Service request created successfully! Request ID: ${response.data.id}. Acknowledgement generated.`);
-            
-        } else {
-            throw new Error(response.message || 'Failed to create service request');
-        }
-        
-    } catch (error) {
-        console.error('Add service error:', error);
-        Utils.showNotification(error.message || 'Failed to create service request. Please try again.');
-        
-    } finally {
-        // Reset button state
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
+    // Log action
+    if (window.logServiceAction) {
+        logServiceAction(`Created service request for ${customer.name}'s ${brand} ${model}. Estimated cost: ${Utils.formatCurrency(cost)}`, newService);
     }
+
+    // Add to services array
+    services.push(newService);
+    
+    // Update customer service count
+    CustomerModule.incrementCustomerServices(customerId);
+    
+    // Generate Service Acknowledgement automatically
+    if (window.InvoiceModule) {
+        const acknowledgement = InvoiceModule.generateServiceAcknowledgement(newService);
+        if (acknowledgement) {
+            newService.acknowledgementGenerated = true;
+            newService.acknowledgementInvoiceId = acknowledgement.id;
+        }
+    }
+    
+    // Update displays
+    renderServiceTable();
+    updateDashboard();
+    
+    // Close modal and reset form
+    closeModal('newServiceModal');
+    event.target.reset();
+    
+    Utils.showNotification(`Service request created successfully! Request ID: ${newService.id}. Acknowledgement generated.`);
 }
 
 /**
- * Update service status with API integration
+ * Update service status
  */
-async function updateServiceStatus(serviceId, newStatus) {
+function updateServiceStatus(serviceId, newStatus) {
     const service = services.find(s => s.id === serviceId);
     if (!service) {
         Utils.showNotification('Service request not found.');
@@ -256,46 +161,23 @@ async function updateServiceStatus(serviceId, newStatus) {
         return;
     }
     
-    try {
-        showLoadingState('status-update');
-        
-        // Prepare status data
-        const statusData = {
-            status: newStatus,
-            reason: `Status changed from ${oldStatus} to ${newStatus}`,
-            timestamp: new Date().toISOString()
-        };
-        
-        const response = await api.services.updateServiceStatus(serviceId, statusData);
-        
-        if (response.success) {
-            // Log action
-            if (window.logAction) {
-                logAction(`Changed service ${serviceId} status from ${oldStatus} to ${newStatus}`);
-            }
-            
-            // Update local cache
-            const serviceIndex = services.findIndex(s => s.id === serviceId);
-            if (serviceIndex !== -1) {
-                services[serviceIndex] = response.data;
-            }
-            
-            renderServiceTable();
-            if (window.updateDashboard) {
-                updateDashboard();
-            }
-            Utils.showNotification(`Service status updated to: ${newStatus}`);
-            
-        } else {
-            throw new Error(response.message || 'Failed to update service status');
-        }
-        
-    } catch (error) {
-        console.error('Update service status error:', error);
-        Utils.showNotification(error.message || 'Failed to update service status. Please try again.');
-    } finally {
-        hideLoadingState('status-update');
+    // Log action
+    if (window.logAction) {
+        logAction(`Changed service ${serviceId} status from ${oldStatus} to ${newStatus}`);
     }
+    
+    service.status = newStatus;
+    
+    // Add timestamp for status changes
+    if (newStatus === 'in-progress' && oldStatus === 'pending') {
+        service.startedAt = Utils.getCurrentTimestamp();
+    } else if (newStatus === 'on-hold') {
+        service.heldAt = Utils.getCurrentTimestamp();
+    }
+    
+    renderServiceTable();
+    updateDashboard();
+    Utils.showNotification(`Service status updated to: ${newStatus}`);
 }
 
 /**
@@ -316,7 +198,7 @@ function showServiceCompletionModal(service) {
         <div class="modal-content">
             <span class="close" onclick="closeModal('serviceCompletionModal')">&times;</span>
             <h2>Complete Service Request</h2>
-            <p><strong>Service ID:</strong> ${service.id} - ${service.watchName || service.watchDetails?.brand + ' ' + service.watchDetails?.model}</p>
+            <p><strong>Service ID:</strong> ${service.id} - ${service.watchName}</p>
             <form onsubmit="ServiceModule.completeService(event, ${service.id})">
                 <div class="form-group">
                     <label>Completion Image:</label>
@@ -334,7 +216,7 @@ function showServiceCompletionModal(service) {
                 <div class="grid grid-2">
                     <div class="form-group">
                         <label>Service Cost (₹):</label>
-                        <input type="number" id="finalServiceCost" min="0" step="0.01" value="${service.estimatedCost || service.cost || 0}" required>
+                        <input type="number" id="finalServiceCost" min="0" step="0.01" value="${service.cost}" required>
                         <small>Final billing amount for the service</small>
                     </div>
                     <div class="form-group">
@@ -375,9 +257,9 @@ function previewCompletionImage(event) {
 }
 
 /**
- * Complete service with details including image and final cost with API integration
+ * Complete service with details including image and final cost
  */
-async function completeService(event, serviceId) {
+function completeService(event, serviceId) {
     event.preventDefault();
     
     const service = services.find(s => s.id === serviceId);
@@ -406,86 +288,57 @@ async function completeService(event, serviceId) {
         return;
     }
     
-    const submitBtn = event.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.textContent;
-    
-    try {
-        // Show loading state
-        submitBtn.textContent = 'Completing...';
-        submitBtn.disabled = true;
-        
-        // Prepare completion data
-        const completionData = {
-            workPerformed: description,
-            actualCost: finalCost,
-            warrantyPeriod: warranty,
-            completionNotes: description
+    // Handle image upload (in a real app, this would upload to a server)
+    let imageDataUrl = null;
+    if (imageFile) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            imageDataUrl = e.target.result;
+            finishServiceCompletion(service, imageDataUrl, description, finalCost, warranty);
         };
-        
-        // Upload completion image if provided
-        let imageUploadResponse = null;
-        if (imageFile) {
-            try {
-                imageUploadResponse = await api.services.uploadCompletionImage(serviceId, imageFile);
-                if (imageUploadResponse.success) {
-                    completionData.completionImagePath = imageUploadResponse.data.imagePath;
-                }
-            } catch (imageError) {
-                console.warn('Image upload failed:', imageError);
-                // Continue with completion even if image upload fails
-            }
-        }
-        
-        // Complete the service
-        const response = await api.services.completeService(serviceId, completionData);
-        
-        if (response.success) {
-            // Log action
-            if (window.logAction) {
-                logAction(`Completed service ${serviceId} for ${service.customerName}'s ${service.watchName}. Final cost: ${Utils.formatCurrency(finalCost)}`);
-            }
-            
-            // Update local cache
-            const serviceIndex = services.findIndex(s => s.id === serviceId);
-            if (serviceIndex !== -1) {
-                services[serviceIndex] = response.data;
-            }
-            
-            // Generate Service Completion Invoice automatically
-            if (window.InvoiceModule) {
-                const completionInvoice = InvoiceModule.generateServiceCompletionInvoice(response.data);
-                if (completionInvoice) {
-                    response.data.completionInvoiceGenerated = true;
-                    response.data.completionInvoiceId = completionInvoice.id;
-                }
-            }
-            
-            renderServiceTable();
-            if (window.updateDashboard) {
-                updateDashboard();
-            }
-            closeModal('serviceCompletionModal');
-            document.getElementById('serviceCompletionModal').remove();
-            
-            Utils.showNotification('Service completed successfully! Completion invoice generated.');
-            
-        } else {
-            throw new Error(response.message || 'Failed to complete service');
-        }
-        
-    } catch (error) {
-        console.error('Complete service error:', error);
-        Utils.showNotification(error.message || 'Failed to complete service. Please try again.');
-        
-    } finally {
-        // Reset button state
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
+        reader.readAsDataURL(imageFile);
+    } else {
+        finishServiceCompletion(service, null, description, finalCost, warranty);
     }
 }
 
 /**
- * Edit service with API integration
+ * Finish service completion after image processing
+ */
+function finishServiceCompletion(service, imageDataUrl, description, finalCost, warranty) {
+    // Log action
+    if (window.logAction) {
+        logAction(`Completed service ${service.id} for ${service.customerName}'s ${service.watchName}. Final cost: ${Utils.formatCurrency(finalCost)}`);
+    }
+    
+    // Update service
+    service.status = 'completed';
+    service.completedAt = Utils.getCurrentTimestamp();
+    service.actualDelivery = Utils.formatDate(new Date());
+    service.completionImage = imageDataUrl;
+    service.completionDescription = description;
+    service.cost = finalCost; // Update with final cost
+    service.warrantyPeriod = warranty;
+    
+    // Generate Service Completion Invoice automatically
+    if (window.InvoiceModule) {
+        const completionInvoice = InvoiceModule.generateServiceCompletionInvoice(service);
+        if (completionInvoice) {
+            service.completionInvoiceGenerated = true;
+            service.completionInvoiceId = completionInvoice.id;
+        }
+    }
+    
+    renderServiceTable();
+    updateDashboard();
+    closeModal('serviceCompletionModal');
+    document.getElementById('serviceCompletionModal').remove();
+    
+    Utils.showNotification('Service completed successfully! Completion invoice generated.');
+}
+
+/**
+ * Edit service
  */
 function editService(serviceId) {
     const currentUser = AuthModule.getCurrentUser();
@@ -507,20 +360,11 @@ function editService(serviceId) {
         return;
     }
 
-    // Log action
-    if (window.logAction) {
-        logAction('Opened edit modal for service: ' + service.watchName);
-    }
-
     // Create edit modal
     const editModal = document.createElement('div');
     editModal.className = 'modal';
     editModal.id = 'editServiceModal';
     editModal.style.display = 'block';
-    
-    // Extract watch details from the service object
-    const watchDetails = service.watchDetails || {};
-    
     editModal.innerHTML = `
         <div class="modal-content">
             <span class="close" onclick="closeEditServiceModal()">&times;</span>
@@ -535,37 +379,37 @@ function editService(serviceId) {
                 <div class="grid grid-2">
                     <div class="form-group">
                         <label>Watch Brand:</label>
-                        <input type="text" id="editServiceBrand" value="${watchDetails.brand || service.brand || ''}" required>
+                        <input type="text" id="editServiceBrand" value="${service.brand}" required>
                     </div>
                     <div class="form-group">
                         <label>Watch Model:</label>
-                        <input type="text" id="editServiceModel" value="${watchDetails.model || service.model || ''}" required>
+                        <input type="text" id="editServiceModel" value="${service.model}" required>
                     </div>
                 </div>
                 <div class="grid grid-2">
                     <div class="form-group">
                         <label>Dial Colour:</label>
-                        <input type="text" id="editServiceDialColor" value="${watchDetails.dialColor || service.dialColor || ''}" required>
+                        <input type="text" id="editServiceDialColor" value="${service.dialColor}" required>
                     </div>
                     <div class="form-group">
                         <label>Movement No:</label>
-                        <input type="text" id="editServiceMovementNo" value="${watchDetails.movementNo || service.movementNo || ''}" required>
+                        <input type="text" id="editServiceMovementNo" value="${service.movementNo}" required>
                     </div>
                 </div>
                 <div class="grid grid-2">
                     <div class="form-group">
                         <label>Gender:</label>
                         <select id="editServiceGender" required>
-                            <option value="Male" ${(watchDetails.gender || service.gender) === 'Male' ? 'selected' : ''}>Male</option>
-                            <option value="Female" ${(watchDetails.gender || service.gender) === 'Female' ? 'selected' : ''}>Female</option>
+                            <option value="Male" ${service.gender === 'Male' ? 'selected' : ''}>Male</option>
+                            <option value="Female" ${service.gender === 'Female' ? 'selected' : ''}>Female</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Case Material:</label>
                         <select id="editServiceCase" required>
-                            <option value="Steel" ${(watchDetails.caseType || service.caseType) === 'Steel' ? 'selected' : ''}>Steel</option>
-                            <option value="Gold Tone" ${(watchDetails.caseType || service.caseType) === 'Gold Tone' ? 'selected' : ''}>Gold Tone</option>
-                            <option value="Fiber" ${(watchDetails.caseType || service.caseType) === 'Fiber' ? 'selected' : ''}>Fiber</option>
+                            <option value="Steel" ${service.caseType === 'Steel' ? 'selected' : ''}>Steel</option>
+                            <option value="Gold Tone" ${service.caseType === 'Gold Tone' ? 'selected' : ''}>Gold Tone</option>
+                            <option value="Fiber" ${service.caseType === 'Fiber' ? 'selected' : ''}>Fiber</option>
                         </select>
                     </div>
                 </div>
@@ -573,25 +417,22 @@ function editService(serviceId) {
                     <div class="form-group">
                         <label>Strap Material:</label>
                         <select id="editServiceStrap" required>
-                            <option value="Leather" ${(watchDetails.strapType || service.strapType) === 'Leather' ? 'selected' : ''}>Leather</option>
-                            <option value="Fiber" ${(watchDetails.strapType || service.strapType) === 'Fiber' ? 'selected' : ''}>Fiber</option>
-                            <option value="Steel" ${(watchDetails.strapType || service.strapType) === 'Steel' ? 'selected' : ''}>Steel</option>
-                            <option value="Gold Plated" ${(watchDetails.strapType || service.strapType) === 'Gold Plated' ? 'selected' : ''}>Gold Plated</option>
+                            <option value="Fiber" ${service.strapType === 'Fiber' ? 'selected' : ''}>Fiber</option>
+                            <option value="Steel" ${service.strapType === 'Steel' ? 'selected' : ''}>Steel</option>
+                            <option value="Gold Plated" ${service.strapType === 'Gold Plated' ? 'selected' : ''}>Gold Plated</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Cost (₹):</label>
-                        <input type="number" id="editServiceCost" value="${service.estimatedCost || service.cost || 0}" required min="0" step="0.01">
+                        <input type="number" id="editServiceCost" value="${service.cost}" required min="0" step="0.01">
                     </div>
                 </div>
                 <div class="form-group">
                     <label>Issue Description:</label>
-                    <textarea id="editServiceIssue" rows="3" required>${service.issue || ''}</textarea>
+                    <textarea id="editServiceIssue" rows="3" required>${service.issue}</textarea>
                 </div>
-                <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                    <button type="button" class="btn btn-danger" onclick="closeEditServiceModal()">Cancel</button>
-                    <button type="submit" class="btn">Update Service Request</button>
-                </div>
+                <button type="submit" class="btn">Update Service Request</button>
+                <button type="button" class="btn btn-danger" onclick="closeEditServiceModal()">Cancel</button>
             </form>
         </div>
     `;
@@ -621,9 +462,9 @@ function closeEditServiceModal() {
 }
 
 /**
- * Update service with API integration
+ * Update service
  */
-async function updateService(event, serviceId) {
+function updateService(event, serviceId) {
     event.preventDefault();
     
     const service = services.find(s => s.id === serviceId);
@@ -656,71 +497,30 @@ async function updateService(event, serviceId) {
         return;
     }
 
-    const submitBtn = event.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.textContent;
-    
-    try {
-        // Show loading state
-        submitBtn.textContent = 'Updating...';
-        submitBtn.disabled = true;
-        
-        // Prepare update data
-        const updateData = {
-            customerId: customerId,
-            watchDetails: {
-                brand: brand,
-                model: model,
-                dialColor: dialColor,
-                movementNo: movementNo,
-                gender: gender,
-                caseType: caseType,
-                strapType: strapType
-            },
-            issue: issue,
-            estimatedCost: cost
-        };
+    // Update service
+    service.customerId = customerId;
+    service.customerName = customer.name;
+    service.brand = brand;
+    service.model = model;
+    service.watchName = `${brand} ${model}`;
+    service.dialColor = dialColor;
+    service.movementNo = movementNo;
+    service.gender = gender;
+    service.caseType = caseType;
+    service.strapType = strapType;
+    service.issue = issue;
+    service.cost = cost;
 
-        // Call API
-        const response = await api.services.updateService(serviceId, updateData);
-        
-        if (response.success) {
-            // Log action
-            if (window.logServiceAction) {
-                logServiceAction('Updated service request: ' + service.watchName + ' -> ' + brand + ' ' + model, response.data);
-            }
-            
-            // Update local cache
-            const serviceIndex = services.findIndex(s => s.id === serviceId);
-            if (serviceIndex !== -1) {
-                services[serviceIndex] = response.data;
-            }
-
-            renderServiceTable();
-            if (window.updateDashboard) {
-                updateDashboard();
-            }
-            closeEditServiceModal();
-            Utils.showNotification('Service request updated successfully!');
-            
-        } else {
-            throw new Error(response.message || 'Failed to update service request');
-        }
-        
-    } catch (error) {
-        console.error('Update service error:', error);
-        Utils.showNotification(error.message || 'Failed to update service request. Please try again.');
-        
-    } finally {
-        // Reset button state
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
-    }
+    renderServiceTable();
+    updateDashboard();
+    closeEditServiceModal();
+    Utils.showNotification('Service request updated successfully!');
 }
 
 /**
- * Delete service request with API integration
+ * Delete service request
  */
-async function deleteService(serviceId) {
+function deleteService(serviceId) {
     const currentUser = AuthModule.getCurrentUser();
     const isStaff = currentUser && currentUser.role === 'staff';
     
@@ -740,42 +540,21 @@ async function deleteService(serviceId) {
         return;
     }
 
-    if (confirm(`Are you sure you want to delete the service request for ${service.watchName || 'this watch'}?`)) {
-        try {
-            showLoadingState('delete');
-            
-            const response = await api.services.deleteService(serviceId, 'Deleted by user');
-            
-            if (response.success) {
-                // Log action
-                if (window.logAction) {
-                    logAction(`Deleted service request ${serviceId} for ${service.customerName}'s ${service.watchName}`);
-                }
-                
-                // Decrease customer service count
-                if (window.CustomerModule) {
-                    CustomerModule.decrementCustomerServices(service.customerId);
-                }
-                
-                // Remove from local cache
-                services = services.filter(s => s.id !== serviceId);
-                
-                renderServiceTable();
-                if (window.updateDashboard) {
-                    updateDashboard();
-                }
-                Utils.showNotification('Service request deleted successfully!');
-                
-            } else {
-                throw new Error(response.message || 'Failed to delete service request');
-            }
-            
-        } catch (error) {
-            console.error('Delete service error:', error);
-            Utils.showNotification(error.message || 'Failed to delete service request. Please try again.');
-        } finally {
-            hideLoadingState('delete');
+    if (confirm(`Are you sure you want to delete the service request for ${service.watchName}?`)) {
+        // Log action
+        if (window.logAction) {
+            logAction(`Deleted service request ${serviceId} for ${service.customerName}'s ${service.watchName}`);
         }
+        
+        // Decrease customer service count
+        CustomerModule.decrementCustomerServices(service.customerId);
+        
+        // Remove from services array
+        services = services.filter(s => s.id !== serviceId);
+        
+        renderServiceTable();
+        updateDashboard();
+        Utils.showNotification('Service request deleted successfully!');
     }
 }
 
@@ -793,7 +572,7 @@ function viewServiceAcknowledgement(serviceId) {
 }
 
 /**
- * View service completion invoice
+ * View service completion invoice - FIXED FUNCTION
  */
 function viewServiceCompletionInvoice(serviceId) {
     console.log('Attempting to view service completion invoice for service ID:', serviceId);
@@ -817,7 +596,7 @@ function viewServiceCompletionInvoice(serviceId) {
 }
 
 /**
- * Search services with real-time filtering
+ * Search services
  */
 function searchServices(query) {
     const tbody = document.getElementById('serviceTableBody');
@@ -836,21 +615,9 @@ function searchServices(query) {
 }
 
 /**
- * Get service statistics with API integration
+ * Get service statistics
  */
-async function getServiceStats() {
-    try {
-        // Try to get fresh stats from API
-        const response = await api.services.getServiceStats();
-        
-        if (response.success) {
-            return response.data;
-        }
-    } catch (error) {
-        console.error('Get service stats API error:', error);
-    }
-    
-    // Fallback to local calculation
+function getServiceStats() {
     const totalServices = services.length;
     const pendingServices = services.filter(s => s.status === 'pending').length;
     const inProgressServices = services.filter(s => s.status === 'in-progress').length;
@@ -858,9 +625,9 @@ async function getServiceStats() {
     const completedServices = services.filter(s => s.status === 'completed').length;
     const incompleteServices = totalServices - completedServices;
     const totalRevenue = services.filter(s => s.status === 'completed')
-        .reduce((sum, service) => sum + (service.actualCost || service.cost || 0), 0);
+        .reduce((sum, service) => sum + service.cost, 0);
     const averageServiceCost = totalServices > 0 ? 
-        services.reduce((sum, service) => sum + (service.estimatedCost || service.cost || 0), 0) / totalServices : 0;
+        services.reduce((sum, service) => sum + service.cost, 0) / totalServices : 0;
     
     return {
         totalServices,
@@ -880,7 +647,7 @@ async function getServiceStats() {
 function getIncompleteServices(limit = 5) {
     return services
         .filter(s => s.status !== 'completed')
-        .sort((a, b) => new Date(b.createdAt || b.timestamp || 0) - new Date(a.createdAt || a.timestamp || 0))
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
         .slice(0, limit);
 }
 
@@ -892,7 +659,7 @@ function filterServicesByDateRange(fromDate, toDate) {
     const to = new Date(toDate);
     
     return services.filter(service => {
-        const serviceDate = new Date(service.serviceDate || service.createdAt || service.timestamp);
+        const serviceDate = new Date(service.timestamp);
         return serviceDate >= from && serviceDate <= to;
     });
 }
@@ -902,76 +669,28 @@ function filterServicesByDateRange(fromDate, toDate) {
  */
 function filterServicesByMonth(month, year) {
     return services.filter(service => {
-        const serviceDate = new Date(service.serviceDate || service.createdAt || service.timestamp);
+        const serviceDate = new Date(service.timestamp);
         return serviceDate.getMonth() === parseInt(month) && serviceDate.getFullYear() === parseInt(year);
     });
 }
 
 /**
- * Render service table with API data and loading states
+ * Render service table with updated action buttons - FIXED INVOICE BUTTONS
  */
 function renderServiceTable() {
     const tbody = document.getElementById('serviceTableBody');
-    if (!tbody) {
-        console.error('Service table body not found');
-        return;
-    }
+    if (!tbody) return;
     
     tbody.innerHTML = '';
-    
-    // Show loading state if currently loading
-    if (isLoading) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="10" style="text-align: center; padding: 40px;">
-                    <div class="loading-spinner"></div>
-                    <p>Loading services...</p>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
-    if (services.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="10" style="text-align: center; color: #999; padding: 40px;">
-                    <div style="margin-bottom: 10px;">🔧</div>
-                    <h3 style="margin: 10px 0;">No service requests yet</h3>
-                    <p>Click "New Service Request" to get started</p>
-                    <button class="btn" onclick="ServiceModule.refreshServices()" style="margin-top: 10px;">
-                        Refresh Services
-                    </button>
-                </td>
-            </tr>
-        `;
-        return;
-    }
     
     const currentUser = AuthModule.getCurrentUser();
     const isStaff = currentUser && currentUser.role === 'staff';
     
     // Sort services by date (newest first)
-    const sortedServices = services.sort((a, b) => {
-        const dateA = new Date(a.createdAt || a.timestamp || 0);
-        const dateB = new Date(b.createdAt || b.timestamp || 0);
-        return dateB - dateA;
-    });
+    const sortedServices = services.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     
     sortedServices.forEach((service, index) => {
         const row = document.createElement('tr');
-        
-        // Add sync indicator if item is recently updated
-        const isRecentlyUpdated = service.updatedAt && 
-            (new Date() - new Date(service.updatedAt)) < 10000; // 10 seconds
-        const syncIndicator = isRecentlyUpdated ? 
-            '<span style="color: #28a745;">●</span> ' : '';
-        
-        // Extract watch details safely
-        const watchDetails = service.watchDetails || {};
-        const watchName = service.watchName || `${watchDetails.brand || service.brand || ''} ${watchDetails.model || service.model || ''}`.trim();
-        const brand = watchDetails.brand || service.brand || '';
-        const model = watchDetails.model || service.model || '';
         
         // Create action buttons based on status and user role
         let actionButtons = '';
@@ -994,14 +713,14 @@ function renderServiceTable() {
         // Add edit/delete buttons only for non-staff users
         if (!isStaff) {
             actionButtons += `
-                <button class="btn btn-sm" onclick="ServiceModule.editService(${service.id})" 
+                <button class="btn btn-sm" onclick="editService(${service.id})" 
                     ${!AuthModule.hasPermission('service') ? 'disabled' : ''}>Edit</button>
-                <button class="btn btn-sm btn-danger" onclick="confirmTransaction('Are you sure you want to delete this service request?', () => ServiceModule.deleteService(${service.id}))" 
+                <button class="btn btn-sm btn-danger" onclick="confirmTransaction('Are you sure you want to delete this service request?', () => deleteService(${service.id}))" 
                     ${!AuthModule.hasPermission('service') ? 'disabled' : ''}>Delete</button>
             `;
         }
         
-        // Add invoice view buttons
+        // Add invoice view buttons - FIXED TO ENSURE THEY WORK
         const hasAcknowledgement = service.acknowledgementGenerated;
         const hasCompletionInvoice = service.completionInvoiceGenerated && service.status === 'completed';
         
@@ -1020,224 +739,43 @@ function renderServiceTable() {
         // Get customer mobile number
         const customer = window.CustomerModule ? CustomerModule.getCustomerById(service.customerId) : null;
         const customerMobile = customer ? customer.phone : 'N/A';
-        const customerName = service.customerName || customer?.name || 'Unknown';
-        
-        // Format dates safely
-        const serviceDate = service.serviceDate || service.createdAt || service.timestamp;
-        const formattedDate = serviceDate ? Utils.formatDate(new Date(serviceDate)) : 'N/A';
-        const formattedTime = serviceDate ? new Date(serviceDate).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'N/A';
         
         row.innerHTML = `
             <td class="serial-number">${index + 1}</td>
-            <td>
-                ${formattedDate}
-                ${syncIndicator}
-            </td>
-            <td>${formattedTime}</td>
+            <td>${Utils.sanitizeHtml(service.date)}</td>
+            <td>${Utils.sanitizeHtml(service.time)}</td>
             <td class="customer-info">
-                <div class="customer-name">${Utils.sanitizeHtml(customerName)}</div>
+                <div class="customer-name">${Utils.sanitizeHtml(service.customerName)}</div>
                 <div class="customer-mobile">${Utils.sanitizeHtml(customerMobile)}</div>
             </td>
             <td>
-                <strong>${Utils.sanitizeHtml(watchName || 'Unknown Watch')}</strong><br>
-                <small>${Utils.sanitizeHtml(brand)} ${Utils.sanitizeHtml(model)}</small>
+                <strong>${Utils.sanitizeHtml(service.watchName)}</strong><br>
+                <small>${Utils.sanitizeHtml(service.brand)} ${Utils.sanitizeHtml(service.model)}</small>
             </td>
             <td>
                 <small>
-                    <strong>Dial:</strong> ${Utils.sanitizeHtml(watchDetails.dialColor || service.dialColor || 'N/A')}<br>
-                    <strong>Movement:</strong> ${Utils.sanitizeHtml(watchDetails.movementNo || service.movementNo || 'N/A')}<br>
-                    <strong>Gender:</strong> ${Utils.sanitizeHtml(watchDetails.gender || service.gender || 'N/A')}<br>
-                    <strong>Case:</strong> ${Utils.sanitizeHtml(watchDetails.caseType || service.caseType || 'N/A')}<br>
-                    <strong>Strap:</strong> ${Utils.sanitizeHtml(watchDetails.strapType || service.strapType || 'N/A')}
+                    <strong>Dial:</strong> ${Utils.sanitizeHtml(service.dialColor)}<br>
+                    <strong>Movement:</strong> ${Utils.sanitizeHtml(service.movementNo)}<br>
+                    <strong>Gender:</strong> ${Utils.sanitizeHtml(service.gender)}<br>
+                    <strong>Case:</strong> ${Utils.sanitizeHtml(service.caseType)}<br>
+                    <strong>Strap:</strong> ${Utils.sanitizeHtml(service.strapType)}
                 </small>
             </td>
-            <td>${Utils.sanitizeHtml(service.issue || 'No description')}</td>
-            <td><span class="status ${service.status || 'pending'}">${service.status || 'pending'}</span></td>
-            <td>${Utils.formatCurrency(service.actualCost || service.estimatedCost || service.cost || 0)}</td>
+            <td>${Utils.sanitizeHtml(service.issue)}</td>
+            <td><span class="status ${service.status}">${service.status}</span></td>
+            <td>${Utils.formatCurrency(service.cost)}</td>
             <td>${actionButtons}</td>
         `;
         tbody.appendChild(row);
     });
-    
-    console.log('Service table rendered successfully with API data');
-    
-    // Update sync status
-    updateSyncStatus();
 }
 
 /**
- * Update sync status display
+ * Initialize service module
  */
-function updateSyncStatus() {
-    const syncStatus = document.getElementById('serviceSyncStatus');
-    if (syncStatus && lastSyncTime) {
-        const timeAgo = getTimeAgo(lastSyncTime);
-        syncStatus.textContent = `Last synced: ${timeAgo}`;
-        syncStatus.style.color = (new Date() - lastSyncTime) > 300000 ? '#dc3545' : '#28a745'; // Red if >5 min
-    }
-}
-
-/**
- * Get time ago string
- */
-function getTimeAgo(date) {
-    const seconds = Math.floor((new Date() - date) / 1000);
-    
-    if (seconds < 60) return 'just now';
-    if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)} hr ago`;
-    return `${Math.floor(seconds / 86400)} days ago`;
-}
-
-/**
- * Export services data
- */
-async function exportServices() {
-    try {
-        showLoadingState('export');
-        
-        const response = await api.services.exportServices();
-        
-        if (response.success) {
-            // Create and download file
-            const csvContent = response.data.csvData;
-            const blob = new Blob([csvContent], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `services_export_${new Date().toISOString().split('T')[0]}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-            
-            Utils.showNotification('Services exported successfully!');
-            
-            if (window.logAction) {
-                logAction('Exported service data', { recordCount: response.data.recordCount });
-            }
-            
-        } else {
-            throw new Error(response.message || 'Export failed');
-        }
-        
-    } catch (error) {
-        console.error('Export error:', error);
-        Utils.showNotification('Failed to export services. Please try again.');
-    } finally {
-        hideLoadingState('export');
-    }
-}
-
-/**
- * Load sample services for offline fallback
- */
-function loadSampleServices() {
-    services = [
-        {
-            id: 1,
-            customerId: 1,
-            customerName: 'John Doe',
-            watchName: 'Rolex Submariner',
-            watchDetails: {
-                brand: 'Rolex',
-                model: 'Submariner',
-                dialColor: 'Black',
-                movementNo: '3135',
-                gender: 'Male',
-                caseType: 'Steel',
-                strapType: 'Steel'
-            },
-            issue: 'Watch not keeping time accurately',
-            estimatedCost: 5000,
-            status: 'pending',
-            createdAt: '2024-01-15T10:00:00Z',
-            acknowledgementGenerated: true
-        },
-        {
-            id: 2,
-            customerId: 2,
-            customerName: 'Jane Smith',
-            watchName: 'Omega Speedmaster',
-            watchDetails: {
-                brand: 'Omega',
-                model: 'Speedmaster',
-                dialColor: 'White',
-                movementNo: '1861',
-                gender: 'Male',
-                caseType: 'Steel',
-                strapType: 'Leather'
-            },
-            issue: 'Chronograph function not working',
-            estimatedCost: 3500,
-            status: 'in-progress',
-            createdAt: '2024-01-10T14:30:00Z',
-            acknowledgementGenerated: true
-        }
-    ];
-    nextServiceId = 3;
-    console.log('Loaded sample services for offline mode');
-}
-
-/**
- * Loading state management
- */
-function showLoadingState(context) {
-    isLoading = true;
-    const spinner = document.getElementById(`${context}Spinner`);
-    if (spinner) {
-        spinner.style.display = 'block';
-    }
-    
-    // Show loading in table if it's the main load
-    if (context === 'services') {
-        renderServiceTable();
-    }
-}
-
-function hideLoadingState(context) {
-    isLoading = false;
-    const spinner = document.getElementById(`${context}Spinner`);
-    if (spinner) {
-        spinner.style.display = 'none';
-    }
-}
-
-/**
- * Show API error with retry option
- */
-function showAPIError(message) {
-    Utils.showNotification(message + ' You can continue working offline.');
-    
-    // Log the error for debugging
-    if (window.logAction) {
-        logAction('API Error in Services: ' + message, {}, 'error');
-    }
-}
-
-/**
- * Show success message
- */
-function showSuccessMessage(message) {
-    Utils.showNotification(message);
-    
-    if (window.logAction) {
-        logAction('Service Success: ' + message);
-    }
-}
-
-/**
- * Sync with server - called periodically
- */
-async function syncWithServer() {
-    try {
-        await loadServicesFromAPI();
-        renderServiceTable();
-        console.log('Services synced with server');
-    } catch (error) {
-        console.error('Sync error:', error);
-        // Don't show error to user for background sync failures
-    }
+function initializeServices() {
+    renderServiceTable();
+    console.log('Service module initialized');
 }
 
 /**
@@ -1316,17 +854,9 @@ function loadServiceModal() {
                         <label>Issue Description:</label>
                         <textarea id="serviceIssue" rows="3" required placeholder="Describe the problem with the watch..."></textarea>
                     </div>
-                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                        <button type="button" class="btn btn-danger" onclick="closeModal('newServiceModal')">Cancel</button>
-                        <button type="submit" class="btn">Create Service Request</button>
-                    </div>
+                    <button type="submit" class="btn">Create Service Request</button>
                 </form>
             </div>
-        </div>
-        
-        <!-- Sync Status Display -->
-        <div id="serviceSyncStatus" style="position: fixed; bottom: 60px; right: 20px; background: #f8f9fa; padding: 8px 12px; border-radius: 4px; font-size: 12px; color: #666; border: 1px solid #dee2e6; display: none;">
-            Checking sync status...
         </div>
     `;
     
@@ -1337,31 +867,10 @@ function loadServiceModal() {
     }
 }
 
-/**
- * Setup automatic sync
- */
-function setupAutoSync() {
-    // Sync every 5 minutes
-    setInterval(syncWithServer, 5 * 60 * 1000);
-    
-    // Update sync status every 30 seconds
-    setInterval(updateSyncStatus, 30 * 1000);
-    
-    // Show sync status initially
-    setTimeout(() => {
-        const syncStatus = document.getElementById('serviceSyncStatus');
-        if (syncStatus) {
-            syncStatus.style.display = 'block';
-            updateSyncStatus();
-        }
-    }, 2000);
-}
-
 // Auto-load modal when module loads
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         loadServiceModal();
-        setupAutoSync();
         if (window.ServiceModule) {
             ServiceModule.initializeServices();
         }
@@ -1376,10 +885,6 @@ window.closeEditServiceModal = closeEditServiceModal;
 
 // Export functions for global use
 window.ServiceModule = {
-    // Core functions
-    initializeServices,
-    loadServicesFromAPI,
-    refreshServices,
     openNewServiceModal,
     addNewService,
     updateServiceStatus,
@@ -1388,24 +893,14 @@ window.ServiceModule = {
     showServiceCompletionModal,
     completeService,
     deleteService,
-    
-    // Invoice functions
     viewServiceAcknowledgement,
     viewServiceCompletionInvoice,
-    
-    // Utility functions
     searchServices,
     renderServiceTable,
-    exportServices,
-    syncWithServer,
-    
-    // Stats functions
     getServiceStats,
     getIncompleteServices,
     filterServicesByDateRange,
     filterServicesByMonth,
-    
-    // Data access for other modules
-    services
+    initializeServices,
+    services // For access by other modules
 };
-window.updateServiceStatus = updateServiceStatus;

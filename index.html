@@ -331,281 +331,81 @@
             </div>
         </div>
         
-        <!-- Footer Section -->
+        <!-- Footer Section - NEW -->
         <div class="footer">
             <p>Designed & Developed by <a href="#">PULSEWARE</a>❤</p>
         </div>
     </div>
     
-    <!-- ============== MODALS SECTION ============== -->
-    
-    <!-- Add Customer Modal -->
-    <div id="addCustomerModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('addCustomerModal')">&times;</span>
-            <h2>Add New Customer</h2>
-            <form onsubmit="CustomerModule.addNewCustomer(event)">
-                <div class="form-group">
-                    <label>Name:</label>
-                    <input type="text" id="customerName" required placeholder="Enter customer name">
-                </div>
-                <div class="form-group">
-                    <label>Email:</label>
-                    <input type="email" id="customerEmail" required placeholder="Enter email address">
-                </div>
-                <div class="form-group">
-                    <label>Phone:</label>
-                    <input type="tel" id="customerPhone" required placeholder="Enter phone number">
-                </div>
-                <div class="form-group">
-                    <label>Address:</label>
-                    <textarea id="customerAddress" rows="3" placeholder="Enter address (optional)"></textarea>
-                </div>
-                <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                    <button type="button" class="btn btn-danger" onclick="closeModal('addCustomerModal')">Cancel</button>
-                    <button type="submit" class="btn">Add Customer</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- New Sale Modal -->
-    <div id="newSaleModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('newSaleModal')">&times;</span>
-            <h2>New Sale</h2>
-            <form onsubmit="SalesCoreModule.addNewSale(event)">
-                <div class="form-group">
-                    <label>Customer:</label>
-                    <select id="saleCustomer" required>
-                        <option value="">Select Customer</option>
-                    </select>
-                </div>
-                
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Item Code (Optional):</label>
-                        <input type="text" id="saleWatchCode" placeholder="Enter item code" onchange="searchWatchByCode()">
-                        <small>Enter code to auto-select item</small>
-                    </div>
-                    <div class="form-group">
-                        <label>Select Item:</label>
-                        <select id="saleWatch" required onchange="updateSalePrice()">
-                            <option value="">Select Item</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="grid grid-3">
-                    <div class="form-group">
-                        <label>Price (₹):</label>
-                        <input type="number" id="salePrice" required min="0" step="0.01" onchange="updateCalculationDisplay()">
-                    </div>
-                    <div class="form-group">
-                        <label>Quantity:</label>
-                        <input type="number" id="saleQuantity" value="1" required min="1" onchange="updateCalculationDisplay()">
-                    </div>
-                    <div class="form-group">
-                        <label>Payment Method:</label>
-                        <select id="salePaymentMethod" required>
-                            <option value="">Select Payment</option>
-                            <option value="Cash">Cash</option>
-                            <option value="Card">Card</option>
-                            <option value="UPI">UPI</option>
-                            <option value="Bank Transfer">Bank Transfer</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Discount Type:</label>
-                        <select id="saleDiscountType" onchange="updateCalculationDisplay()">
-                            <option value="">No Discount</option>
-                            <option value="percentage">Percentage (%)</option>
-                            <option value="amount">Fixed Amount (₹)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Discount Value:</label>
-                        <input type="number" id="saleDiscountValue" min="0" step="0.01" onchange="updateCalculationDisplay()">
-                    </div>
-                </div>
-                
-                <!-- Calculation Display -->
-                <div class="calculation-display" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #dee2e6;">
-                    <div class="grid grid-3">
-                        <div>
-                            <label>Subtotal:</label>
-                            <div id="saleSubtotal" style="font-weight: bold; color: #1a237e;">₹0</div>
+<!-- UPDATED Revenue Analytics Modal -->
+            <div id="revenueAnalyticsModal" class="modal">
+                <div class="modal-content">
+                    <span class="close" onclick="closeModal('revenueAnalyticsModal')">&times;</span>
+                    <h2>Revenue Analytics</h2>
+                    <div class="filter-controls">
+                        <div class="grid grid-2">
+                            <div class="form-group">
+                                <label>Filter Type:</label>
+                                <select id="revenueFilterType" onchange="toggleRevenueFilterInputs()">
+                                    <option value="all">All Transactions</option>
+                                    <option value="dateRange">Date Range</option>
+                                    <option value="monthly">Monthly</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Revenue Type:</label>
+                                <select id="revenueTypeFilter" onchange="applyRevenueFilter()">
+                                    <option value="all">All Revenue</option>
+                                    <option value="sales">Sales Only</option>
+                                    <option value="services">Services Only</option>
+                                </select>
+                            </div>
                         </div>
-                        <div>
-                            <label>Discount:</label>
-                            <div id="saleDiscountAmount" style="font-weight: bold; color: #dc3545;">₹0</div>
+                        <div class="form-group" id="revenueYearGroup">
+                            <label>Year:</label>
+                            <select id="revenueYear"></select>
                         </div>
-                        <div>
-                            <label>Total Amount:</label>
-                            <div id="saleTotalAmount" style="font-weight: bold; color: #28a745; font-size: 1.1em;">₹0</div>
+                        <div class="grid grid-2" id="revenueDateRangeInputs" style="display: none;">
+                            <div class="form-group">
+                                <label>From Date:</label>
+                                <input type="date" id="revenueFromDate">
+                            </div>
+                            <div class="form-group">
+                                <label>To Date:</label>
+                                <input type="date" id="revenueToDate">
+                            </div>
                         </div>
+                        <div class="form-group" id="revenueMonthGroup" style="display: none;">
+                            <label>Month:</label>
+                            <select id="revenueMonth">
+                                <option value="0">January</option>
+                                <option value="1">February</option>
+                                <option value="2">March</option>
+                                <option value="3">April</option>
+                                <option value="4">May</option>
+                                <option value="5">June</option>
+                                <option value="6">July</option>
+                                <option value="7">August</option>
+                                <option value="8">September</option>
+                                <option value="9">October</option>
+                                <option value="10">November</option>
+                                <option value="11">December</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" id="includeExpenses" onchange="applyRevenueFilter()">
+                                Include Expenses
+                            </label>
+                        </div>
+                        <button class="btn" onclick="applyRevenueFilter()">Apply Filter</button>
+                        <button class="btn btn-danger" onclick="resetRevenueFilter()">Reset</button>
+                    </div>
+                    <div id="revenueFilterResults">
+                        <!-- Results will be displayed here -->
                     </div>
                 </div>
-                
-                <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                    <button type="button" class="btn btn-danger" onclick="closeModal('newSaleModal')">Cancel</button>
-                    <button type="submit" class="btn btn-success">Record Sale</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- New Service Modal -->
-    <div id="newServiceModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('newServiceModal')">&times;</span>
-            <h2>New Service Request</h2>
-            <form onsubmit="ServiceModule.addNewService(event)">
-                <div class="form-group">
-                    <label>Customer:</label>
-                    <select id="serviceCustomer" required>
-                        <option value="">Select Customer</option>
-                    </select>
-                </div>
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Watch Brand:</label>
-                        <input type="text" id="serviceBrand" required placeholder="e.g., Rolex, Omega">
-                    </div>
-                    <div class="form-group">
-                        <label>Watch Model:</label>
-                        <input type="text" id="serviceModel" required placeholder="e.g., Submariner, Speedmaster">
-                    </div>
-                </div>
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Dial Colour:</label>
-                        <input type="text" id="serviceDialColor" required placeholder="e.g., Black, White, Blue">
-                    </div>
-                    <div class="form-group">
-                        <label>Movement No:</label>
-                        <input type="text" id="serviceMovementNo" required placeholder="e.g., 3135, 1861">
-                    </div>
-                </div>
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Gender:</label>
-                        <select id="serviceGender" required>
-                            <option value="">Select Gender</option>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Case Material:</label>
-                        <select id="serviceCase" required>
-                            <option value="">Select Case</option>
-                            <option value="Steel">Steel</option>
-                            <option value="Gold Tone">Gold Tone</option>
-                            <option value="Fiber">Fiber</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Strap Material:</label>
-                        <select id="serviceStrap" required>
-                            <option value="">Select Strap</option>
-                            <option value="Leather">Leather</option>
-                            <option value="Fiber">Fiber</option>
-                            <option value="Steel">Steel</option>
-                            <option value="Gold Plated">Gold Plated</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Estimated Cost (₹):</label>
-                        <input type="number" id="serviceCost" required min="0" step="0.01">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Issue Description:</label>
-                    <textarea id="serviceIssue" rows="3" required placeholder="Describe the problem with the watch..."></textarea>
-                </div>
-                <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                    <button type="button" class="btn btn-danger" onclick="closeModal('newServiceModal')">Cancel</button>
-                    <button type="submit" class="btn">Create Service Request</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Revenue Analytics Modal -->
-    <div id="revenueAnalyticsModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal('revenueAnalyticsModal')">&times;</span>
-            <h2>Revenue Analytics</h2>
-            <div class="filter-controls">
-                <div class="grid grid-2">
-                    <div class="form-group">
-                        <label>Filter Type:</label>
-                        <select id="revenueFilterType" onchange="toggleRevenueFilterInputs()">
-                            <option value="all">All Transactions</option>
-                            <option value="dateRange">Date Range</option>
-                            <option value="monthly">Monthly</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Revenue Type:</label>
-                        <select id="revenueTypeFilter" onchange="applyRevenueFilter()">
-                            <option value="all">All Revenue</option>
-                            <option value="sales">Sales Only</option>
-                            <option value="services">Services Only</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group" id="revenueYearGroup">
-                    <label>Year:</label>
-                    <select id="revenueYear"></select>
-                </div>
-                <div class="grid grid-2" id="revenueDateRangeInputs" style="display: none;">
-                    <div class="form-group">
-                        <label>From Date:</label>
-                        <input type="date" id="revenueFromDate">
-                    </div>
-                    <div class="form-group">
-                        <label>To Date:</label>
-                        <input type="date" id="revenueToDate">
-                    </div>
-                </div>
-                <div class="form-group" id="revenueMonthGroup" style="display: none;">
-                    <label>Month:</label>
-                    <select id="revenueMonth">
-                        <option value="0">January</option>
-                        <option value="1">February</option>
-                        <option value="2">March</option>
-                        <option value="3">April</option>
-                        <option value="4">May</option>
-                        <option value="5">June</option>
-                        <option value="6">July</option>
-                        <option value="7">August</option>
-                        <option value="8">September</option>
-                        <option value="9">October</option>
-                        <option value="10">November</option>
-                        <option value="11">December</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label style="display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" id="includeExpenses" onchange="applyRevenueFilter()">
-                        Include Expenses
-                    </label>
-                </div>
-                <button class="btn" onclick="applyRevenueFilter()">Apply Filter</button>
-                <button class="btn btn-danger" onclick="resetRevenueFilter()">Reset</button>
             </div>
-            <div id="revenueFilterResults">
-                <!-- Results will be displayed here -->
-            </div>
-        </div>
-    </div>
 
     <!-- Invoice Preview Modal -->
     <div id="invoicePreviewModal" class="modal">
@@ -618,7 +418,7 @@
         </div>
     </div>
 
-    <!-- Include all other modal templates -->
+    <!-- Include all modal templates -->
     <div id="modals-container"></div>
 
     <!-- JavaScript Files -->
@@ -635,31 +435,30 @@
     <script src="js/invoices.js"></script>
     <script src="js/app-core.js"></script>
     <script src="js/app-extended.js"></script>
-    <script src="js/api-utils.js"></script>
 
     <script type="module">
-        // Import the functions you need from the SDKs you need
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-analytics.js";
-        // TODO: Add SDKs for Firebase products that you want to use
-        // https://firebase.google.com/docs/web/setup#available-libraries
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
 
-        // Your web app's Firebase configuration
-        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-        const firebaseConfig = {
-            apiKey: "AIzaSyAoxPLdv7yFr_a7BwUKIJ7BNkVl7MzqaxY",
-            authDomain: "zedsonwatchcraft-93d67.firebaseapp.com",
-            projectId: "zedsonwatchcraft-93d67",
-            storageBucket: "zedsonwatchcraft-93d67.firebasestorage.app",
-            messagingSenderId: "20067888601",
-            appId: "1:20067888601:web:b96f6580e0e2aa7ccb3dc8",
-            measurementId: "G-0DGDMVLLWC"
-        };
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyAoxPLdv7yFr_a7BwUKIJ7BNkVl7MzqaxY",
+    authDomain: "zedsonwatchcraft-93d67.firebaseapp.com",
+    projectId: "zedsonwatchcraft-93d67",
+    storageBucket: "zedsonwatchcraft-93d67.firebasestorage.app",
+    messagingSenderId: "20067888601",
+    appId: "1:20067888601:web:b96f6580e0e2aa7ccb3dc8",
+    measurementId: "G-0DGDMVLLWC"
+  };
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app);
-    </script>
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+</script>
 
 </body>
 </html>
