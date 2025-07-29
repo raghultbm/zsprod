@@ -1,29 +1,8 @@
-// ZEDSON WATCHCRAFT - Customer Management Module with Net Value
+// ZEDSON WATCHCRAFT - Customer Management Module (Fixed)
 
 /**
- * Customer Management System with Net Value calculation and Staff restrictions
+ * Customer Management System - Fixed for undefined variables
  */
-
-// Customer database
-async function addCustomerToDB(customerData) {
-    const stmt = db.prepare(`
-        INSERT INTO customers (name, email, phone, address) 
-        VALUES (?, ?, ?, ?)
-    `);
-    stmt.run([customerData.name, customerData.email, customerData.phone, customerData.address]);
-    stmt.free();
-    saveDB();
-}
-
-async function getCustomersFromDB() {
-    const stmt = db.prepare("SELECT * FROM customers ORDER BY name");
-    const customers = [];
-    while (stmt.step()) {
-        customers.push(stmt.getAsObject());
-    }
-    stmt.free();
-    return customers;
-}
 
 /**
  * Calculate customer's net value from sales and services
@@ -33,15 +12,15 @@ function calculateCustomerNetValue(customerId) {
     let servicesValue = 0;
     
     // Calculate sales value
-    if (window.SalesModule && SalesModule.sales) {
-        salesValue = SalesModule.sales
+    if (window.SalesModule && window.SalesModule.sales) {
+        salesValue = window.SalesModule.sales
             .filter(sale => sale.customerId === customerId)
             .reduce((sum, sale) => sum + sale.totalAmount, 0);
     }
     
     // Calculate services value (completed services only)
-    if (window.ServiceModule && ServiceModule.services) {
-        servicesValue = ServiceModule.services
+    if (window.ServiceModule && window.ServiceModule.services) {
+        servicesValue = window.ServiceModule.services
             .filter(service => service.customerId === customerId && service.status === 'completed')
             .reduce((sum, service) => sum + service.cost, 0);
     }
@@ -53,7 +32,9 @@ function calculateCustomerNetValue(customerId) {
  * Update customer's net value
  */
 function updateCustomerNetValue(customerId) {
-    const customer = customers.find(c => c.id === customerId);
+    if (!window.customers) return;
+    
+    const customer = window.customers.find(c => c.id === customerId);
     if (customer) {
         customer.netValue = calculateCustomerNetValue(customerId);
         renderCustomerTable();
@@ -64,7 +45,9 @@ function updateCustomerNetValue(customerId) {
  * Update all customers' net values
  */
 function updateAllCustomersNetValue() {
-    customers.forEach(customer => {
+    if (!window.customers) return;
+    
+    window.customers.forEach(customer => {
         customer.netValue = calculateCustomerNetValue(customer.id);
     });
     renderCustomerTable();
@@ -74,7 +57,7 @@ function updateAllCustomersNetValue() {
  * Open Add Customer Modal
  */
 function openAddCustomerModal() {
-    if (!AuthModule.hasPermission('customers')) {
+    if (!AuthModule || !AuthModule.hasPermission('customers')) {
         Utils.showNotification('You do not have permission to add customers.');
         return;
     }
@@ -82,7 +65,13 @@ function openAddCustomerModal() {
     if (window.logAction) {
         logAction('Opened add customer modal');
     }
-    document.getElementById('addCustomerModal').style.display = 'block';
+    
+    const modal = document.getElementById('addCustomerModal');
+    if (modal) {
+        modal.style.display = 'block';
+    } else {
+        console.error('Add customer modal not found');
+    }
 }
 
 /**
@@ -91,9 +80,17 @@ function openAddCustomerModal() {
 function addNewCustomer(event) {
     event.preventDefault();
     
-    if (!AuthModule.hasPermission('customers')) {
+    if (!AuthModule || !AuthModule.hasPermission('customers')) {
         Utils.showNotification('You do not have permission to add customers.');
         return;
+    }
+
+    // Ensure customers array exists
+    if (!window.customers) {
+        window.customers = [];
+    }
+    if (!window.nextCustomerId) {
+        window.nextCustomerId = 1;
     }
 
     // Get form data
@@ -121,33 +118,33 @@ function addNewCustomer(event) {
     }
 
     // Check if email already exists
-    if (customers.find(c => c.email === email)) {
+    if (window.customers.find(c => c.email === email)) {
         Utils.showNotification('A customer with this email already exists');
         return;
     }
 
     // Check if phone already exists
-    if (customers.find(c => c.phone === phone)) {
+    if (window.customers.find(c => c.phone === phone)) {
         Utils.showNotification('A customer with this phone number already exists');
         return;
     }
 
     // Create new customer object
     const newCustomer = {
-        id: nextCustomerId++,
+        id: window.nextCustomerId++,
         name: name,
         email: email,
         phone: phone,
         address: address,
         purchases: 0,
         serviceCount: 0,
-        netValue: 0, // Initial net value is 0
+        netValue: 0,
         addedDate: Utils.formatDate(new Date()),
-        addedBy: AuthModule.getCurrentUser().username
+        addedBy: AuthModule.getCurrentUser() ? AuthModule.getCurrentUser().username : 'admin'
     };
 
     // Add to customers array
-    customers.push(newCustomer);
+    window.customers.push(newCustomer);
     
     // Log action
     if (window.logCustomerAction) {
@@ -156,7 +153,9 @@ function addNewCustomer(event) {
     
     // Update display
     renderCustomerTable();
-    updateDashboard();
+    if (window.updateDashboard) {
+        updateDashboard();
+    }
     
     // Close modal and reset form
     closeModal('addCustomerModal');
@@ -177,12 +176,17 @@ function editCustomer(customerId) {
         return;
     }
     
-    if (!AuthModule.hasPermission('customers')) {
+    if (!AuthModule || !AuthModule.hasPermission('customers')) {
         Utils.showNotification('You do not have permission to edit customers.');
         return;
     }
 
-    const customer = customers.find(c => c.id === customerId);
+    if (!window.customers) {
+        Utils.showNotification('No customers found.');
+        return;
+    }
+
+    const customer = window.customers.find(c => c.id === customerId);
     if (!customer) {
         Utils.showNotification('Customer not found.');
         return;
@@ -192,7 +196,7 @@ function editCustomer(customerId) {
         logAction('Opened edit modal for customer: ' + customer.name);
     }
 
-    // Create edit modal with Net Value display (read-only)
+    // Create edit modal
     const editModal = document.createElement('div');
     editModal.className = 'modal';
     editModal.id = 'editCustomerModal';
@@ -201,7 +205,7 @@ function editCustomer(customerId) {
         <div class="modal-content">
             <span class="close" onclick="closeModal('editCustomerModal')">&times;</span>
             <h2>Edit Customer</h2>
-            <form onsubmit="CustomerModule.updateCustomer(event, ${customerId})">
+            <form onsubmit="updateCustomer(event, ${customerId})">
                 <div class="form-group">
                     <label>Name:</label>
                     <input type="text" id="editCustomerName" value="${customer.name}" required>
@@ -239,7 +243,9 @@ function editCustomer(customerId) {
 function updateCustomer(event, customerId) {
     event.preventDefault();
     
-    const customer = customers.find(c => c.id === customerId);
+    if (!window.customers) return;
+    
+    const customer = window.customers.find(c => c.id === customerId);
     if (!customer) {
         Utils.showNotification('Customer not found.');
         return;
@@ -269,13 +275,13 @@ function updateCustomer(event, customerId) {
     }
 
     // Check if email already exists (excluding current customer)
-    if (customers.find(c => c.email === email && c.id !== customerId)) {
+    if (window.customers.find(c => c.email === email && c.id !== customerId)) {
         Utils.showNotification('A customer with this email already exists');
         return;
     }
 
     // Check if phone already exists (excluding current customer)
-    if (customers.find(c => c.phone === phone && c.id !== customerId)) {
+    if (window.customers.find(c => c.phone === phone && c.id !== customerId)) {
         Utils.showNotification('A customer with this phone number already exists');
         return;
     }
@@ -298,7 +304,9 @@ function updateCustomer(event, customerId) {
     customer.address = address;
 
     renderCustomerTable();
-    updateDashboard();
+    if (window.updateDashboard) {
+        updateDashboard();
+    }
     closeModal('editCustomerModal');
     document.getElementById('editCustomerModal').remove();
     Utils.showNotification('Customer updated successfully!');
@@ -316,12 +324,17 @@ function deleteCustomer(customerId) {
         return;
     }
     
-    if (!AuthModule.hasPermission('customers')) {
+    if (!AuthModule || !AuthModule.hasPermission('customers')) {
         Utils.showNotification('You do not have permission to delete customers.');
         return;
     }
 
-    const customer = customers.find(c => c.id === customerId);
+    if (!window.customers) {
+        Utils.showNotification('No customers found.');
+        return;
+    }
+
+    const customer = window.customers.find(c => c.id === customerId);
     if (!customer) {
         Utils.showNotification('Customer not found.');
         return;
@@ -333,9 +346,11 @@ function deleteCustomer(customerId) {
             logCustomerAction('Deleted customer: ' + customer.name, customer);
         }
         
-        customers = customers.filter(c => c.id !== customerId);
+        window.customers = window.customers.filter(c => c.id !== customerId);
         renderCustomerTable();
-        updateDashboard();
+        if (window.updateDashboard) {
+            updateDashboard();
+        }
         Utils.showNotification('Customer deleted successfully!');
     }
 }
@@ -344,7 +359,9 @@ function deleteCustomer(customerId) {
  * Update customer purchase count and net value
  */
 function incrementCustomerPurchases(customerId) {
-    const customer = customers.find(c => c.id === customerId);
+    if (!window.customers) return;
+    
+    const customer = window.customers.find(c => c.id === customerId);
     if (customer) {
         customer.purchases++;
         updateCustomerNetValue(customerId);
@@ -355,7 +372,9 @@ function incrementCustomerPurchases(customerId) {
  * Update customer service count and net value
  */
 function incrementCustomerServices(customerId) {
-    const customer = customers.find(c => c.id === customerId);
+    if (!window.customers) return;
+    
+    const customer = window.customers.find(c => c.id === customerId);
     if (customer) {
         customer.serviceCount++;
         updateCustomerNetValue(customerId);
@@ -366,7 +385,9 @@ function incrementCustomerServices(customerId) {
  * Decrease customer purchase count and net value
  */
 function decrementCustomerPurchases(customerId) {
-    const customer = customers.find(c => c.id === customerId);
+    if (!window.customers) return;
+    
+    const customer = window.customers.find(c => c.id === customerId);
     if (customer) {
         customer.purchases = Math.max(0, customer.purchases - 1);
         updateCustomerNetValue(customerId);
@@ -377,7 +398,9 @@ function decrementCustomerPurchases(customerId) {
  * Decrease customer service count and net value
  */
 function decrementCustomerServices(customerId) {
-    const customer = customers.find(c => c.id === customerId);
+    if (!window.customers) return;
+    
+    const customer = window.customers.find(c => c.id === customerId);
     if (customer) {
         customer.serviceCount = Math.max(0, customer.serviceCount - 1);
         updateCustomerNetValue(customerId);
@@ -388,7 +411,8 @@ function decrementCustomerServices(customerId) {
  * Get customer by ID
  */
 function getCustomerById(customerId) {
-    return customers.find(c => c.id === customerId);
+    if (!window.customers) return null;
+    return window.customers.find(c => c.id === customerId);
 }
 
 /**
@@ -414,12 +438,12 @@ function searchCustomers(query) {
  * Initiate sale from customer
  */
 function initiateSaleFromCustomer(customerId) {
-    if (!AuthModule.hasPermission('sales')) {
+    if (!AuthModule || !AuthModule.hasPermission('sales')) {
         Utils.showNotification('You do not have permission to create sales.');
         return;
     }
     
-    const customer = customers.find(c => c.id === customerId);
+    const customer = getCustomerById(customerId);
     if (window.logAction && customer) {
         logAction('Initiated sale from customer profile: ' + customer.name);
     }
@@ -429,12 +453,13 @@ function initiateSaleFromCustomer(customerId) {
     
     // Update nav button state
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelectorAll('.nav-btn')[3].classList.add('active'); // Sales is 4th button
+    const salesBtn = document.querySelector('.nav-btn[onclick*="sales"]');
+    if (salesBtn) salesBtn.classList.add('active');
     
     // Open sale modal with pre-selected customer
     setTimeout(() => {
-        if (window.SalesModule && window.SalesModule.openNewSaleModal) {
-            SalesModule.openNewSaleModal();
+        if (window.openNewSaleModal) {
+            openNewSaleModal();
             const customerSelect = document.getElementById('saleCustomer');
             if (customerSelect) {
                 customerSelect.value = customerId;
@@ -449,12 +474,12 @@ function initiateSaleFromCustomer(customerId) {
  * Initiate service from customer
  */
 function initiateServiceFromCustomer(customerId) {
-    if (!AuthModule.hasPermission('service')) {
+    if (!AuthModule || !AuthModule.hasPermission('service')) {
         Utils.showNotification('You do not have permission to create service requests.');
         return;
     }
 
-    const customer = customers.find(c => c.id === customerId);
+    const customer = getCustomerById(customerId);
     if (window.logAction && customer) {
         logAction('Initiated service from customer profile: ' + customer.name);
     }
@@ -464,12 +489,13 @@ function initiateServiceFromCustomer(customerId) {
     
     // Update nav button state
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelectorAll('.nav-btn')[4].classList.add('active'); // Service is 5th button
+    const serviceBtn = document.querySelector('.nav-btn[onclick*="service"]');
+    if (serviceBtn) serviceBtn.classList.add('active');
     
     // Open service modal with pre-selected customer
     setTimeout(() => {
-        if (window.ServiceModule && window.ServiceModule.openNewServiceModal) {
-            ServiceModule.openNewServiceModal();
+        if (window.openNewServiceModal) {
+            openNewServiceModal();
             const customerSelect = document.getElementById('serviceCustomer');
             if (customerSelect) {
                 customerSelect.value = customerId;
@@ -481,7 +507,7 @@ function initiateServiceFromCustomer(customerId) {
 }
 
 /**
- * Render customer table with Net Value column and updated action buttons
+ * Render customer table
  */
 function renderCustomerTable() {
     const tbody = document.getElementById('customerTableBody');
@@ -490,23 +516,39 @@ function renderCustomerTable() {
         return;
     }
     
-    const currentUser = AuthModule.getCurrentUser();
-    const isStaff = currentUser && currentUser.role === 'staff';
+    // Ensure customers array exists
+    if (!window.customers) {
+        window.customers = [];
+    }
     
     tbody.innerHTML = '';
     
-    customers.forEach((customer, index) => {
+    if (window.customers.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align: center; color: #999; padding: 20px;">
+                    No customers yet. Click "Add Customer" to get started.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    const currentUser = AuthModule.getCurrentUser();
+    const isStaff = currentUser && currentUser.role === 'staff';
+    
+    window.customers.forEach((customer, index) => {
         const row = document.createElement('tr');
         
         let actionButtons = '';
         
         // Sale and Service buttons (available for all users)
         actionButtons += `
-            <button class="btn" onclick="initiateSaleFromCustomer(${customer.id})" 
+            <button class="btn btn-sm" onclick="initiateSaleFromCustomer(${customer.id})" 
                 title="New Sale" ${!AuthModule.hasPermission('sales') ? 'disabled' : ''}>
                 Sale
             </button>
-            <button class="btn" onclick="initiateServiceFromCustomer(${customer.id})" 
+            <button class="btn btn-sm" onclick="initiateServiceFromCustomer(${customer.id})" 
                 title="New Service Request" ${!AuthModule.hasPermission('service') ? 'disabled' : ''}>
                 Service
             </button>
@@ -515,19 +557,18 @@ function renderCustomerTable() {
         // Add edit/delete buttons only for non-staff users
         if (!isStaff) {
             actionButtons = `
-                <button class="btn" onclick="editCustomer(${customer.id})" 
+                <button class="btn btn-sm" onclick="editCustomer(${customer.id})" 
                     title="Edit Customer" ${!AuthModule.hasPermission('customers') ? 'disabled' : ''}>
                     Edit
                 </button>
                 ${actionButtons}
-                <button class="btn btn-danger" onclick="deleteCustomer(${customer.id})"
+                <button class="btn btn-sm btn-danger" onclick="deleteCustomer(${customer.id})"
                     ${!AuthModule.hasPermission('customers') ? 'disabled' : ''}>
                     Delete
                 </button>
             `;
         }
         
-        // Creating 8 columns: S.No, Name, Email, Phone, Purchases, Services, Net Value, Actions
         row.innerHTML = `
             <td class="serial-number">${index + 1}</td>
             <td>${Utils.sanitizeHtml(customer.name)}</td>
@@ -541,18 +582,28 @@ function renderCustomerTable() {
         tbody.appendChild(row);
     });
     
-    console.log('Customer table rendered successfully with Net Value column');
+    console.log('Customer table rendered successfully');
 }
 
 /**
  * Get customer statistics
  */
 function getCustomerStats() {
-    const totalCustomers = customers.length;
-    const activeCustomers = customers.filter(c => c.purchases > 0 || c.serviceCount > 0).length;
-    const totalNetValue = customers.reduce((sum, c) => sum + c.netValue, 0);
+    if (!window.customers) {
+        return {
+            totalCustomers: 0,
+            activeCustomers: 0,
+            totalNetValue: 0,
+            averageNetValue: 0,
+            topCustomers: []
+        };
+    }
+    
+    const totalCustomers = window.customers.length;
+    const activeCustomers = window.customers.filter(c => c.purchases > 0 || c.serviceCount > 0).length;
+    const totalNetValue = window.customers.reduce((sum, c) => sum + c.netValue, 0);
     const averageNetValue = totalCustomers > 0 ? totalNetValue / totalCustomers : 0;
-    const topCustomers = customers
+    const topCustomers = window.customers
         .sort((a, b) => b.netValue - a.netValue)
         .slice(0, 5);
     
@@ -573,9 +624,12 @@ function populateCustomerDropdown(selectId) {
     if (!select) return;
     
     select.innerHTML = '<option value="">Select Customer</option>';
-    customers.forEach(customer => {
-        select.innerHTML += '<option value="' + customer.id + '">' + Utils.sanitizeHtml(customer.name) + '</option>';
-    });
+    
+    if (window.customers) {
+        window.customers.forEach(customer => {
+            select.innerHTML += '<option value="' + customer.id + '">' + Utils.sanitizeHtml(customer.name) + '</option>';
+        });
+    }
 }
 
 /**
@@ -584,10 +638,77 @@ function populateCustomerDropdown(selectId) {
 function initializeCustomers() {
     updateAllCustomersNetValue();
     renderCustomerTable();
-    console.log('Customer module initialized with Net Value calculations');
+    console.log('Customer module initialized');
 }
 
-// Export functions for global use
+/**
+ * Close modal function
+ */
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+/**
+ * Load customer modal
+ */
+function loadCustomerModal() {
+    const modalHtml = `
+        <!-- Add Customer Modal -->
+        <div id="addCustomerModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal('addCustomerModal')">&times;</span>
+                <h2>Add Customer</h2>
+                <form onsubmit="addNewCustomer(event)">
+                    <div class="form-group">
+                        <label>Name:</label>
+                        <input type="text" id="customerName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email:</label>
+                        <input type="email" id="customerEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Phone:</label>
+                        <input type="tel" id="customerPhone" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Address:</label>
+                        <textarea id="customerAddress" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="btn">Add Customer</button>
+                </form>
+            </div>
+        </div>
+    `;
+    
+    const modalsContainer = document.getElementById('modals-container');
+    if (modalsContainer) {
+        modalsContainer.innerHTML += modalHtml;
+    }
+}
+
+// Auto-load modal when module loads
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(() => {
+        loadCustomerModal();
+        initializeCustomers();
+    }, 100);
+});
+
+// Make functions globally available
+window.addNewCustomer = addNewCustomer;
+window.editCustomer = editCustomer;
+window.updateCustomer = updateCustomer;
+window.deleteCustomer = deleteCustomer;
+window.searchCustomers = searchCustomers;
+window.openAddCustomerModal = openAddCustomerModal;
+window.initiateSaleFromCustomer = initiateSaleFromCustomer;
+window.initiateServiceFromCustomer = initiateServiceFromCustomer;
+
+// Export functions for use by other modules
 window.CustomerModule = {
     openAddCustomerModal,
     addNewCustomer,
@@ -609,5 +730,5 @@ window.CustomerModule = {
     updateCustomerNetValue,
     updateAllCustomersNetValue,
     calculateCustomerNetValue,
-    customers // For access by other modules
+    customers: window.customers
 };

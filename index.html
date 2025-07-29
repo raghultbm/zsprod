@@ -117,7 +117,7 @@
                     <h2>Dashboard Overview</h2>
                     <div class="stats">
                         <div class="stat-card">
-                            <h3 id="totalWatches">3</h3>
+                            <h3 id="totalWatches">0</h3>
                             <p>Total Items</p>
                         </div>
                         <div class="stat-card clickable-stat" onclick="openRevenueAnalytics()">
@@ -129,7 +129,7 @@
                             <p>Incomplete Services</p>
                         </div>
                         <div class="stat-card">
-                            <h3 id="totalCustomers">2</h3>
+                            <h3 id="totalCustomers">0</h3>
                             <p>Total Customers</p>
                         </div>
                         <div class="stat-card">
@@ -345,81 +345,81 @@
             </div>
         </div>
         
-        <!-- Footer Section - NEW -->
+        <!-- Footer Section -->
         <div class="footer">
             <p>Designed & Developed by <a href="#">PULSEWARE</a>❤</p>
         </div>
     </div>
     
-<!-- UPDATED Revenue Analytics Modal -->
-            <div id="revenueAnalyticsModal" class="modal">
-                <div class="modal-content">
-                    <span class="close" onclick="closeModal('revenueAnalyticsModal')">&times;</span>
-                    <h2>Revenue Analytics</h2>
-                    <div class="filter-controls">
-                        <div class="grid grid-2">
-                            <div class="form-group">
-                                <label>Filter Type:</label>
-                                <select id="revenueFilterType" onchange="toggleRevenueFilterInputs()">
-                                    <option value="all">All Transactions</option>
-                                    <option value="dateRange">Date Range</option>
-                                    <option value="monthly">Monthly</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Revenue Type:</label>
-                                <select id="revenueTypeFilter" onchange="applyRevenueFilter()">
-                                    <option value="all">All Revenue</option>
-                                    <option value="sales">Sales Only</option>
-                                    <option value="services">Services Only</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-group" id="revenueYearGroup">
-                            <label>Year:</label>
-                            <select id="revenueYear"></select>
-                        </div>
-                        <div class="grid grid-2" id="revenueDateRangeInputs" style="display: none;">
-                            <div class="form-group">
-                                <label>From Date:</label>
-                                <input type="date" id="revenueFromDate">
-                            </div>
-                            <div class="form-group">
-                                <label>To Date:</label>
-                                <input type="date" id="revenueToDate">
-                            </div>
-                        </div>
-                        <div class="form-group" id="revenueMonthGroup" style="display: none;">
-                            <label>Month:</label>
-                            <select id="revenueMonth">
-                                <option value="0">January</option>
-                                <option value="1">February</option>
-                                <option value="2">March</option>
-                                <option value="3">April</option>
-                                <option value="4">May</option>
-                                <option value="5">June</option>
-                                <option value="6">July</option>
-                                <option value="7">August</option>
-                                <option value="8">September</option>
-                                <option value="9">October</option>
-                                <option value="10">November</option>
-                                <option value="11">December</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label style="display: flex; align-items: center; gap: 8px;">
-                                <input type="checkbox" id="includeExpenses" onchange="applyRevenueFilter()">
-                                Include Expenses
-                            </label>
-                        </div>
-                        <button class="btn" onclick="applyRevenueFilter()">Apply Filter</button>
-                        <button class="btn btn-danger" onclick="resetRevenueFilter()">Reset</button>
+    <!-- Revenue Analytics Modal -->
+    <div id="revenueAnalyticsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('revenueAnalyticsModal')">&times;</span>
+            <h2>Revenue Analytics</h2>
+            <div class="filter-controls">
+                <div class="grid grid-2">
+                    <div class="form-group">
+                        <label>Filter Type:</label>
+                        <select id="revenueFilterType" onchange="toggleRevenueFilterInputs()">
+                            <option value="all">All Transactions</option>
+                            <option value="dateRange">Date Range</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
                     </div>
-                    <div id="revenueFilterResults">
-                        <!-- Results will be displayed here -->
+                    <div class="form-group">
+                        <label>Revenue Type:</label>
+                        <select id="revenueTypeFilter" onchange="applyRevenueFilter()">
+                            <option value="all">All Revenue</option>
+                            <option value="sales">Sales Only</option>
+                            <option value="services">Services Only</option>
+                        </select>
                     </div>
                 </div>
+                <div class="form-group" id="revenueYearGroup">
+                    <label>Year:</label>
+                    <select id="revenueYear"></select>
+                </div>
+                <div class="grid grid-2" id="revenueDateRangeInputs" style="display: none;">
+                    <div class="form-group">
+                        <label>From Date:</label>
+                        <input type="date" id="revenueFromDate">
+                    </div>
+                    <div class="form-group">
+                        <label>To Date:</label>
+                        <input type="date" id="revenueToDate">
+                    </div>
+                </div>
+                <div class="form-group" id="revenueMonthGroup" style="display: none;">
+                    <label>Month:</label>
+                    <select id="revenueMonth">
+                        <option value="0">January</option>
+                        <option value="1">February</option>
+                        <option value="2">March</option>
+                        <option value="3">April</option>
+                        <option value="4">May</option>
+                        <option value="5">June</option>
+                        <option value="6">July</option>
+                        <option value="7">August</option>
+                        <option value="8">September</option>
+                        <option value="9">October</option>
+                        <option value="10">November</option>
+                        <option value="11">December</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="includeExpenses" onchange="applyRevenueFilter()">
+                        Include Expenses
+                    </label>
+                </div>
+                <button class="btn" onclick="applyRevenueFilter()">Apply Filter</button>
+                <button class="btn btn-danger" onclick="resetRevenueFilter()">Reset</button>
             </div>
+            <div id="revenueFilterResults">
+                <!-- Results will be displayed here -->
+            </div>
+        </div>
+    </div>
 
     <!-- Invoice Preview Modal -->
     <div id="invoicePreviewModal" class="modal">
@@ -438,11 +438,98 @@
     <!-- SQLite.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
     
-    <!-- Database Layer -->
-    <script src="js/database/db-config.js"></script>
-    <script src="js/database/migration-manager.js"></script>
-    <script src="js/database/sqlite-core.js"></script>
+    <!-- Sample Data for Testing -->
+    <script>
+        // Initialize sample data arrays
+        let watches = [
+            {
+                id: 1,
+                code: 'ROL001',
+                type: 'Watch',
+                brand: 'Rolex',
+                model: 'Submariner',
+                size: '40mm',
+                price: 850000.00,
+                quantity: 2,
+                outlet: 'Semmancheri',
+                description: 'Luxury diving watch',
+                status: 'available',
+                addedDate: new Date().toISOString(),
+                addedBy: 'admin',
+                movementHistory: []
+            },
+            {
+                id: 2,
+                code: 'OMG001',
+                type: 'Watch',
+                brand: 'Omega',
+                model: 'Speedmaster',
+                size: '42mm',
+                price: 450000.00,
+                quantity: 1,
+                outlet: 'Navalur',
+                description: 'Professional chronograph',
+                status: 'available',
+                addedDate: new Date().toISOString(),
+                addedBy: 'admin',
+                movementHistory: []
+            },
+            {
+                id: 3,
+                code: 'CAS001',
+                type: 'Watch',
+                brand: 'Casio',
+                model: 'G-Shock',
+                size: '44mm',
+                price: 15000.00,
+                quantity: 5,
+                outlet: 'Padur',
+                description: 'Sports watch',
+                status: 'available',
+                addedDate: new Date().toISOString(),
+                addedBy: 'admin',
+                movementHistory: []
+            }
+        ];
 
+        let customers = [
+            {
+                id: 1,
+                name: 'Raj Kumar',
+                email: 'raj@email.com',
+                phone: '+91-9876543210',
+                address: 'Chennai, Tamil Nadu',
+                purchases: 0,
+                serviceCount: 0,
+                netValue: 0.00,
+                addedDate: new Date().toISOString(),
+                addedBy: 'admin'
+            },
+            {
+                id: 2,
+                name: 'Priya Sharma',
+                email: 'priya@email.com',
+                phone: '+91-9876543211',
+                address: 'Mumbai, Maharashtra',
+                purchases: 0,
+                serviceCount: 0,
+                netValue: 0.00,
+                addedDate: new Date().toISOString(),
+                addedBy: 'admin'
+            }
+        ];
+
+        // Initialize counters
+        let nextWatchId = 4;
+        let nextCustomerId = 3;
+
+        // Make arrays globally available
+        window.watches = watches;
+        window.customers = customers;
+        window.nextWatchId = nextWatchId;
+        window.nextCustomerId = nextCustomerId;
+    </script>
+    
     <!-- Utility and Core JavaScript Files -->
     <script src="js/utils.js"></script>
     <script src="js/logging.js"></script>
@@ -462,34 +549,11 @@
     <script src="js/app-core.js"></script>
     <script src="js/app-extended.js"></script>
 
-    <!-- Firebase Configuration -->
-    <script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyAoxPLdv7yFr_a7BwUKIJ7BNkVl7MzqaxY",
-    authDomain: "zedsonwatchcraft-93d67.firebaseapp.com",
-    projectId: "zedsonwatchcraft-93d67",
-    storageBucket: "zedsonwatchcraft-93d67.firebasestorage.app",
-    messagingSenderId: "20067888601",
-    appId: "1:20067888601:web:b96f6580e0e2aa7ccb3dc8",
-    measurementId: "G-0DGDMVLLWC"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-</script>
-
-    <!-- Database Initialization Script -->
+    <!-- Database Initialization Script (Simplified) -->
     <script>
-        // Database initialization with UI feedback
+        // Simple database initialization
+        let db = null;
+
         async function initializeDatabase() {
             const loadingScreen = document.getElementById('dbLoadingScreen');
             const progressBar = document.getElementById('dbProgressBar');
@@ -499,7 +563,6 @@
                 // Show loading screen
                 loadingScreen.style.display = 'block';
                 
-                // Update progress
                 const updateProgress = (percent, status) => {
                     progressBar.style.width = percent + '%';
                     statusText.textContent = status;
@@ -508,6 +571,12 @@
                 updateProgress(10, 'Loading SQLite library...');
                 
                 // Wait for SQLite library to load
+                let attempts = 0;
+                while (!window.initSqlJs && attempts < 50) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    attempts++;
+                }
+                
                 if (!window.initSqlJs) {
                     throw new Error('SQLite library not loaded');
                 }
@@ -521,36 +590,27 @@
                 
                 updateProgress(50, 'Creating database connection...');
                 
-                // Wait for SQLite core to be ready
-                while (!window.SQLiteCore) {
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                }
-                
-                updateProgress(70, 'Running migrations...');
-                
-                // Initialize database
-                const success = await window.SQLiteCore.initializeDatabase();
-                
-                if (!success) {
-                    throw new Error('Database initialization failed');
+                // Try to load existing data from localStorage
+                const savedDb = localStorage.getItem('zedson_watchcraft.db');
+                if (savedDb) {
+                    const dbData = new Uint8Array(JSON.parse(savedDb));
+                    db = new window.SQL.Database(dbData);
+                    updateProgress(70, 'Loaded existing database...');
+                } else {
+                    db = new window.SQL.Database();
+                    updateProgress(70, 'Created new database...');
+                    
+                    // Create basic tables
+                    createTables();
                 }
                 
                 updateProgress(90, 'Finalizing setup...');
                 
-                // Initialize migration manager
-                if (window.MigrationManager) {
-                    const migrationManager = new MigrationManager(window.SQLiteCore);
-                    const needsMigration = await migrationManager.needsMigration();
-                    
-                    if (needsMigration) {
-                        updateProgress(95, 'Running database migrations...');
-                        await migrationManager.migrate();
-                    }
-                }
+                // Save database
+                saveDatabase();
                 
                 updateProgress(100, 'Database ready!');
                 
-                // Wait a moment then hide loading screen
                 setTimeout(() => {
                     loadingScreen.style.display = 'none';
                     console.log('✅ Database initialization completed successfully');
@@ -561,56 +621,78 @@
                 statusText.textContent = 'Database initialization failed: ' + error.message;
                 statusText.style.color = '#dc3545';
                 
-                // Hide loading screen after showing error
                 setTimeout(() => {
                     loadingScreen.style.display = 'none';
-                    alert('Database initialization failed. The application may not work properly. Please refresh the page.');
+                    // Continue without database
+                    console.log('⚠️ Continuing without database - using memory storage');
                 }, 3000);
             }
         }
-        
+
+        function createTables() {
+            try {
+                // Create basic tables
+                db.run(`CREATE TABLE IF NOT EXISTS watches (
+                    id INTEGER PRIMARY KEY,
+                    code TEXT UNIQUE,
+                    type TEXT,
+                    brand TEXT,
+                    model TEXT,
+                    size TEXT,
+                    price REAL,
+                    quantity INTEGER,
+                    outlet TEXT,
+                    description TEXT,
+                    status TEXT,
+                    created_at TEXT
+                )`);
+
+                db.run(`CREATE TABLE IF NOT EXISTS customers (
+                    id INTEGER PRIMARY KEY,
+                    name TEXT,
+                    email TEXT UNIQUE,
+                    phone TEXT UNIQUE,
+                    address TEXT,
+                    purchases INTEGER DEFAULT 0,
+                    service_count INTEGER DEFAULT 0,
+                    net_value REAL DEFAULT 0.0,
+                    created_at TEXT
+                )`);
+
+                console.log('✅ Basic tables created');
+            } catch (error) {
+                console.error('❌ Failed to create tables:', error);
+            }
+        }
+
+        function saveDatabase() {
+            try {
+                if (db) {
+                    const data = db.export();
+                    const buffer = Array.from(data);
+                    localStorage.setItem('zedson_watchcraft.db', JSON.stringify(buffer));
+                }
+            } catch (error) {
+                console.error('Failed to save database:', error);
+            }
+        }
+
         // Initialize database when page loads
         document.addEventListener('DOMContentLoaded', function() {
-            // Start database initialization
             initializeDatabase();
         });
+
+        // Make database functions globally available
+        window.db = db;
+        window.saveDatabase = saveDatabase;
     </script>
 
-<script>
-// Simple SQLite integration
-let db = null;
-
-async function initDB() {
-    // For web app, we'll use in-memory SQLite with localStorage backup
-    const SQL = await initSqlJs({
-        locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
-    });
-    
-    // Try to load existing data from localStorage
-    const savedDb = localStorage.getItem('zedson_db');
-    if (savedDb) {
-        const dbData = new Uint8Array(JSON.parse(savedDb));
-        db = new SQL.Database(dbData);
-    } else {
-        db = new SQL.Database();
-        // Create tables here or import your .db file
-    }
-}
-
-// Save database to localStorage
-function saveDB() {
-    if (db) {
-        const data = db.export();
-        localStorage.setItem('zedson_db', JSON.stringify(Array.from(data)));
-    }
-}
-
-// Initialize on page load
-window.addEventListener('load', async () => {
-    await initDB();
-    console.log('Database ready');
-});
-</script>
+    <!-- Live reload for development -->
+    <script>
+        console.log('Live reload enabled.');
+    </script>
+	
+	<!-- <script src="js/startup.js"></script> -->
 
 </body>
 </html>
