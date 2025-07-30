@@ -1,42 +1,23 @@
 {
   "name": "zedson-watchcraft",
   "version": "1.0.0",
-  "description": "Professional Watch Shop Management System for ZEDSON WATCHCRAFT",
+  "description": "ZEDSON WATCHCRAFT Management System with SQLite Database",
   "main": "index.html",
   "scripts": {
-    "dev": "live-server --port=3000 --open=/",
-    "start": "live-server --port=8080",
-    "build": "echo 'No build process needed for this project'",
-    "test": "echo 'No tests specified'"
+    "start": "live-server --port=8080 --open=/ --no-css-inject",
+    "dev": "live-server --port=3000 --open=/ --no-css-inject"
+  },
+  "devDependencies": {
+    "live-server": "^1.2.2"
   },
   "keywords": [
     "watch-shop",
     "management-system",
+    "sqlite",
     "inventory",
     "sales",
-    "service",
-    "invoicing",
-    "customer-management"
+    "service"
   ],
   "author": "ZEDSON WATCHCRAFT",
-  "license": "ISC",
-  "devDependencies": {
-    "live-server": "^1.2.2"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/zedson-watchcraft/management-system.git"
-  },
-  "bugs": {
-    "url": "https://github.com/zedson-watchcraft/management-system/issues"
-  },
-  "homepage": "https://github.com/zedson-watchcraft/management-system#readme",
-  "engines": {
-    "node": ">=14.0.0"
-  },
-  "browserslist": [
-    "> 1%",
-    "last 2 versions",
-    "not dead"
-  ]
+  "license": "ISC"
 }
