@@ -1,7 +1,7 @@
-// ZEDSON WATCHCRAFT - Customer Management Module (Fixed)
+// ZEDSON WATCHCRAFT - Customer Management Module (FIXED with Database Integration)
 
 /**
- * Customer Management System - Fixed for undefined variables
+ * Customer Management System - Fully integrated with SQLite database
  */
 
 /**
@@ -29,31 +29,6 @@ function calculateCustomerNetValue(customerId) {
 }
 
 /**
- * Update customer's net value
- */
-function updateCustomerNetValue(customerId) {
-    if (!window.customers) return;
-    
-    const customer = window.customers.find(c => c.id === customerId);
-    if (customer) {
-        customer.netValue = calculateCustomerNetValue(customerId);
-        renderCustomerTable();
-    }
-}
-
-/**
- * Update all customers' net values
- */
-function updateAllCustomersNetValue() {
-    if (!window.customers) return;
-    
-    window.customers.forEach(customer => {
-        customer.netValue = calculateCustomerNetValue(customer.id);
-    });
-    renderCustomerTable();
-}
-
-/**
  * Open Add Customer Modal
  */
 function openAddCustomerModal() {
@@ -75,22 +50,14 @@ function openAddCustomerModal() {
 }
 
 /**
- * Add new customer
+ * Add new customer - FIXED to use database
  */
-function addNewCustomer(event) {
+async function addNewCustomer(event) {
     event.preventDefault();
     
     if (!AuthModule || !AuthModule.hasPermission('customers')) {
         Utils.showNotification('You do not have permission to add customers.');
         return;
-    }
-
-    // Ensure customers array exists
-    if (!window.customers) {
-        window.customers = [];
-    }
-    if (!window.nextCustomerId) {
-        window.nextCustomerId = 1;
     }
 
     // Get form data
@@ -117,51 +84,41 @@ function addNewCustomer(event) {
         return;
     }
 
-    // Check if email already exists
-    if (window.customers.find(c => c.email === email)) {
-        Utils.showNotification('A customer with this email already exists');
-        return;
-    }
+    try {
+        // Use database adapter to add customer
+        await window.DatabaseAdapter.addCustomer({
+            name: name,
+            email: email,
+            phone: phone,
+            address: address,
+            addedBy: AuthModule.getCurrentUser()?.username || 'admin'
+        });
 
-    // Check if phone already exists
-    if (window.customers.find(c => c.phone === phone)) {
-        Utils.showNotification('A customer with this phone number already exists');
-        return;
+        Utils.showNotification('Customer added successfully!');
+        
+        // Close modal and reset form
+        closeModal('addCustomerModal');
+        event.target.reset();
+        
+        // Log action
+        if (window.logCustomerAction) {
+            logCustomerAction('Added new customer: ' + name, {
+                name: name,
+                email: email,
+                phone: phone
+            });
+        }
+        
+    } catch (error) {
+        console.error('Failed to add customer:', error);
+        if (error.message.includes('UNIQUE constraint failed: customers.email')) {
+            Utils.showNotification('A customer with this email already exists');
+        } else if (error.message.includes('UNIQUE constraint failed: customers.phone')) {
+            Utils.showNotification('A customer with this phone number already exists');
+        } else {
+            Utils.showNotification('Failed to add customer: ' + error.message);
+        }
     }
-
-    // Create new customer object
-    const newCustomer = {
-        id: window.nextCustomerId++,
-        name: name,
-        email: email,
-        phone: phone,
-        address: address,
-        purchases: 0,
-        serviceCount: 0,
-        netValue: 0,
-        addedDate: Utils.formatDate(new Date()),
-        addedBy: AuthModule.getCurrentUser() ? AuthModule.getCurrentUser().username : 'admin'
-    };
-
-    // Add to customers array
-    window.customers.push(newCustomer);
-    
-    // Log action
-    if (window.logCustomerAction) {
-        logCustomerAction('Added new customer: ' + name, newCustomer);
-    }
-    
-    // Update display
-    renderCustomerTable();
-    if (window.updateDashboard) {
-        updateDashboard();
-    }
-    
-    // Close modal and reset form
-    closeModal('addCustomerModal');
-    event.target.reset();
-    
-    Utils.showNotification('Customer added successfully!');
 }
 
 /**
@@ -224,7 +181,7 @@ function editCustomer(customerId) {
                 </div>
                 <div class="form-group">
                     <label>Net Value:</label>
-                    <input type="text" value="${Utils.formatCurrency(customer.netValue)}" readonly 
+                    <input type="text" value="${Utils.formatCurrency(customer.net_value || customer.netValue || 0)}" readonly 
                            style="background-color: #f0f0f0; color: #666;">
                     <small>Total value from sales and services (automatically calculated)</small>
                 </div>
@@ -238,9 +195,9 @@ function editCustomer(customerId) {
 }
 
 /**
- * Update customer
+ * Update customer - FIXED to use database
  */
-function updateCustomer(event, customerId) {
+async function updateCustomer(event, customerId) {
     event.preventDefault();
     
     if (!window.customers) return;
@@ -274,48 +231,47 @@ function updateCustomer(event, customerId) {
         return;
     }
 
-    // Check if email already exists (excluding current customer)
-    if (window.customers.find(c => c.email === email && c.id !== customerId)) {
-        Utils.showNotification('A customer with this email already exists');
-        return;
-    }
-
-    // Check if phone already exists (excluding current customer)
-    if (window.customers.find(c => c.phone === phone && c.id !== customerId)) {
-        Utils.showNotification('A customer with this phone number already exists');
-        return;
-    }
-
-    // Log action
-    if (window.logCustomerAction) {
-        logCustomerAction('Updated customer: ' + customer.name + ' -> ' + name, {
-            id: customerId,
-            oldName: customer.name,
-            newName: name,
-            oldEmail: customer.email,
-            newEmail: email
+    try {
+        // Use database adapter to update customer
+        await window.DatabaseAdapter.updateCustomer(customerId, {
+            name: name,
+            email: email,
+            phone: phone,
+            address: address
         });
-    }
 
-    // Update customer
-    customer.name = name;
-    customer.email = email;
-    customer.phone = phone;
-    customer.address = address;
-
-    renderCustomerTable();
-    if (window.updateDashboard) {
-        updateDashboard();
+        Utils.showNotification('Customer updated successfully!');
+        
+        closeModal('editCustomerModal');
+        document.getElementById('editCustomerModal').remove();
+        
+        // Log action
+        if (window.logCustomerAction) {
+            logCustomerAction('Updated customer: ' + customer.name + ' -> ' + name, {
+                id: customerId,
+                oldName: customer.name,
+                newName: name,
+                oldEmail: customer.email,
+                newEmail: email
+            });
+        }
+        
+    } catch (error) {
+        console.error('Failed to update customer:', error);
+        if (error.message.includes('UNIQUE constraint failed: customers.email')) {
+            Utils.showNotification('A customer with this email already exists');
+        } else if (error.message.includes('UNIQUE constraint failed: customers.phone')) {
+            Utils.showNotification('A customer with this phone number already exists');
+        } else {
+            Utils.showNotification('Failed to update customer: ' + error.message);
+        }
     }
-    closeModal('editCustomerModal');
-    document.getElementById('editCustomerModal').remove();
-    Utils.showNotification('Customer updated successfully!');
 }
 
 /**
- * Delete customer
+ * Delete customer - FIXED to use database
  */
-function deleteCustomer(customerId) {
+async function deleteCustomer(customerId) {
     const currentUser = AuthModule.getCurrentUser();
     const isStaff = currentUser && currentUser.role === 'staff';
     
@@ -341,69 +297,21 @@ function deleteCustomer(customerId) {
     }
 
     if (confirm('Are you sure you want to delete customer "' + customer.name + '"?')) {
-        // Log action
-        if (window.logCustomerAction) {
-            logCustomerAction('Deleted customer: ' + customer.name, customer);
+        try {
+            // Use database adapter to delete customer
+            await window.DatabaseAdapter.deleteCustomer(customerId);
+            
+            Utils.showNotification('Customer deleted successfully!');
+            
+            // Log action
+            if (window.logCustomerAction) {
+                logCustomerAction('Deleted customer: ' + customer.name, customer);
+            }
+            
+        } catch (error) {
+            console.error('Failed to delete customer:', error);
+            Utils.showNotification('Failed to delete customer: ' + error.message);
         }
-        
-        window.customers = window.customers.filter(c => c.id !== customerId);
-        renderCustomerTable();
-        if (window.updateDashboard) {
-            updateDashboard();
-        }
-        Utils.showNotification('Customer deleted successfully!');
-    }
-}
-
-/**
- * Update customer purchase count and net value
- */
-function incrementCustomerPurchases(customerId) {
-    if (!window.customers) return;
-    
-    const customer = window.customers.find(c => c.id === customerId);
-    if (customer) {
-        customer.purchases++;
-        updateCustomerNetValue(customerId);
-    }
-}
-
-/**
- * Update customer service count and net value
- */
-function incrementCustomerServices(customerId) {
-    if (!window.customers) return;
-    
-    const customer = window.customers.find(c => c.id === customerId);
-    if (customer) {
-        customer.serviceCount++;
-        updateCustomerNetValue(customerId);
-    }
-}
-
-/**
- * Decrease customer purchase count and net value
- */
-function decrementCustomerPurchases(customerId) {
-    if (!window.customers) return;
-    
-    const customer = window.customers.find(c => c.id === customerId);
-    if (customer) {
-        customer.purchases = Math.max(0, customer.purchases - 1);
-        updateCustomerNetValue(customerId);
-    }
-}
-
-/**
- * Decrease customer service count and net value
- */
-function decrementCustomerServices(customerId) {
-    if (!window.customers) return;
-    
-    const customer = window.customers.find(c => c.id === customerId);
-    if (customer) {
-        customer.serviceCount = Math.max(0, customer.serviceCount - 1);
-        updateCustomerNetValue(customerId);
     }
 }
 
@@ -507,7 +415,7 @@ function initiateServiceFromCustomer(customerId) {
 }
 
 /**
- * Render customer table
+ * Render customer table - UPDATED for database integration
  */
 function renderCustomerTable() {
     const tbody = document.getElementById('customerTableBody');
@@ -569,14 +477,19 @@ function renderCustomerTable() {
             `;
         }
         
+        // Use net_value from database or netValue as fallback
+        const netValue = customer.net_value || customer.netValue || 0;
+        const purchases = customer.purchases || 0;
+        const serviceCount = customer.service_count || customer.serviceCount || 0;
+        
         row.innerHTML = `
             <td class="serial-number">${index + 1}</td>
             <td>${Utils.sanitizeHtml(customer.name)}</td>
             <td>${Utils.sanitizeHtml(customer.email)}</td>
             <td>${Utils.sanitizeHtml(customer.phone)}</td>
-            <td>${customer.purchases}</td>
-            <td>${customer.serviceCount}</td>
-            <td><strong style="color: #1a237e;">${Utils.formatCurrency(customer.netValue)}</strong></td>
+            <td>${purchases}</td>
+            <td>${serviceCount}</td>
+            <td><strong style="color: #1a237e;">${Utils.formatCurrency(netValue)}</strong></td>
             <td>${actionButtons}</td>
         `;
         tbody.appendChild(row);
@@ -600,11 +513,11 @@ function getCustomerStats() {
     }
     
     const totalCustomers = window.customers.length;
-    const activeCustomers = window.customers.filter(c => c.purchases > 0 || c.serviceCount > 0).length;
-    const totalNetValue = window.customers.reduce((sum, c) => sum + c.netValue, 0);
+    const activeCustomers = window.customers.filter(c => (c.purchases || 0) > 0 || (c.service_count || c.serviceCount || 0) > 0).length;
+    const totalNetValue = window.customers.reduce((sum, c) => sum + (c.net_value || c.netValue || 0), 0);
     const averageNetValue = totalCustomers > 0 ? totalNetValue / totalCustomers : 0;
     const topCustomers = window.customers
-        .sort((a, b) => b.netValue - a.netValue)
+        .sort((a, b) => (b.net_value || b.netValue || 0) - (a.net_value || a.netValue || 0))
         .slice(0, 5);
     
     return {
@@ -636,7 +549,6 @@ function populateCustomerDropdown(selectId) {
  * Initialize customer module
  */
 function initializeCustomers() {
-    updateAllCustomersNetValue();
     renderCustomerTable();
     console.log('Customer module initialized');
 }
@@ -715,10 +627,6 @@ window.CustomerModule = {
     editCustomer,
     updateCustomer,
     deleteCustomer,
-    incrementCustomerPurchases,
-    incrementCustomerServices,
-    decrementCustomerPurchases,
-    decrementCustomerServices,
     getCustomerById,
     searchCustomers,
     initiateSaleFromCustomer,
@@ -727,8 +635,6 @@ window.CustomerModule = {
     getCustomerStats,
     populateCustomerDropdown,
     initializeCustomers,
-    updateCustomerNetValue,
-    updateAllCustomersNetValue,
     calculateCustomerNetValue,
     customers: window.customers
 };

@@ -2,13 +2,24 @@
   "name": "zedson-watchcraft",
   "version": "1.0.0",
   "description": "ZEDSON WATCHCRAFT Management System with SQLite Database",
-  "main": "index.html",
+  "main": "server.js",
+  "type": "commonjs",
   "scripts": {
-    "start": "live-server --port=8080 --open=/ --no-css-inject",
-    "dev": "live-server --port=3000 --open=/ --no-css-inject"
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "setup": "npm install && npm run download-sqlite",
+    "download-sqlite": "node setup-sqlite.js",
+    "test": "node test-server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
   },
   "devDependencies": {
-    "live-server": "^1.2.2"
+    "live-server": "^1.2.2",
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   },
   "keywords": [
     "watch-shop",
@@ -16,8 +27,19 @@
     "sqlite",
     "inventory",
     "sales",
-    "service"
+    "service",
+    "invoice",
+    "javascript",
+    "web-application"
   ],
   "author": "ZEDSON WATCHCRAFT",
-  "license": "ISC"
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/zedson-watchcraft.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/zedson-watchcraft/issues"
+  },
+  "homepage": "https://github.com/your-username/zedson-watchcraft#readme"
 }

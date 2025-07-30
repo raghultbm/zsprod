@@ -1,10 +1,8 @@
-// ZEDSON WATCHCRAFT - Database Adapter for Real-time Sync
+// ZEDSON WATCHCRAFT - Database Adapter for Real-time Sync (FIXED)
 // js/database/database-adapter.js
 
 /**
- * Database Adapter Module
- * Provides real-time synchronization between JS arrays and SQLite database
- * Replaces all static arrays with database-backed operations
+ * Fixed Database Adapter Module with complete CRUD operations
  */
 
 class DatabaseAdapter {
@@ -12,12 +10,22 @@ class DatabaseAdapter {
         this.isReady = false;
         this.db = null;
         this.eventListeners = new Map();
+        this.initPromise = null;
     }
 
     /**
      * Initialize database adapter
      */
     async initialize() {
+        if (this.initPromise) {
+            return this.initPromise;
+        }
+
+        this.initPromise = this._doInitialize();
+        return this.initPromise;
+    }
+
+    async _doInitialize() {
         try {
             // Wait for SQLite core to be ready
             await this.waitForDatabase();
@@ -27,13 +35,14 @@ class DatabaseAdapter {
             
             console.log('🔄 Database Adapter initialized');
             
-            // Load initial data
+            // Load initial data and populate global arrays
             await this.loadInitialData();
             
             return true;
         } catch (error) {
             console.error('❌ Database Adapter initialization failed:', error);
-            return false;
+            this.isReady = false;
+            throw error;
         }
     }
 
@@ -68,11 +77,13 @@ class DatabaseAdapter {
             // Load customers
             const customers = await this.getCustomers();
             window.customers = customers;
+            window.nextCustomerId = this.getNextId(customers) || 1;
             console.log(`📊 Loaded ${customers.length} customers from database`);
 
             // Load inventory
             const inventory = await this.getInventory();
             window.watches = inventory;
+            window.nextWatchId = this.getNextId(inventory) || 1;
             console.log(`📦 Loaded ${inventory.length} inventory items from database`);
 
             // Load sales
@@ -80,6 +91,7 @@ class DatabaseAdapter {
             if (window.SalesCoreModule) {
                 window.SalesCoreModule.sales = sales;
             }
+            window.nextSaleId = this.getNextId(sales) || 1;
             console.log(`💰 Loaded ${sales.length} sales from database`);
 
             // Load services
@@ -87,6 +99,7 @@ class DatabaseAdapter {
             if (window.ServiceModule) {
                 window.ServiceModule.services = services;
             }
+            window.nextServiceId = this.getNextId(services) || 1;
             console.log(`🔧 Loaded ${services.length} services from database`);
 
             // Load expenses
@@ -94,44 +107,21 @@ class DatabaseAdapter {
             if (window.ExpenseModule) {
                 window.ExpenseModule.expenses = expenses;
             }
+            window.nextExpenseId = this.getNextId(expenses) || 1;
             console.log(`💸 Loaded ${expenses.length} expenses from database`);
-
-            // Update next IDs
-            this.updateNextIds();
 
         } catch (error) {
             console.error('Failed to load initial data:', error);
+            throw error;
         }
     }
 
     /**
-     * Update next ID counters based on database data
+     * Get next ID for a collection
      */
-    updateNextIds() {
-        try {
-            if (window.customers && window.customers.length > 0) {
-                window.nextCustomerId = Math.max(...window.customers.map(c => c.id)) + 1;
-            }
-
-            if (window.watches && window.watches.length > 0) {
-                window.nextWatchId = Math.max(...window.watches.map(w => w.id)) + 1;
-            }
-
-            if (window.SalesCoreModule?.sales && window.SalesCoreModule.sales.length > 0) {
-                window.nextSaleId = Math.max(...window.SalesCoreModule.sales.map(s => s.id)) + 1;
-            }
-
-            if (window.ServiceModule?.services && window.ServiceModule.services.length > 0) {
-                window.nextServiceId = Math.max(...window.ServiceModule.services.map(s => s.id)) + 1;
-            }
-
-            if (window.ExpenseModule?.expenses && window.ExpenseModule.expenses.length > 0) {
-                window.nextExpenseId = Math.max(...window.ExpenseModule.expenses.map(e => e.id)) + 1;
-            }
-
-        } catch (error) {
-            console.warn('Error updating next IDs:', error);
-        }
+    getNextId(collection) {
+        if (!collection || collection.length === 0) return 1;
+        return Math.max(...collection.map(item => item.id || 0)) + 1;
     }
 
     // ==================================================
@@ -142,23 +132,38 @@ class DatabaseAdapter {
         try {
             const customers = this.db.selectAll(`
                 SELECT c.*,
-                       COUNT(DISTINCT s.id) as actual_purchases,
-                       COUNT(DISTINCT sv.id) as actual_services,
-                       COALESCE(SUM(s.total_amount), 0) as total_sales_value,
-                       COALESCE(SUM(CASE WHEN sv.status = 'completed' THEN sv.cost ELSE 0 END), 0) as total_services_value
+                       COALESCE(sales_count.cnt, 0) as purchases,
+                       COALESCE(services_count.cnt, 0) as service_count,
+                       COALESCE(sales_value.total, 0) + COALESCE(services_value.total, 0) as net_value
                 FROM customers c
-                LEFT JOIN sales s ON c.id = s.customer_id
-                LEFT JOIN services sv ON c.id = sv.customer_id
-                GROUP BY c.id
+                LEFT JOIN (
+                    SELECT customer_id, COUNT(*) as cnt 
+                    FROM sales 
+                    GROUP BY customer_id
+                ) sales_count ON c.id = sales_count.customer_id
+                LEFT JOIN (
+                    SELECT customer_id, COUNT(*) as cnt 
+                    FROM services 
+                    GROUP BY customer_id
+                ) services_count ON c.id = services_count.customer_id
+                LEFT JOIN (
+                    SELECT customer_id, SUM(total_amount) as total 
+                    FROM sales 
+                    GROUP BY customer_id
+                ) sales_value ON c.id = sales_value.customer_id
+                LEFT JOIN (
+                    SELECT customer_id, SUM(cost) as total 
+                    FROM services 
+                    WHERE status = 'completed'
+                    GROUP BY customer_id
+                ) services_value ON c.id = services_value.customer_id
                 ORDER BY c.name
             `);
 
-            // Calculate net value and ensure data consistency
             return customers.map(customer => ({
                 ...customer,
-                netValue: (customer.total_sales_value || 0) + (customer.total_services_value || 0),
-                purchases: customer.actual_purchases || 0,
-                serviceCount: customer.actual_services || 0
+                addedDate: customer.created_at,
+                addedBy: customer.added_by || 'admin'
             }));
         } catch (error) {
             console.error('Failed to get customers:', error);
@@ -181,12 +186,9 @@ class DatabaseAdapter {
 
             // Reload customers array
             window.customers = await this.getCustomers();
-            
-            // Update next ID
-            if (result.insertId) {
-                window.nextCustomerId = Math.max(window.nextCustomerId || 1, result.insertId + 1);
-            }
+            window.nextCustomerId = this.getNextId(window.customers);
 
+            this.triggerDataUpdate('customers');
             return result;
         } catch (error) {
             console.error('Failed to add customer:', error);
@@ -201,6 +203,7 @@ class DatabaseAdapter {
             // Reload customers array
             window.customers = await this.getCustomers();
             
+            this.triggerDataUpdate('customers');
             return result;
         } catch (error) {
             console.error('Failed to update customer:', error);
@@ -215,6 +218,7 @@ class DatabaseAdapter {
             // Reload customers array
             window.customers = await this.getCustomers();
             
+            this.triggerDataUpdate('customers');
             return result;
         } catch (error) {
             console.error('Failed to delete customer:', error);
@@ -230,11 +234,19 @@ class DatabaseAdapter {
         try {
             const inventory = this.db.selectAll(`
                 SELECT i.*,
-                       COUNT(s.id) as total_sold,
-                       COALESCE(SUM(s.total_amount), 0) as total_revenue
+                       COALESCE(sales_count.cnt, 0) as total_sold,
+                       COALESCE(sales_revenue.total, 0) as total_revenue
                 FROM inventory i
-                LEFT JOIN sales s ON i.id = s.inventory_id
-                GROUP BY i.id
+                LEFT JOIN (
+                    SELECT inventory_id, COUNT(*) as cnt 
+                    FROM sales 
+                    GROUP BY inventory_id
+                ) sales_count ON i.id = sales_count.inventory_id
+                LEFT JOIN (
+                    SELECT inventory_id, SUM(total_amount) as total 
+                    FROM sales 
+                    GROUP BY inventory_id
+                ) sales_revenue ON i.id = sales_revenue.inventory_id
                 ORDER BY i.created_at DESC
             `);
 
@@ -268,12 +280,9 @@ class DatabaseAdapter {
 
             // Reload inventory array
             window.watches = await this.getInventory();
-            
-            // Update next ID
-            if (result.insertId) {
-                window.nextWatchId = Math.max(window.nextWatchId || 1, result.insertId + 1);
-            }
+            window.nextWatchId = this.getNextId(window.watches);
 
+            this.triggerDataUpdate('inventory');
             return result;
         } catch (error) {
             console.error('Failed to add inventory item:', error);
@@ -288,6 +297,7 @@ class DatabaseAdapter {
             // Reload inventory array
             window.watches = await this.getInventory();
             
+            this.triggerDataUpdate('inventory');
             return result;
         } catch (error) {
             console.error('Failed to update inventory item:', error);
@@ -302,6 +312,7 @@ class DatabaseAdapter {
             // Reload inventory array
             window.watches = await this.getInventory();
             
+            this.triggerDataUpdate('inventory');
             return result;
         } catch (error) {
             console.error('Failed to delete inventory item:', error);
@@ -368,18 +379,17 @@ class DatabaseAdapter {
             // Update inventory quantity
             await this.updateInventoryQuantity(saleData.watchId, -saleData.quantity);
 
-            // Update customer purchase count
-            await this.updateCustomerPurchases(saleData.customerId, 1);
-
             // Reload sales array
             if (window.SalesCoreModule) {
                 window.SalesCoreModule.sales = await this.getSales();
             }
+            window.nextSaleId = this.getNextId(window.SalesCoreModule?.sales || []);
 
             // Reload related data
             window.customers = await this.getCustomers();
             window.watches = await this.getInventory();
 
+            this.triggerDataUpdate('sales');
             return result;
         } catch (error) {
             console.error('Failed to add sale:', error);
@@ -399,54 +409,20 @@ class DatabaseAdapter {
                 // Restore inventory quantity
                 await this.updateInventoryQuantity(sale.inventory_id, sale.quantity);
 
-                // Update customer purchase count
-                await this.updateCustomerPurchases(sale.customer_id, -1);
-
                 // Reload arrays
                 if (window.SalesCoreModule) {
                     window.SalesCoreModule.sales = await this.getSales();
                 }
                 window.customers = await this.getCustomers();
                 window.watches = await this.getInventory();
+
+                this.triggerDataUpdate('sales');
             }
 
             return result;
         } catch (error) {
             console.error('Failed to delete sale:', error);
             throw error;
-        }
-    }
-
-    // ==================================================
-    // HELPER METHODS
-    // ==================================================
-
-    async updateInventoryQuantity(inventoryId, quantityChange) {
-        try {
-            const item = this.db.selectOne('SELECT quantity FROM inventory WHERE id = ?', [inventoryId]);
-            if (item) {
-                const newQuantity = Math.max(0, item.quantity + quantityChange);
-                const newStatus = newQuantity > 0 ? 'available' : 'sold';
-                
-                this.db.update('inventory', {
-                    quantity: newQuantity,
-                    status: newStatus
-                }, 'id = ?', [inventoryId]);
-            }
-        } catch (error) {
-            console.error('Failed to update inventory quantity:', error);
-        }
-    }
-
-    async updateCustomerPurchases(customerId, change) {
-        try {
-            const customer = this.db.selectOne('SELECT purchases FROM customers WHERE id = ?', [customerId]);
-            if (customer) {
-                const newCount = Math.max(0, customer.purchases + change);
-                this.db.update('customers', { purchases: newCount }, 'id = ?', [customerId]);
-            }
-        } catch (error) {
-            console.error('Failed to update customer purchases:', error);
         }
     }
 
@@ -501,17 +477,16 @@ class DatabaseAdapter {
                 created_by: serviceData.createdBy || 'admin'
             });
 
-            // Update customer service count
-            await this.updateCustomerServices(serviceData.customerId, 1);
-
             // Reload services array
             if (window.ServiceModule) {
                 window.ServiceModule.services = await this.getServices();
             }
+            window.nextServiceId = this.getNextId(window.ServiceModule?.services || []);
 
             // Reload customers
             window.customers = await this.getCustomers();
 
+            this.triggerDataUpdate('services');
             return result;
         } catch (error) {
             console.error('Failed to add service:', error);
@@ -528,6 +503,7 @@ class DatabaseAdapter {
                 window.ServiceModule.services = await this.getServices();
             }
             
+            this.triggerDataUpdate('services');
             return result;
         } catch (error) {
             console.error('Failed to update service:', error);
@@ -537,39 +513,22 @@ class DatabaseAdapter {
 
     async deleteService(id) {
         try {
-            // Get service details first
-            const service = this.db.selectOne('SELECT customer_id FROM services WHERE id = ?', [id]);
-            if (!service) throw new Error('Service not found');
-
             const result = this.db.delete('services', 'id = ?', [id]);
 
             if (result.changes > 0) {
-                // Update customer service count
-                await this.updateCustomerServices(service.customer_id, -1);
-
                 // Reload arrays
                 if (window.ServiceModule) {
                     window.ServiceModule.services = await this.getServices();
                 }
                 window.customers = await this.getCustomers();
+
+                this.triggerDataUpdate('services');
             }
 
             return result;
         } catch (error) {
             console.error('Failed to delete service:', error);
             throw error;
-        }
-    }
-
-    async updateCustomerServices(customerId, change) {
-        try {
-            const customer = this.db.selectOne('SELECT service_count FROM customers WHERE id = ?', [customerId]);
-            if (customer) {
-                const newCount = Math.max(0, customer.service_count + change);
-                this.db.update('customers', { service_count: newCount }, 'id = ?', [customerId]);
-            }
-        } catch (error) {
-            console.error('Failed to update customer services:', error);
         }
     }
 
@@ -610,7 +569,9 @@ class DatabaseAdapter {
             if (window.ExpenseModule) {
                 window.ExpenseModule.expenses = await this.getExpenses();
             }
+            window.nextExpenseId = this.getNextId(window.ExpenseModule?.expenses || []);
 
+            this.triggerDataUpdate('expenses');
             return result;
         } catch (error) {
             console.error('Failed to add expense:', error);
@@ -627,6 +588,7 @@ class DatabaseAdapter {
                 window.ExpenseModule.expenses = await this.getExpenses();
             }
             
+            this.triggerDataUpdate('expenses');
             return result;
         } catch (error) {
             console.error('Failed to update expense:', error);
@@ -643,10 +605,32 @@ class DatabaseAdapter {
                 window.ExpenseModule.expenses = await this.getExpenses();
             }
             
+            this.triggerDataUpdate('expenses');
             return result;
         } catch (error) {
             console.error('Failed to delete expense:', error);
             throw error;
+        }
+    }
+
+    // ==================================================
+    // HELPER METHODS
+    // ==================================================
+
+    async updateInventoryQuantity(inventoryId, quantityChange) {
+        try {
+            const item = this.db.selectOne('SELECT quantity FROM inventory WHERE id = ?', [inventoryId]);
+            if (item) {
+                const newQuantity = Math.max(0, item.quantity + quantityChange);
+                const newStatus = newQuantity > 0 ? 'available' : 'sold';
+                
+                this.db.update('inventory', {
+                    quantity: newQuantity,
+                    status: newStatus
+                }, 'id = ?', [inventoryId]);
+            }
+        } catch (error) {
+            console.error('Failed to update inventory quantity:', error);
         }
     }
 
@@ -742,7 +726,7 @@ class DatabaseAdapter {
 // Create singleton instance
 const databaseAdapter = new DatabaseAdapter();
 
-// Initialize when SQLite is ready
+// Initialize when document is ready
 window.initializeAppWithDatabase = async function() {
     try {
         console.log('🔄 Initializing Database Adapter...');
@@ -753,30 +737,32 @@ window.initializeAppWithDatabase = async function() {
             console.log('✅ Database Adapter ready - Real-time sync enabled');
             
             // Initialize all modules after database is ready
-            if (window.InventoryModule) {
-                window.InventoryModule.initializeInventory();
-            }
-            
-            if (window.CustomerModule) {
-                window.CustomerModule.initializeCustomers();
-            }
-            
-            if (window.SalesModule) {
-                window.SalesModule.initializeSales();
-            }
-            
-            if (window.ServiceModule) {
-                window.ServiceModule.initializeServices();
-            }
-            
-            if (window.ExpenseModule) {
-                window.ExpenseModule.initializeExpenses();
-            }
-            
-            // Update dashboard
-            if (window.updateDashboard) {
-                window.updateDashboard();
-            }
+            setTimeout(() => {
+                if (window.InventoryModule) {
+                    window.InventoryModule.initializeInventory();
+                }
+                
+                if (window.CustomerModule) {
+                    window.CustomerModule.initializeCustomers();
+                }
+                
+                if (window.SalesModule) {
+                    window.SalesModule.initializeSales();
+                }
+                
+                if (window.ServiceModule) {
+                    window.ServiceModule.initializeServices();
+                }
+                
+                if (window.ExpenseModule) {
+                    window.ExpenseModule.initializeExpenses();
+                }
+                
+                // Update dashboard
+                if (window.updateDashboard) {
+                    window.updateDashboard();
+                }
+            }, 500);
         } else {
             console.error('❌ Database Adapter initialization failed');
         }

@@ -1,7 +1,7 @@
-// ZEDSON WATCHCRAFT - Inventory Management Module (Fixed)
+// ZEDSON WATCHCRAFT - Inventory Management Module (FIXED with Database Integration)
 
 /**
- * Inventory and Watch Management System - Fixed for undefined variables
+ * Inventory and Watch Management System - Fully integrated with SQLite database
  */
 
 /**
@@ -70,234 +70,13 @@ function handleTypeChange() {
             sizeLabel.innerHTML = 'Size: <span style="color: red;">*</span>';
             sizeInput.placeholder = 'Size is required for straps';
         } else {
-            sizeInput.required = false;
-            sizeLabel.innerHTML = 'Size (Optional):';
-            sizeInput.placeholder = 'e.g., 40mm, 42mm (optional)';
-        }
-    }
-}
-
-/**
- * Add new watch to inventory
- */
-function addNewWatch(event) {
-    event.preventDefault();
-    
-    if (!AuthModule || !AuthModule.hasPermission('inventory')) {
-        Utils.showNotification('You do not have permission to add items.');
-        return;
-    }
-
-    // Ensure watches array exists
-    if (!window.watches) {
-        window.watches = [];
-    }
-    if (!window.nextWatchId) {
-        window.nextWatchId = 1;
-    }
-
-    // Get form data
-    const code = document.getElementById('watchCode').value.trim();
-    const type = document.getElementById('watchType').value;
-    const brand = document.getElementById('watchBrand').value.trim();
-    const model = document.getElementById('watchModel').value.trim();
-    const size = document.getElementById('watchSize').value.trim();
-    const price = parseFloat(document.getElementById('watchPrice').value);
-    const quantity = parseInt(document.getElementById('watchQuantity').value);
-    const outlet = document.getElementById('watchOutlet').value;
-    const description = document.getElementById('watchDescription').value.trim();
-    
-    // Validate input
-    if (!code || !type || !brand || !model || !price || !quantity || !outlet) {
-        Utils.showNotification('Please fill in all required fields');
-        return;
-    }
-
-    if (type === 'Strap' && !size) {
-        Utils.showNotification('Size is required for Strap type items');
-        return;
-    }
-
-    if (price <= 0) {
-        Utils.showNotification('Price must be greater than zero');
-        return;
-    }
-
-    if (quantity <= 0) {
-        Utils.showNotification('Quantity must be greater than zero');
-        return;
-    }
-
-    // Check if code already exists
-    if (window.watches.find(w => w.code === code)) {
-        Utils.showNotification('Item code already exists. Please use a different code.');
-        return;
-    }
-
-    // Create new watch object
-    const newWatch = {
-        id: window.nextWatchId++,
-        code: code,
-        type: type,
-        brand: brand,
-        model: model,
-        size: size || '-',
-        price: price,
-        quantity: quantity,
-        outlet: outlet,
-        description: description,
-        status: 'available',
-        addedDate: Utils.getCurrentTimestamp(),
-        addedBy: AuthModule.getCurrentUser() ? AuthModule.getCurrentUser().username : 'admin',
-        movementHistory: [
-            { 
-                date: Utils.getCurrentTimestamp().split(' ')[0], 
-                fromOutlet: null, 
-                toOutlet: outlet, 
-                reason: "Initial stock",
-                movedBy: AuthModule.getCurrentUser() ? AuthModule.getCurrentUser().username : 'admin'
-            }
-        ]
-    };
-
-    // Add to watches array
-    window.watches.push(newWatch);
-    
-    // Update display
-    renderWatchTable();
-    if (window.updateDashboard) {
-        updateDashboard();
-    }
-    
-    // Close modal and reset form
-    closeModal('addWatchModal');
-    event.target.reset();
-    
-    Utils.showNotification('Item added successfully!');
-    console.log('Item added:', newWatch);
-}
-
-/**
- * Delete watch from inventory
- */
-function deleteWatch(watchId) {
-    if (!AuthModule || !AuthModule.hasPermission('inventory')) {
-        Utils.showNotification('You do not have permission to delete items.');
-        return;
-    }
-
-    if (!window.watches) {
-        Utils.showNotification('No items found.');
-        return;
-    }
-
-    const watch = window.watches.find(w => w.id === watchId);
-    if (!watch) {
-        Utils.showNotification('Item not found.');
-        return;
-    }
-
-    if (confirm(`Are you sure you want to delete "${watch.brand} ${watch.model}"?`)) {
-        window.watches = window.watches.filter(w => w.id !== watchId);
-        renderWatchTable();
-        if (window.updateDashboard) {
-            updateDashboard();
-        }
-        Utils.showNotification('Item deleted successfully!');
-    }
-}
-
-/**
- * Update watch status
- */
-function updateWatchStatus(watchId, newStatus) {
-    if (!window.watches) return;
-    
-    const watch = window.watches.find(w => w.id === watchId);
-    if (watch) {
-        watch.status = newStatus;
-        renderWatchTable();
-        if (window.updateDashboard) {
-            updateDashboard();
-        }
-    }
-}
-
-/**
- * Decrease watch quantity (used when selling)
- */
-function decreaseWatchQuantity(watchId, amount = 1) {
-    if (!window.watches) return;
-    
-    const watch = window.watches.find(w => w.id === watchId);
-    if (watch) {
-        watch.quantity = Math.max(0, watch.quantity - amount);
-        if (watch.quantity === 0) {
-            watch.status = 'sold';
-        }
-        renderWatchTable();
-        if (window.updateDashboard) {
-            updateDashboard();
-        }
-    }
-}
-
-/**
- * Increase watch quantity (used when returning or restocking)
- */
-function increaseWatchQuantity(watchId, amount = 1) {
-    if (!window.watches) return;
-    
-    const watch = window.watches.find(w => w.id === watchId);
-    if (watch) {
-        watch.quantity += amount;
-        if (watch.quantity > 0 && watch.status === 'sold') {
-            watch.status = 'available';
-        }
-        renderWatchTable();
-        if (window.updateDashboard) {
-            updateDashboard();
-        }
-    }
-}
-
-/**
- * Get available watches for sale
- */
-function getAvailableWatches() {
-    if (!window.watches) return [];
-    return window.watches.filter(w => w.quantity > 0 && w.status === 'available');
-}
-
-/**
- * Get watch by ID
- */
-function getWatchById(watchId) {
-    if (!window.watches) return null;
-    return window.watches.find(w => w.id === watchId);
-}
-
-/**
- * Search watches by code, type, brand, or model
- */
-function searchWatches(query) {
-    const tbody = document.getElementById('watchTableBody');
-    if (!tbody) return;
-    
-    const rows = tbody.querySelectorAll('tr');
-    
-    rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        if (text.includes(query.toLowerCase())) {
-            row.style.display = '';
-        } else {
             row.style.display = 'none';
         }
     });
 }
 
 /**
- * Render watch table
+ * Render watch table - UPDATED for database integration
  */
 function renderWatchTable() {
     const tbody = document.getElementById('watchTableBody');
@@ -424,7 +203,7 @@ function closeMovementHistoryModal() {
 }
 
 /**
- * Edit watch
+ * Edit watch - UPDATED for database integration
  */
 function editWatch(watchId) {
     if (!AuthModule || !AuthModule.hasPermission('inventory')) {
@@ -521,9 +300,9 @@ function editWatch(watchId) {
 }
 
 /**
- * Update watch
+ * Update watch - FIXED to use database
  */
-function updateWatch(event, watchId, originalOutlet) {
+async function updateWatch(event, watchId, originalOutlet) {
     event.preventDefault();
     
     if (!window.watches) return;
@@ -555,49 +334,45 @@ function updateWatch(event, watchId, originalOutlet) {
         return;
     }
 
-    // Check if code already exists (excluding current watch)
-    if (window.watches.find(w => w.code === code && w.id !== watchId)) {
-        Utils.showNotification('Item code already exists. Please use a different code.');
-        return;
-    }
+    try {
+        // Use database adapter to update inventory item
+        await window.DatabaseAdapter.updateInventoryItem(watchId, {
+            code: code,
+            type: type,
+            brand: brand,
+            model: model,
+            size: size || '-',
+            price: price,
+            quantity: quantity,
+            outlet: outlet,
+            description: description,
+            status: quantity > 0 ? 'available' : 'sold'
+        });
 
-    // Update watch
-    watch.code = code;
-    watch.type = type;
-    watch.brand = brand;
-    watch.model = model;
-    watch.size = size || '-';
-    watch.price = price;
-    watch.quantity = quantity;
-    watch.description = description;
-    watch.status = quantity > 0 ? 'available' : 'sold';
-
-    // Handle outlet change
-    if (outlet !== originalOutlet) {
-        watch.outlet = outlet;
+        Utils.showNotification('Item updated successfully!');
         
-        if (!watch.movementHistory) {
-            watch.movementHistory = [];
+        closeModal('editWatchModal');
+        document.getElementById('editWatchModal').remove();
+        
+        // Log action
+        if (window.logInventoryAction) {
+            logInventoryAction('Updated inventory item: ' + watch.brand + ' ' + watch.model + ' -> ' + brand + ' ' + model, {
+                id: watchId,
+                oldCode: watch.code,
+                newCode: code,
+                oldOutlet: originalOutlet,
+                newOutlet: outlet
+            });
         }
         
-        watch.movementHistory.push({
-            date: new Date().toISOString().split('T')[0],
-            fromOutlet: originalOutlet,
-            toOutlet: outlet,
-            reason: 'Outlet Transfer',
-            movedBy: AuthModule.getCurrentUser() ? AuthModule.getCurrentUser().username : 'admin',
-            timestamp: Utils.getCurrentTimestamp()
-        });
+    } catch (error) {
+        console.error('Failed to update inventory item:', error);
+        if (error.message.includes('UNIQUE constraint failed: inventory.code')) {
+            Utils.showNotification('Item code already exists. Please use a different code.');
+        } else {
+            Utils.showNotification('Failed to update item: ' + error.message);
+        }
     }
-
-    renderWatchTable();
-    if (window.updateDashboard) {
-        updateDashboard();
-    }
-    closeModal('editWatchModal');
-    document.getElementById('editWatchModal').remove();
-    
-    Utils.showNotification('Item updated successfully!');
 }
 
 /**
@@ -778,3 +553,217 @@ window.InventoryModule = {
     viewMovementHistory,
     watches: window.watches
 };
+            sizeInput.required = false;
+            sizeLabel.innerHTML = 'Size (Optional):';
+            sizeInput.placeholder = 'e.g., 40mm, 42mm (optional)';
+        }
+    }
+}
+
+/**
+ * Add new watch to inventory - FIXED to use database
+ */
+async function addNewWatch(event) {
+    event.preventDefault();
+    
+    if (!AuthModule || !AuthModule.hasPermission('inventory')) {
+        Utils.showNotification('You do not have permission to add items.');
+        return;
+    }
+
+    // Get form data
+    const code = document.getElementById('watchCode').value.trim();
+    const type = document.getElementById('watchType').value;
+    const brand = document.getElementById('watchBrand').value.trim();
+    const model = document.getElementById('watchModel').value.trim();
+    const size = document.getElementById('watchSize').value.trim();
+    const price = parseFloat(document.getElementById('watchPrice').value);
+    const quantity = parseInt(document.getElementById('watchQuantity').value);
+    const outlet = document.getElementById('watchOutlet').value;
+    const description = document.getElementById('watchDescription').value.trim();
+    
+    // Validate input
+    if (!code || !type || !brand || !model || !price || !quantity || !outlet) {
+        Utils.showNotification('Please fill in all required fields');
+        return;
+    }
+
+    if (type === 'Strap' && !size) {
+        Utils.showNotification('Size is required for Strap type items');
+        return;
+    }
+
+    if (price <= 0) {
+        Utils.showNotification('Price must be greater than zero');
+        return;
+    }
+
+    if (quantity <= 0) {
+        Utils.showNotification('Quantity must be greater than zero');
+        return;
+    }
+
+    try {
+        // Use database adapter to add inventory item
+        await window.DatabaseAdapter.addInventoryItem({
+            code: code,
+            type: type,
+            brand: brand,
+            model: model,
+            size: size || '-',
+            price: price,
+            quantity: quantity,
+            outlet: outlet,
+            description: description,
+            addedBy: AuthModule.getCurrentUser()?.username || 'admin'
+        });
+
+        Utils.showNotification('Item added successfully!');
+        
+        // Close modal and reset form
+        closeModal('addWatchModal');
+        event.target.reset();
+        
+        // Log action
+        if (window.logInventoryAction) {
+            logInventoryAction('Added new inventory item: ' + brand + ' ' + model, {
+                code: code,
+                brand: brand,
+                model: model,
+                outlet: outlet
+            });
+        }
+        
+    } catch (error) {
+        console.error('Failed to add inventory item:', error);
+        if (error.message.includes('UNIQUE constraint failed: inventory.code')) {
+            Utils.showNotification('Item code already exists. Please use a different code.');
+        } else {
+            Utils.showNotification('Failed to add item: ' + error.message);
+        }
+    }
+}
+
+/**
+ * Delete watch from inventory - FIXED to use database
+ */
+async function deleteWatch(watchId) {
+    if (!AuthModule || !AuthModule.hasPermission('inventory')) {
+        Utils.showNotification('You do not have permission to delete items.');
+        return;
+    }
+
+    if (!window.watches) {
+        Utils.showNotification('No items found.');
+        return;
+    }
+
+    const watch = window.watches.find(w => w.id === watchId);
+    if (!watch) {
+        Utils.showNotification('Item not found.');
+        return;
+    }
+
+    if (confirm(`Are you sure you want to delete "${watch.brand} ${watch.model}"?`)) {
+        try {
+            // Use database adapter to delete inventory item
+            await window.DatabaseAdapter.deleteInventoryItem(watchId);
+            
+            Utils.showNotification('Item deleted successfully!');
+            
+            // Log action
+            if (window.logInventoryAction) {
+                logInventoryAction('Deleted inventory item: ' + watch.brand + ' ' + watch.model, watch);
+            }
+            
+        } catch (error) {
+            console.error('Failed to delete inventory item:', error);
+            Utils.showNotification('Failed to delete item: ' + error.message);
+        }
+    }
+}
+
+/**
+ * Update watch status
+ */
+function updateWatchStatus(watchId, newStatus) {
+    if (!window.watches) return;
+    
+    const watch = window.watches.find(w => w.id === watchId);
+    if (watch) {
+        watch.status = newStatus;
+        renderWatchTable();
+        if (window.updateDashboard) {
+            updateDashboard();
+        }
+    }
+}
+
+/**
+ * Decrease watch quantity (used when selling)
+ */
+function decreaseWatchQuantity(watchId, amount = 1) {
+    if (!window.watches) return;
+    
+    const watch = window.watches.find(w => w.id === watchId);
+    if (watch) {
+        watch.quantity = Math.max(0, watch.quantity - amount);
+        if (watch.quantity === 0) {
+            watch.status = 'sold';
+        }
+        renderWatchTable();
+        if (window.updateDashboard) {
+            updateDashboard();
+        }
+    }
+}
+
+/**
+ * Increase watch quantity (used when returning or restocking)
+ */
+function increaseWatchQuantity(watchId, amount = 1) {
+    if (!window.watches) return;
+    
+    const watch = window.watches.find(w => w.id === watchId);
+    if (watch) {
+        watch.quantity += amount;
+        if (watch.quantity > 0 && watch.status === 'sold') {
+            watch.status = 'available';
+        }
+        renderWatchTable();
+        if (window.updateDashboard) {
+            updateDashboard();
+        }
+    }
+}
+
+/**
+ * Get available watches for sale
+ */
+function getAvailableWatches() {
+    if (!window.watches) return [];
+    return window.watches.filter(w => w.quantity > 0 && w.status === 'available');
+}
+
+/**
+ * Get watch by ID
+ */
+function getWatchById(watchId) {
+    if (!window.watches) return null;
+    return window.watches.find(w => w.id === watchId);
+}
+
+/**
+ * Search watches by code, type, brand, or model
+ */
+function searchWatches(query) {
+    const tbody = document.getElementById('watchTableBody');
+    if (!tbody) return;
+    
+    const rows = tbody.querySelectorAll('tr');
+    
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        if (text.includes(query.toLowerCase())) {
+            row.style.display = '';
+        } else {

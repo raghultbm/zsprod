@@ -1,10 +1,10 @@
-// ZEDSON WATCHCRAFT - Expense Management Module (Complete Rebuild)
+// ZEDSON WATCHCRAFT - Expense Management Module (FIXED with Database Integration)
 
 /**
- * Complete Expense Management System - Rebuilt from scratch
+ * Complete Expense Management System - Fully integrated with SQLite database
  */
 
-// Expense data storage
+// Expense data storage - Now managed by DatabaseAdapter
 let expenses = [];
 let nextExpenseId = 1;
 
@@ -178,9 +178,9 @@ function closeExpenseModal() {
 }
 
 /**
- * Handle Add Expense Form Submission
+ * Handle Add Expense Form Submission - FIXED to use database
  */
-function handleAddExpense(event) {
+async function handleAddExpense(event) {
     event.preventDefault();
     console.log('Handling expense form submission');
     
@@ -217,41 +217,33 @@ function handleAddExpense(event) {
         return;
     }
     
-    // Create expense object
-    const newExpense = {
-        id: nextExpenseId++,
-        date: date,
-        formattedDate: Utils.formatDate(new Date(date)),
-        description: description,
-        amount: amount,
-        timestamp: Utils.getCurrentTimestamp(),
-        createdBy: AuthModule.getCurrentUser() ? AuthModule.getCurrentUser().username : 'unknown',
-        addedDate: Utils.formatDate(new Date())
-    };
-    
-    // Add to expenses array
-    expenses.push(newExpense);
-    
-    console.log('Expense added:', newExpense);
-    
-    // Log action
-    if (window.logExpenseAction) {
-        logExpenseAction('Added new expense: ' + description + ' - ' + Utils.formatCurrency(amount), newExpense);
+    try {
+        // Use database adapter to add expense
+        await window.DatabaseAdapter.addExpense({
+            date: date,
+            description: description,
+            amount: amount,
+            createdBy: AuthModule.getCurrentUser()?.username || 'admin'
+        });
+
+        Utils.showNotification('Expense added successfully!');
+        
+        // Close modal
+        closeExpenseModal();
+        
+        // Log action
+        if (window.logExpenseAction) {
+            logExpenseAction('Added new expense: ' + description + ' - ' + Utils.formatCurrency(amount), {
+                description: description,
+                amount: amount,
+                date: date
+            });
+        }
+        
+    } catch (error) {
+        console.error('Failed to add expense:', error);
+        Utils.showNotification('Failed to add expense: ' + error.message);
     }
-    
-    // Update display
-    renderExpenseTable();
-    
-    // Update dashboard if function exists
-    if (window.updateDashboard) {
-        updateDashboard();
-    }
-    
-    // Close modal
-    closeExpenseModal();
-    
-    // Show success message
-    Utils.showNotification('Expense added successfully!');
 }
 
 /**
@@ -301,7 +293,7 @@ function createEditModal(expense) {
                 <form id="editExpenseForm">
                     <div class="form-group">
                         <label for="editExpenseDate">Date:</label>
-                        <input type="date" id="editExpenseDate" value="${expense.date}" required>
+                        <input type="date" id="editExpenseDate" value="${expense.expense_date || expense.date}" required>
                     </div>
                     <div class="form-group">
                         <label for="editExpenseDescription">Description:</label>
@@ -363,9 +355,9 @@ function closeEditModal() {
 }
 
 /**
- * Handle update expense
+ * Handle update expense - FIXED to use database
  */
-function handleUpdateExpense(event, expenseId) {
+async function handleUpdateExpense(event, expenseId) {
     event.preventDefault();
     
     const expense = expenses.find(e => e.id === expenseId);
@@ -384,40 +376,40 @@ function handleUpdateExpense(event, expenseId) {
         return;
     }
     
-    // Log action
-    if (window.logExpenseAction) {
-        logExpenseAction('Updated expense: ' + expense.description + ' -> ' + description, {
-            id: expenseId,
-            oldDescription: expense.description,
-            newDescription: description,
-            oldAmount: expense.amount,
-            newAmount: amount
+    try {
+        // Use database adapter to update expense
+        await window.DatabaseAdapter.updateExpense(expenseId, {
+            expense_date: date,
+            description: description,
+            amount: amount
         });
+
+        Utils.showNotification('Expense updated successfully!');
+        
+        // Close modal
+        closeEditModal();
+        
+        // Log action
+        if (window.logExpenseAction) {
+            logExpenseAction('Updated expense: ' + expense.description + ' -> ' + description, {
+                id: expenseId,
+                oldDescription: expense.description,
+                newDescription: description,
+                oldAmount: expense.amount,
+                newAmount: amount
+            });
+        }
+        
+    } catch (error) {
+        console.error('Failed to update expense:', error);
+        Utils.showNotification('Failed to update expense: ' + error.message);
     }
-    
-    // Update expense
-    expense.date = date;
-    expense.formattedDate = Utils.formatDate(new Date(date));
-    expense.description = description;
-    expense.amount = amount;
-    
-    // Update display
-    renderExpenseTable();
-    
-    if (window.updateDashboard) {
-        updateDashboard();
-    }
-    
-    // Close modal
-    closeEditModal();
-    
-    Utils.showNotification('Expense updated successfully!');
 }
 
 /**
- * Delete an expense
+ * Delete an expense - FIXED to use database
  */
-function deleteExpense(expenseId) {
+async function deleteExpense(expenseId) {
     console.log('Deleting expense:', expenseId);
     
     const currentUser = AuthModule.getCurrentUser();
@@ -440,22 +432,21 @@ function deleteExpense(expenseId) {
     }
     
     if (confirm(`Are you sure you want to delete expense "${expense.description}"?`)) {
-        // Log action
-        if (window.logExpenseAction) {
-            logExpenseAction('Deleted expense: ' + expense.description + ' - ' + Utils.formatCurrency(expense.amount), expense);
+        try {
+            // Use database adapter to delete expense
+            await window.DatabaseAdapter.deleteExpense(expenseId);
+            
+            Utils.showNotification('Expense deleted successfully!');
+            
+            // Log action
+            if (window.logExpenseAction) {
+                logExpenseAction('Deleted expense: ' + expense.description + ' - ' + Utils.formatCurrency(expense.amount), expense);
+            }
+            
+        } catch (error) {
+            console.error('Failed to delete expense:', error);
+            Utils.showNotification('Failed to delete expense: ' + error.message);
         }
-        
-        // Remove from array
-        expenses = expenses.filter(e => e.id !== expenseId);
-        
-        // Update display
-        renderExpenseTable();
-        
-        if (window.updateDashboard) {
-            updateDashboard();
-        }
-        
-        Utils.showNotification('Expense deleted successfully!');
     }
 }
 
@@ -480,7 +471,7 @@ function searchExpenses(query) {
 }
 
 /**
- * Render the expense table
+ * Render the expense table - UPDATED for database integration
  */
 function renderExpenseTable() {
     const tbody = document.getElementById('expenseTableBody');
@@ -492,7 +483,7 @@ function renderExpenseTable() {
     // Clear existing content
     tbody.innerHTML = '';
     
-    if (expenses.length === 0) {
+    if (!expenses || expenses.length === 0) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="5" style="text-align: center; color: #999; padding: 20px;">
@@ -509,7 +500,7 @@ function renderExpenseTable() {
     const canEdit = !isStaff && AuthModule.hasPermission('expenses');
     
     // Sort expenses by date (newest first)
-    const sortedExpenses = [...expenses].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const sortedExpenses = [...expenses].sort((a, b) => new Date(b.expense_date || b.date) - new Date(a.expense_date || a.date));
     
     // Render each expense
     sortedExpenses.forEach((expense, index) => {
@@ -529,9 +520,11 @@ function renderExpenseTable() {
             actionButtons = '<span style="color: #999; font-size: 12px;">View Only</span>';
         }
         
+        const displayDate = expense.formattedDate || expense.expense_date || expense.date;
+        
         row.innerHTML = `
             <td class="serial-number">${index + 1}</td>
-            <td>${Utils.sanitizeHtml(expense.formattedDate)}</td>
+            <td>${Utils.sanitizeHtml(displayDate)}</td>
             <td>${Utils.sanitizeHtml(expense.description)}</td>
             <td><strong style="color: #dc3545;">${Utils.formatCurrency(expense.amount)}</strong></td>
             <td>${actionButtons}</td>
@@ -554,7 +547,7 @@ function getExpenseStats() {
     // Today's expenses
     const today = Utils.formatDate(new Date());
     const todayExpenses = expenses
-        .filter(expense => expense.formattedDate === today)
+        .filter(expense => (expense.formattedDate || expense.expense_date || expense.date) === today)
         .reduce((sum, expense) => sum + expense.amount, 0);
     
     return {
@@ -573,7 +566,7 @@ function getExpensesByDateRange(fromDate, toDate) {
     const to = new Date(toDate);
     
     return expenses.filter(expense => {
-        const expenseDate = new Date(expense.date);
+        const expenseDate = new Date(expense.expense_date || expense.date);
         return expenseDate >= from && expenseDate <= to;
     });
 }
@@ -583,7 +576,7 @@ function getExpensesByDateRange(fromDate, toDate) {
  */
 function getExpensesByMonth(month, year) {
     return expenses.filter(expense => {
-        const expenseDate = new Date(expense.date);
+        const expenseDate = new Date(expense.expense_date || expense.date);
         return expenseDate.getMonth() === parseInt(month) && expenseDate.getFullYear() === parseInt(year);
     });
 }

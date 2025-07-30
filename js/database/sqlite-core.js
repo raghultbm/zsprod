@@ -1,9 +1,8 @@
-// ZEDSON WATCHCRAFT - SQLite Core Database Module (FIXED & SIMPLIFIED)
+// ZEDSON WATCHCRAFT - SQLite Core Database Module (FIXED)
 // js/database/sqlite-core.js
 
 /**
- * Simplified SQLite Core Database Module
- * Real-time database integration with proper error handling
+ * Fixed SQLite Core Database Module with proper initialization
  */
 
 class SQLiteCore {
@@ -12,20 +11,28 @@ class SQLiteCore {
         this.isInitialized = false;
         this.dbName = 'zedson_watchcraft.db';
         this.isReady = false;
+        this.initPromise = null;
     }
 
     /**
-     * Initialize SQLite database - SIMPLIFIED
+     * Initialize SQLite database with proper async handling
      */
     async initializeDatabase() {
+        // Prevent multiple initializations
+        if (this.initPromise) {
+            return this.initPromise;
+        }
+
+        this.initPromise = this._doInitialize();
+        return this.initPromise;
+    }
+
+    async _doInitialize() {
         try {
             console.log('🔧 Initializing SQLite Database...');
             
             // Wait for SQL.js to be available
-            if (!window.SQL) {
-                console.log('⏳ Waiting for SQL.js library...');
-                await this.waitForSQLJS();
-            }
+            await this.waitForSQLJS();
 
             // Create or load database
             await this.createConnection();
@@ -42,25 +49,35 @@ class SQLiteCore {
         } catch (error) {
             console.error('❌ Database initialization failed:', error);
             this.isReady = false;
-            return false;
+            throw error;
         }
     }
 
     /**
-     * Wait for SQL.js library to load
+     * Wait for SQL.js library to load with proper error handling
      */
     async waitForSQLJS() {
         return new Promise((resolve, reject) => {
             let attempts = 0;
-            const maxAttempts = 100; // 10 seconds
+            const maxAttempts = 50; // 5 seconds timeout
             
             const checkSQL = () => {
-                if (window.SQL) {
+                // Check if initSqlJs is available globally
+                if (typeof window !== 'undefined' && window.initSqlJs) {
                     resolve();
-                } else if (attempts >= maxAttempts) {
-                    reject(new Error('SQL.js library failed to load'));
+                    return;
+                }
+                
+                // Check if SQL is already initialized
+                if (typeof window !== 'undefined' && window.SQL) {
+                    resolve();
+                    return;
+                }
+                
+                attempts++;
+                if (attempts >= maxAttempts) {
+                    reject(new Error('SQL.js library failed to load after 5 seconds'));
                 } else {
-                    attempts++;
                     setTimeout(checkSQL, 100);
                 }
             };
@@ -70,24 +87,34 @@ class SQLiteCore {
     }
 
     /**
-     * Create database connection
+     * Create database connection with better error handling
      */
     async createConnection() {
         try {
             // Initialize SQL.js if not already done
             if (!window.SQL) {
-                window.SQL = await initSqlJs({
-                    locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
-                });
+                if (window.initSqlJs) {
+                    console.log('📚 Initializing SQL.js...');
+                    window.SQL = await window.initSqlJs({
+                        locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
+                    });
+                } else {
+                    throw new Error('initSqlJs function not available');
+                }
             }
 
             // Try to load existing database from localStorage
             const savedDb = localStorage.getItem(this.dbName);
             
             if (savedDb) {
-                const dbData = new Uint8Array(JSON.parse(savedDb));
-                this.db = new window.SQL.Database(dbData);
-                console.log('📂 Loaded existing database');
+                try {
+                    const dbData = new Uint8Array(JSON.parse(savedDb));
+                    this.db = new window.SQL.Database(dbData);
+                    console.log('📂 Loaded existing database from storage');
+                } catch (error) {
+                    console.warn('⚠️ Failed to load saved database, creating new one:', error);
+                    this.db = new window.SQL.Database();
+                }
             } else {
                 this.db = new window.SQL.Database();
                 console.log('🆕 Created new database');
@@ -116,25 +143,10 @@ class SQLiteCore {
     }
 
     /**
-     * Create all required tables
+     * Create all required tables with proper error handling
      */
     async createTables() {
         const tables = [
-            // Users table
-            `CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
-                role TEXT NOT NULL CHECK (role IN ('admin', 'owner', 'staff')),
-                full_name TEXT NOT NULL,
-                email TEXT UNIQUE NOT NULL,
-                status TEXT NOT NULL DEFAULT 'active',
-                first_login BOOLEAN DEFAULT 0,
-                temp_password TEXT,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                last_login DATETIME
-            )`,
-            
             // Customers table
             `CREATE TABLE IF NOT EXISTS customers (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -221,22 +233,6 @@ class SQLiteCore {
                 amount DECIMAL(10,2) NOT NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 created_by TEXT
-            )`,
-            
-            // Invoices table
-            `CREATE TABLE IF NOT EXISTS invoices (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                invoice_no TEXT UNIQUE NOT NULL,
-                type TEXT NOT NULL,
-                customer_id INTEGER NOT NULL,
-                related_id INTEGER,
-                related_type TEXT,
-                amount DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-                status TEXT NOT NULL DEFAULT 'generated',
-                invoice_date DATE NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                created_by TEXT,
-                FOREIGN KEY (customer_id) REFERENCES customers(id)
             )`
         ];
 
@@ -251,9 +247,6 @@ class SQLiteCore {
 
         // Create indexes for better performance
         this.createIndexes();
-        
-        // Insert default admin user if not exists
-        this.insertDefaultData();
         
         console.log('📋 All tables created successfully');
     }
@@ -282,35 +275,12 @@ class SQLiteCore {
     }
 
     /**
-     * Insert default data
-     */
-    insertDefaultData() {
-        try {
-            // Check if admin user exists
-            const adminExists = this.selectOne('SELECT id FROM users WHERE username = ?', ['admin']);
-            
-            if (!adminExists) {
-                this.insert('users', {
-                    username: 'admin',
-                    password_hash: 'admin123_hash',
-                    role: 'admin',
-                    full_name: 'System Administrator',
-                    email: 'admin@zedsonwatchcraft.com',
-                    status: 'active',
-                    first_login: 0
-                });
-                console.log('👤 Default admin user created');
-            }
-        } catch (error) {
-            console.warn('Default data insertion warning:', error);
-        }
-    }
-
-    /**
      * Execute SELECT query and return all results
      */
     selectAll(sql, params = []) {
         try {
+            if (!this.db) throw new Error('Database not initialized');
+            
             const stmt = this.db.prepare(sql);
             const results = [];
             
@@ -332,6 +302,8 @@ class SQLiteCore {
      */
     selectOne(sql, params = []) {
         try {
+            if (!this.db) throw new Error('Database not initialized');
+            
             const stmt = this.db.prepare(sql);
             stmt.bind(params);
             
@@ -353,6 +325,8 @@ class SQLiteCore {
      */
     insert(table, data) {
         try {
+            if (!this.db) throw new Error('Database not initialized');
+            
             const columns = Object.keys(data);
             const placeholders = columns.map(() => '?').join(', ');
             const values = Object.values(data);
@@ -380,6 +354,8 @@ class SQLiteCore {
      */
     update(table, data, whereClause, whereParams = []) {
         try {
+            if (!this.db) throw new Error('Database not initialized');
+            
             const columns = Object.keys(data);
             const setClause = columns.map(col => `${col} = ?`).join(', ');
             const values = [...Object.values(data), ...whereParams];
@@ -403,6 +379,8 @@ class SQLiteCore {
      */
     delete(table, whereClause, whereParams = []) {
         try {
+            if (!this.db) throw new Error('Database not initialized');
+            
             const sql = `DELETE FROM ${table} WHERE ${whereClause}`;
             const info = this.db.run(sql, whereParams);
             
@@ -417,21 +395,7 @@ class SQLiteCore {
     }
 
     /**
-     * Execute custom SQL
-     */
-    executeSQL(sql, params = []) {
-        try {
-            const result = this.db.run(sql, params);
-            this.saveDatabase();
-            return result;
-        } catch (error) {
-            console.error('SQL execution failed:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Save database to localStorage
+     * Save database to localStorage with error handling
      */
     saveDatabase() {
         try {
@@ -459,7 +423,7 @@ class SQLiteCore {
         if (!this.isDBReady()) return null;
 
         try {
-            const tables = ['customers', 'inventory', 'sales', 'services', 'expenses', 'invoices'];
+            const tables = ['customers', 'inventory', 'sales', 'services', 'expenses'];
             const stats = {};
 
             tables.forEach(table => {
@@ -482,25 +446,32 @@ class SQLiteCore {
 // Create singleton instance
 const sqliteCore = new SQLiteCore();
 
-// Initialize database when DOM is ready
-document.addEventListener('DOMContentLoaded', async function() {
-    console.log('🚀 Starting SQLite initialization...');
-    
-    // Wait a bit for other scripts to load
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
+// Auto-initialize when script loads
+(async function() {
     try {
+        // Wait for DOM to be ready
+        if (document.readyState === 'loading') {
+            await new Promise(resolve => {
+                document.addEventListener('DOMContentLoaded', resolve);
+            });
+        }
+        
+        console.log('🚀 Starting SQLite initialization...');
         await sqliteCore.initializeDatabase();
-        console.log('✅ SQLite initialization completed');
         
         // Trigger app initialization after database is ready
         if (window.initializeAppWithDatabase) {
-            window.initializeAppWithDatabase();
+            setTimeout(() => {
+                window.initializeAppWithDatabase();
+            }, 100);
         }
+        
     } catch (error) {
         console.error('❌ SQLite initialization failed:', error);
+        // Show user-friendly error
+        alert('Database initialization failed. Please refresh the page and try again.');
     }
-});
+})();
 
 // Export for global use
 window.SQLiteCore = sqliteCore;

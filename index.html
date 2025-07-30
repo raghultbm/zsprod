@@ -16,7 +16,7 @@
                 <div id="dbLoadingProgress" style="width: 100%; background: #f0f0f0; border-radius: 10px; overflow: hidden;">
                     <div id="dbProgressBar" style="width: 0%; height: 20px; background: linear-gradient(45deg, #1a237e, #283593); transition: width 0.3s ease;"></div>
                 </div>
-                <p id="dbLoadingStatus" style="margin-top: 10px; color: #666;">Loading system components...</p>
+                <p id="dbLoadingStatus" style="margin-top: 10px; color: #666;">Loading SQLite library...</p>
             </div>
             <p style="font-size: 14px; color: #999;">Please wait while we set up your watch shop management system.</p>
         </div>
@@ -340,37 +340,44 @@
     <!-- Include all modal templates -->
     <div id="modals-container"></div>
 
-    <!-- SQLite.js Library -->
+    <!-- FIXED: Proper script loading sequence for SQLite integration -->
+    
+    <!-- 1. SQLite.js Library - MUST load first -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
     
-    <!-- Database Layer Scripts -->
-    <script src="js/database/sqlite-core.js"></script>
-    <script src="js/database/database-adapter.js"></script>
-    <script src="js/app-core-updated.js"></script>
-    
-    <!-- Utility and Core JavaScript Files -->
+    <!-- 2. Utility Scripts - Core dependencies -->
     <script src="js/utils.js"></script>
     <script src="js/logging.js"></script>
+    
+    <!-- 3. Database Layer Scripts - Load in order -->
+    <script src="js/database/sqlite-core.js"></script>
+    <script src="js/database/database-adapter.js"></script>
+    
+    <!-- 4. Authentication Module -->
     <script src="js/auth.js"></script>
     
-    <!-- Business Logic Modules -->
+    <!-- 5. Business Logic Modules -->
     <script src="js/inventory.js"></script>
+    <script src="js/customers.js"></script>
     <script src="js/sales-core.js"></script>
     <script src="js/sales-extended.js"></script>
     <script src="js/service.js"></script>
     <script src="js/expenses.js"></script>
-    <script src="js/customers.js"></script>
+    
+    <!-- 6. Invoice System -->
     <script src="js/invoice-templates.js"></script>
     <script src="js/invoices.js"></script>
     
-    <!-- Application Controllers -->
+    <!-- 7. Application Controllers -->
     <script src="js/app-core.js"></script>
     <script src="js/app-extended.js"></script>
 
-    <!-- Database Initialization and Loading Script -->
+    <!-- 8. Database Integration and Loading Script -->
     <script>
-        // Database initialization with loading screen
+        // Global variables for loading management
         let loadingInterval;
+        let initializationAttempts = 0;
+        const maxInitializationAttempts = 30;
         
         // Update loading progress
         function updateLoadingProgress(percent, status) {
@@ -386,20 +393,21 @@
             let progress = 0;
             const statuses = [
                 'Loading SQLite library...',
-                'Initializing database...',
-                'Creating tables...',
-                'Loading data...',
-                'Setting up modules...',
+                'Initializing database core...',
+                'Creating database tables...',
+                'Setting up data adapter...',
+                'Loading business modules...',
+                'Synchronizing data...',
                 'Almost ready...'
             ];
             
             loadingInterval = setInterval(() => {
-                progress += Math.random() * 15;
-                if (progress > 90) progress = 90;
+                progress += Math.random() * 10 + 2;
+                if (progress > 85) progress = 85;
                 
-                const statusIndex = Math.floor((progress / 90) * statuses.length);
+                const statusIndex = Math.floor((progress / 85) * statuses.length);
                 updateLoadingProgress(progress, statuses[statusIndex] || 'Finalizing...');
-            }, 200);
+            }, 300);
         }
 
         // Complete loading
@@ -413,7 +421,7 @@
             setTimeout(() => {
                 document.getElementById('dbLoadingScreen').style.display = 'none';
                 document.getElementById('loginScreen').style.display = 'flex';
-            }, 1000);
+            }, 800);
         }
 
         // Error loading
@@ -431,28 +439,39 @@
             }, 2000);
         }
 
-        // Start loading when page loads
+        // Check if initialization is complete
+        function checkInitializationComplete() {
+            initializationAttempts++;
+            
+            // Check if all required components are ready
+            const sqliteCoreReady = window.SQLiteCore && window.SQLiteCore.isDBReady();
+            const databaseAdapterReady = window.DatabaseAdapter && window.DatabaseAdapter.isReady;
+            const authModuleReady = window.AuthModule;
+            const allModulesReady = window.InventoryModule && window.CustomerModule && 
+                                   window.SalesModule && window.ServiceModule && window.ExpenseModule;
+            
+            if (sqliteCoreReady && databaseAdapterReady && authModuleReady && allModulesReady) {
+                console.log('✅ All components initialized successfully');
+                completeLoading();
+                return true;
+            } else if (initializationAttempts >= maxInitializationAttempts) {
+                console.error('❌ Initialization timeout');
+                errorLoading('Initialization timeout');
+                return false;
+            }
+            
+            // Continue checking
+            setTimeout(checkInitializationComplete, 500);
+            return false;
+        }
+
+        // Start initialization when DOM is ready
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Starting ZEDSON WATCHCRAFT...');
+            console.log('🚀 Starting ZEDSON WATCHCRAFT initialization...');
             startLoadingProgress();
             
-            // Listen for database ready event
-            let dbCheckInterval = setInterval(() => {
-                if (window.SQLiteCore && window.SQLiteCore.isDBReady()) {
-                    clearInterval(dbCheckInterval);
-                    
-                    setTimeout(() => {
-                        completeLoading();
-                        console.log('✅ ZEDSON WATCHCRAFT ready!');
-                    }, 1000);
-                }
-            }, 100);
-            
-            // Timeout after 30 seconds
-            setTimeout(() => {
-                clearInterval(dbCheckInterval);
-                errorLoading('Database initialization timeout');
-            }, 30000);
+            // Start checking for complete initialization
+            setTimeout(checkInitializationComplete, 1000);
         });
 
         // Global authentication functions
@@ -475,7 +494,17 @@
                 modal.style.display = 'none';
             }
         };
+
+        // Handle script loading errors
+        window.addEventListener('error', function(e) {
+            if (e.filename && e.filename.includes('.js')) {
+                console.error('Script loading error:', e.filename, e.message);
+                // Don't show error for missing logo image
+                if (!e.filename.includes('zedson-logo.png')) {
+                    errorLoading('Failed to load: ' + e.filename.split('/').pop());
+                }
+            }
+        });
     </script>
 
 </body>
-</html>
