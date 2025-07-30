@@ -8,22 +8,8 @@
     <link rel="stylesheet" href="css/login.css">
 </head>
 <body>
-    <!-- Database Initialization Loading Screen -->
-    <div id="dbLoadingScreen" class="modal" style="z-index: 4000; display: block;">
-        <div class="modal-content" style="text-align: center; max-width: 500px;">
-            <h2>🔧 Initializing ZEDSON WATCHCRAFT</h2>
-            <div style="margin: 20px 0;">
-                <div id="dbLoadingProgress" style="width: 100%; background: #f0f0f0; border-radius: 10px; overflow: hidden;">
-                    <div id="dbProgressBar" style="width: 0%; height: 20px; background: linear-gradient(45deg, #1a237e, #283593); transition: width 0.3s ease;"></div>
-                </div>
-                <p id="dbLoadingStatus" style="margin-top: 10px; color: #666;">Loading SQLite library...</p>
-            </div>
-            <p style="font-size: 14px; color: #999;">Please wait while we set up your watch shop management system.</p>
-        </div>
-    </div>
-
     <!-- Login Screen -->
-    <div id="loginScreen" class="login-screen" style="display: none;">
+    <div id="loginScreen" class="login-screen">
         <div class="login-container">
             <div class="login-logo">
                 <img src="assets/zedson-logo.png" alt="ZEDSON WATCHCRAFT" class="login-logo-image">
@@ -46,18 +32,32 @@
                 </div>
                 <button type="submit" class="login-btn">Login</button>
             </form>
-            <div style="margin-top: 15px; font-size: 12px; color: #666; text-align: center;">
-                <p><strong>Default Login:</strong></p>
-                <p>Username: admin</p>
-                <p>Password: admin123</p>
-            </div>
+        </div>
+    </div>
+
+    <!-- First Login Password Setup Modal -->
+    <div id="firstLoginModal" class="modal" style="z-index: 3000;">
+        <div class="modal-content">
+            <h2>First Time Login - Set Your Password</h2>
+            <p>Please set your new password for security purposes.</p>
+            <form onsubmit="handleFirstTimePasswordSetup(event)">
+                <div class="form-group">
+                    <label>New Password:</label>
+                    <input type="password" id="newPasswordSetup" required placeholder="Enter new password" minlength="6">
+                </div>
+                <div class="form-group">
+                    <label>Confirm Password:</label>
+                    <input type="password" id="confirmPasswordSetup" required placeholder="Confirm new password" minlength="6">
+                </div>
+                <button type="submit" class="btn">Set Password</button>
+            </form>
         </div>
     </div>
 
     <!-- Main Application -->
-    <div id="mainApp" class="app-container" style="display: none;">
+    <div id="mainApp" class="app-container">
         <div class="container">
-            <!-- Header with Logo and Navigation -->
+            <!-- Header with Logo and Navigation - Updated Layout -->
             <div class="header">
                 <!-- User Info Bar -->
                 <div class="user-info">
@@ -66,7 +66,7 @@
                     <button class="logout-btn" onclick="logout()">Logout</button>
                 </div>
                 
-                <!-- Header Content Layout -->
+                <!-- Updated Header Content Layout -->
                 <div class="header-content">
                     <!-- Logo on the left -->
                     <div class="logo-container">
@@ -103,7 +103,7 @@
                     <h2>Dashboard Overview</h2>
                     <div class="stats">
                         <div class="stat-card">
-                            <h3 id="totalWatches">0</h3>
+                            <h3 id="totalWatches">3</h3>
                             <p>Total Items</p>
                         </div>
                         <div class="stat-card clickable-stat" onclick="openRevenueAnalytics()">
@@ -115,7 +115,7 @@
                             <p>Incomplete Services</p>
                         </div>
                         <div class="stat-card">
-                            <h3 id="totalCustomers">0</h3>
+                            <h3 id="totalCustomers">2</h3>
                             <p>Total Customers</p>
                         </div>
                         <div class="stat-card">
@@ -161,7 +161,7 @@
                             </tr>
                         </thead>
                         <tbody id="watchTableBody">
-                            <!-- Inventory data will be loaded from database -->
+                            <!-- Sample data will be loaded by JavaScript -->
                         </tbody>
                     </table>
                 </div>
@@ -188,7 +188,7 @@
                             </tr>
                         </thead>
                         <tbody id="salesTableBody">
-                            <!-- Sales data will be loaded from database -->
+                            <!-- Sales data will be loaded by JavaScript -->
                         </tbody>
                     </table>
                 </div>
@@ -217,7 +217,7 @@
                             </tr>
                         </thead>
                         <tbody id="serviceTableBody">
-                            <!-- Service data will be loaded from database -->
+                            <!-- Service data will be loaded by JavaScript -->
                         </tbody>
                     </table>
                 </div>
@@ -241,7 +241,7 @@
                             </tr>
                         </thead>
                         <tbody id="expenseTableBody">
-                            <!-- Expense data will be loaded from database -->
+                            <!-- Expense data will be loaded by JavaScript -->
                         </tbody>
                     </table>
                 </div>
@@ -273,12 +273,12 @@
                             </tr>
                         </thead>
                         <tbody id="invoiceTableBody">
-                            <!-- Invoice data will be loaded from database -->
+                            <!-- Invoice data will be loaded by JavaScript -->
                         </tbody>
                     </table>
                 </div>
 
-                <!-- Customers Section -->
+                <!-- Customers Section with Net Value column -->
                 <div id="customers" class="section">
                     <h2>Customer Management</h2>
                     <div style="margin-bottom: 20px;">
@@ -300,7 +300,7 @@
                             </tr>
                         </thead>
                         <tbody id="customerTableBody">
-                            <!-- Customer data will be loaded from database -->
+                            <!-- Customer data will be loaded by JavaScript -->
                         </tbody>
                     </table>
                 </div>
@@ -324,187 +324,141 @@
                             </tr>
                         </thead>
                         <tbody id="userTableBody">
-                            <!-- User data will be loaded from database -->
+                            <!-- User data will be loaded by JavaScript -->
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
         
-        <!-- Footer Section -->
+        <!-- Footer Section - NEW -->
         <div class="footer">
-            <p>Designed & Developed by <a href="#">PULSEWARE</a> ❤</p>
+            <p>Designed & Developed by <a href="#">PULSEWARE</a>❤</p>
         </div>
     </div>
     
+<!-- UPDATED Revenue Analytics Modal -->
+            <div id="revenueAnalyticsModal" class="modal">
+                <div class="modal-content">
+                    <span class="close" onclick="closeModal('revenueAnalyticsModal')">&times;</span>
+                    <h2>Revenue Analytics</h2>
+                    <div class="filter-controls">
+                        <div class="grid grid-2">
+                            <div class="form-group">
+                                <label>Filter Type:</label>
+                                <select id="revenueFilterType" onchange="toggleRevenueFilterInputs()">
+                                    <option value="all">All Transactions</option>
+                                    <option value="dateRange">Date Range</option>
+                                    <option value="monthly">Monthly</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Revenue Type:</label>
+                                <select id="revenueTypeFilter" onchange="applyRevenueFilter()">
+                                    <option value="all">All Revenue</option>
+                                    <option value="sales">Sales Only</option>
+                                    <option value="services">Services Only</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group" id="revenueYearGroup">
+                            <label>Year:</label>
+                            <select id="revenueYear"></select>
+                        </div>
+                        <div class="grid grid-2" id="revenueDateRangeInputs" style="display: none;">
+                            <div class="form-group">
+                                <label>From Date:</label>
+                                <input type="date" id="revenueFromDate">
+                            </div>
+                            <div class="form-group">
+                                <label>To Date:</label>
+                                <input type="date" id="revenueToDate">
+                            </div>
+                        </div>
+                        <div class="form-group" id="revenueMonthGroup" style="display: none;">
+                            <label>Month:</label>
+                            <select id="revenueMonth">
+                                <option value="0">January</option>
+                                <option value="1">February</option>
+                                <option value="2">March</option>
+                                <option value="3">April</option>
+                                <option value="4">May</option>
+                                <option value="5">June</option>
+                                <option value="6">July</option>
+                                <option value="7">August</option>
+                                <option value="8">September</option>
+                                <option value="9">October</option>
+                                <option value="10">November</option>
+                                <option value="11">December</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" id="includeExpenses" onchange="applyRevenueFilter()">
+                                Include Expenses
+                            </label>
+                        </div>
+                        <button class="btn" onclick="applyRevenueFilter()">Apply Filter</button>
+                        <button class="btn btn-danger" onclick="resetRevenueFilter()">Reset</button>
+                    </div>
+                    <div id="revenueFilterResults">
+                        <!-- Results will be displayed here -->
+                    </div>
+                </div>
+            </div>
+
+    <!-- Invoice Preview Modal -->
+    <div id="invoicePreviewModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <span class="close" onclick="closeModal('invoicePreviewModal')">&times;</span>
+            <div id="invoicePreviewContent"></div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn" onclick="printInvoice()">Print Invoice</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Include all modal templates -->
     <div id="modals-container"></div>
 
-    <!-- FIXED: Proper script loading sequence for SQLite integration -->
-    
-    <!-- 1. SQLite.js Library - MUST load first -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
-    
-    <!-- 2. Utility Scripts - Core dependencies -->
+    <!-- JavaScript Files -->
     <script src="js/utils.js"></script>
     <script src="js/logging.js"></script>
-    
-    <!-- 3. Database Layer Scripts - Load in order -->
-    <script src="js/database/sqlite-core.js"></script>
-    <script src="js/database/database-adapter.js"></script>
-    
-    <!-- 4. Authentication Module -->
     <script src="js/auth.js"></script>
-    
-    <!-- 5. Business Logic Modules -->
     <script src="js/inventory.js"></script>
-    <script src="js/customers.js"></script>
     <script src="js/sales-core.js"></script>
     <script src="js/sales-extended.js"></script>
     <script src="js/service.js"></script>
     <script src="js/expenses.js"></script>
-    
-    <!-- 6. Invoice System -->
+    <script src="js/customers.js"></script>
     <script src="js/invoice-templates.js"></script>
     <script src="js/invoices.js"></script>
-    
-    <!-- 7. Application Controllers -->
     <script src="js/app-core.js"></script>
     <script src="js/app-extended.js"></script>
 
-    <!-- 8. Database Integration and Loading Script -->
-    <script>
-        // Global variables for loading management
-        let loadingInterval;
-        let initializationAttempts = 0;
-        const maxInitializationAttempts = 30;
-        
-        // Update loading progress
-        function updateLoadingProgress(percent, status) {
-            const progressBar = document.getElementById('dbProgressBar');
-            const statusText = document.getElementById('dbLoadingStatus');
-            
-            if (progressBar) progressBar.style.width = percent + '%';
-            if (statusText) statusText.textContent = status;
-        }
+    <script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
 
-        // Show loading progress
-        function startLoadingProgress() {
-            let progress = 0;
-            const statuses = [
-                'Loading SQLite library...',
-                'Initializing database core...',
-                'Creating database tables...',
-                'Setting up data adapter...',
-                'Loading business modules...',
-                'Synchronizing data...',
-                'Almost ready...'
-            ];
-            
-            loadingInterval = setInterval(() => {
-                progress += Math.random() * 10 + 2;
-                if (progress > 85) progress = 85;
-                
-                const statusIndex = Math.floor((progress / 85) * statuses.length);
-                updateLoadingProgress(progress, statuses[statusIndex] || 'Finalizing...');
-            }, 300);
-        }
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyAoxPLdv7yFr_a7BwUKIJ7BNkVl7MzqaxY",
+    authDomain: "zedsonwatchcraft-93d67.firebaseapp.com",
+    projectId: "zedsonwatchcraft-93d67",
+    storageBucket: "zedsonwatchcraft-93d67.firebasestorage.app",
+    messagingSenderId: "20067888601",
+    appId: "1:20067888601:web:b96f6580e0e2aa7ccb3dc8",
+    measurementId: "G-0DGDMVLLWC"
+  };
 
-        // Complete loading
-        function completeLoading() {
-            if (loadingInterval) {
-                clearInterval(loadingInterval);
-            }
-            
-            updateLoadingProgress(100, 'Ready!');
-            
-            setTimeout(() => {
-                document.getElementById('dbLoadingScreen').style.display = 'none';
-                document.getElementById('loginScreen').style.display = 'flex';
-            }, 800);
-        }
-
-        // Error loading
-        function errorLoading(error) {
-            if (loadingInterval) {
-                clearInterval(loadingInterval);
-            }
-            
-            updateLoadingProgress(0, 'Error: ' + error);
-            
-            setTimeout(() => {
-                document.getElementById('dbLoadingScreen').style.display = 'none';
-                document.getElementById('loginScreen').style.display = 'flex';
-                alert('Database initialization failed: ' + error + '\n\nThe app will continue with limited functionality.');
-            }, 2000);
-        }
-
-        // Check if initialization is complete
-        function checkInitializationComplete() {
-            initializationAttempts++;
-            
-            // Check if all required components are ready
-            const sqliteCoreReady = window.SQLiteCore && window.SQLiteCore.isDBReady();
-            const databaseAdapterReady = window.DatabaseAdapter && window.DatabaseAdapter.isReady;
-            const authModuleReady = window.AuthModule;
-            const allModulesReady = window.InventoryModule && window.CustomerModule && 
-                                   window.SalesModule && window.ServiceModule && window.ExpenseModule;
-            
-            if (sqliteCoreReady && databaseAdapterReady && authModuleReady && allModulesReady) {
-                console.log('✅ All components initialized successfully');
-                completeLoading();
-                return true;
-            } else if (initializationAttempts >= maxInitializationAttempts) {
-                console.error('❌ Initialization timeout');
-                errorLoading('Initialization timeout');
-                return false;
-            }
-            
-            // Continue checking
-            setTimeout(checkInitializationComplete, 500);
-            return false;
-        }
-
-        // Start initialization when DOM is ready
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Starting ZEDSON WATCHCRAFT initialization...');
-            startLoadingProgress();
-            
-            // Start checking for complete initialization
-            setTimeout(checkInitializationComplete, 1000);
-        });
-
-        // Global authentication functions
-        window.handleLogin = function(event) {
-            if (window.AuthModule) {
-                AuthModule.handleLogin(event);
-            }
-        };
-
-        window.logout = function() {
-            if (window.AuthModule) {
-                AuthModule.logout();
-            }
-        };
-
-        // Make closeModal globally available
-        window.closeModal = function(modalId) {
-            const modal = document.getElementById(modalId);
-            if (modal) {
-                modal.style.display = 'none';
-            }
-        };
-
-        // Handle script loading errors
-        window.addEventListener('error', function(e) {
-            if (e.filename && e.filename.includes('.js')) {
-                console.error('Script loading error:', e.filename, e.message);
-                // Don't show error for missing logo image
-                if (!e.filename.includes('zedson-logo.png')) {
-                    errorLoading('Failed to load: ' + e.filename.split('/').pop());
-                }
-            }
-        });
-    </script>
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+</script>
 
 </body>
+</html>

@@ -1,45 +1,42 @@
 {
   "name": "zedson-watchcraft",
   "version": "1.0.0",
-  "description": "ZEDSON WATCHCRAFT Management System with SQLite Database",
-  "main": "server.js",
-  "type": "commonjs",
+  "description": "Professional Watch Shop Management System for ZEDSON WATCHCRAFT",
+  "main": "index.html",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
-    "setup": "npm install && npm run download-sqlite",
-    "download-sqlite": "node setup-sqlite.js",
-    "test": "node test-server.js"
-  },
-  "dependencies": {
-    "express": "^4.18.2"
-  },
-  "devDependencies": {
-    "live-server": "^1.2.2",
-    "nodemon": "^3.0.2"
-  },
-  "engines": {
-    "node": ">=16.0.0"
+    "dev": "live-server --port=3000 --open=/",
+    "start": "live-server --port=8080",
+    "build": "echo 'No build process needed for this project'",
+    "test": "echo 'No tests specified'"
   },
   "keywords": [
     "watch-shop",
     "management-system",
-    "sqlite",
     "inventory",
     "sales",
     "service",
-    "invoice",
-    "javascript",
-    "web-application"
+    "invoicing",
+    "customer-management"
   ],
   "author": "ZEDSON WATCHCRAFT",
   "license": "ISC",
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/zedson-watchcraft.git"
+    "url": "https://github.com/zedson-watchcraft/management-system.git"
   },
   "bugs": {
-    "url": "https://github.com/your-username/zedson-watchcraft/issues"
+    "url": "https://github.com/zedson-watchcraft/management-system/issues"
   },
-  "homepage": "https://github.com/your-username/zedson-watchcraft#readme"
+  "homepage": "https://github.com/zedson-watchcraft/management-system#readme",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
 }

@@ -1,10 +1,10 @@
-// ZEDSON WATCHCRAFT - Sales Core Module (FIXED with Database Integration)
+// ZEDSON WATCHCRAFT - Sales Core Module (Part 1)
 
 /**
- * Sales Transaction Management System - Fully integrated with SQLite database
+ * Sales Transaction Management System - Core Functions
  */
 
-// Sales database - Now managed by DatabaseAdapter
+// Sales database
 let sales = [];
 let nextSaleId = 1;
 
@@ -155,9 +155,9 @@ function updateCalculationDisplay() {
 }
 
 /**
- * Add new sale - FIXED to use database
+ * Add new sale
  */
-async function addNewSale(event) {
+function addNewSale(event) {
     event.preventDefault();
     
     console.log('Adding new sale...');
@@ -223,11 +223,18 @@ async function addNewSale(event) {
     
     const totalAmount = subtotal - discountAmount;
 
-    // Create sale object
+    // Create sale object with time and discount details
     const now = new Date();
-    const saleData = {
+    const newSale = {
+        id: nextSaleId++,
+        date: Utils.formatDate(now),
+        time: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+        timestamp: Utils.getCurrentTimestamp(),
         customerId: customerId,
+        customerName: customer.name,
         watchId: watchId,
+        watchName: `${watch.brand} ${watch.model}`,
+        watchCode: watch.code,
         price: price,
         quantity: quantity,
         subtotal: subtotal,
@@ -236,41 +243,48 @@ async function addNewSale(event) {
         discountAmount: discountAmount,
         totalAmount: totalAmount,
         paymentMethod: paymentMethod,
-        date: Utils.formatDate(now),
-        time: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-        createdBy: AuthModule.getCurrentUser().username
+        status: 'completed',
+        createdBy: AuthModule.getCurrentUser().username,
+        invoiceGenerated: false,
+        notes: []
     };
 
-    try {
-        // Use database adapter to add sale
-        await window.DatabaseAdapter.addSale(saleData);
-
-        Utils.showNotification(`Sale recorded successfully! Total: ${Utils.formatCurrency(totalAmount)}`);
-        
-        // Close modal and reset form
-        document.getElementById('newSaleModal').style.display = 'none';
-        event.target.reset();
-        
-        // Log action
-        if (window.logSalesAction) {
-            logSalesAction('Added new sale: ' + customer.name + ' - ' + watch.brand + ' ' + watch.model, {
-                customerId: customerId,
-                customerName: customer.name,
-                watchName: watch.brand + ' ' + watch.model,
-                totalAmount: totalAmount
-            });
+    // Add to sales array
+    sales.push(newSale);
+    
+    // Update inventory (decrease quantity)
+    InventoryModule.decreaseWatchQuantity(watchId, quantity);
+    
+    // Update customer purchase count
+    CustomerModule.incrementCustomerPurchases(customerId);
+    
+    // Generate Sales Invoice automatically
+    if (window.InvoiceModule) {
+        const invoice = InvoiceModule.generateSalesInvoice(newSale);
+        if (invoice) {
+            newSale.invoiceGenerated = true;
+            newSale.invoiceId = invoice.id;
         }
-        
-    } catch (error) {
-        console.error('Failed to add sale:', error);
-        Utils.showNotification('Failed to record sale: ' + error.message);
     }
+    
+    // Update displays
+    renderSalesTable();
+    if (window.updateDashboard) {
+        updateDashboard();
+    }
+    
+    // Close modal and reset form
+    document.getElementById('newSaleModal').style.display = 'none';
+    event.target.reset();
+    
+    Utils.showNotification(`Sale recorded successfully! Sale ID: ${newSale.id}. Total: ${Utils.formatCurrency(totalAmount)}. Invoice automatically generated.`);
+    console.log('Sale added:', newSale);
 }
 
 /**
- * Delete sale - FIXED to use database
+ * Delete sale
  */
-async function deleteSale(saleId) {
+function deleteSale(saleId) {
     if (!AuthModule.hasPermission('sales')) {
         Utils.showNotification('You do not have permission to delete sales.');
         return;
@@ -283,21 +297,18 @@ async function deleteSale(saleId) {
     }
 
     if (confirm(`Are you sure you want to delete the sale for ${sale.watchName}?`)) {
-        try {
-            // Use database adapter to delete sale
-            await window.DatabaseAdapter.deleteSale(saleId);
-            
-            Utils.showNotification('Sale deleted successfully!');
-            
-            // Log action
-            if (window.logSalesAction) {
-                logSalesAction('Deleted sale: ' + sale.customerName + ' - ' + sale.watchName, sale);
-            }
-            
-        } catch (error) {
-            console.error('Failed to delete sale:', error);
-            Utils.showNotification('Failed to delete sale: ' + error.message);
+        // Restore inventory and customer counts
+        InventoryModule.increaseWatchQuantity(sale.watchId, sale.quantity);
+        CustomerModule.decrementCustomerPurchases(sale.customerId);
+        
+        // Remove from sales array
+        sales = sales.filter(s => s.id !== saleId);
+        
+        renderSalesTable();
+        if (window.updateDashboard) {
+            updateDashboard();
         }
+        Utils.showNotification('Sale deleted successfully!');
     }
 }
 
@@ -361,7 +372,7 @@ function searchSales(query) {
 }
 
 /**
- * Render sales table - UPDATED for database integration
+ * Render sales table
  */
 function renderSalesTable() {
     const tbody = document.getElementById('salesTableBody');
@@ -369,20 +380,8 @@ function renderSalesTable() {
     
     tbody.innerHTML = '';
     
-    // Use sales from global array (populated by DatabaseAdapter)
-    if (!sales || sales.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="8" style="text-align: center; color: #999; padding: 20px;">
-                    No sales yet. Click "New Sale" to get started.
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
     // Sort sales by date (newest first)
-    const sortedSales = sales.sort((a, b) => new Date(b.timestamp || b.created_at) - new Date(a.timestamp || a.created_at));
+    const sortedSales = sales.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     
     sortedSales.forEach((sale, index) => {
         const row = document.createElement('tr');
@@ -403,22 +402,22 @@ function renderSalesTable() {
         
         row.innerHTML = `
             <td class="serial-number">${index + 1}</td>
-            <td>${Utils.sanitizeHtml(sale.date || sale.sale_date)}</td>
-            <td>${Utils.sanitizeHtml(sale.time || sale.sale_time)}</td>
+            <td>${Utils.sanitizeHtml(sale.date)}</td>
+            <td>${Utils.sanitizeHtml(sale.time)}</td>
             <td class="customer-info">
-                <div class="customer-name">${Utils.sanitizeHtml(sale.customerName || sale.customer_name)}</div>
+                <div class="customer-name">${Utils.sanitizeHtml(sale.customerName)}</div>
                 <div class="customer-mobile">${Utils.sanitizeHtml(customerMobile)}</div>
             </td>
             <td>
-                <strong>${Utils.sanitizeHtml(sale.watchName || sale.watch_name)}</strong><br>
-                <small>Code: ${Utils.sanitizeHtml(sale.watchCode || sale.watch_code)}</small><br>
+                <strong>${Utils.sanitizeHtml(sale.watchName)}</strong><br>
+                <small>Code: ${Utils.sanitizeHtml(sale.watchCode)}</small><br>
                 <small>Qty: ${sale.quantity}</small>
             </td>
             <td>
-                ${Utils.formatCurrency(sale.totalAmount || sale.total_amount)}
+                ${Utils.formatCurrency(sale.totalAmount)}
                 ${discountInfo}
             </td>
-            <td><span class="status available">${Utils.sanitizeHtml(sale.paymentMethod || sale.payment_method)}</span></td>
+            <td><span class="status available">${Utils.sanitizeHtml(sale.paymentMethod)}</span></td>
             <td>
                 <button class="btn btn-sm" onclick="SalesModule.editSale(${sale.id})" 
                     ${!AuthModule.hasPermission('sales') ? 'disabled' : ''}>Edit</button>
@@ -432,54 +431,6 @@ function renderSalesTable() {
         `;
         tbody.appendChild(row);
     });
-}
-
-/**
- * Get sales statistics
- */
-function getSalesStats() {
-    const totalSales = sales.reduce((sum, sale) => sum + (sale.totalAmount || sale.total_amount || 0), 0);
-    const totalTransactions = sales.length;
-    const averageSaleValue = totalTransactions > 0 ? totalSales / totalTransactions : 0;
-    const totalDiscounts = sales.reduce((sum, sale) => sum + (sale.discountAmount || sale.discount_amount || 0), 0);
-    
-    return {
-        totalSales,
-        totalTransactions,
-        averageSaleValue,
-        totalDiscounts
-    };
-}
-
-/**
- * Filter sales by date range
- */
-function filterSalesByDateRange(fromDate, toDate) {
-    const from = new Date(fromDate);
-    const to = new Date(toDate);
-    
-    return sales.filter(sale => {
-        const saleDate = new Date(sale.timestamp || sale.created_at);
-        return saleDate >= from && saleDate <= to;
-    });
-}
-
-/**
- * Filter sales by month and year
- */
-function filterSalesByMonth(month, year) {
-    return sales.filter(sale => {
-        const saleDate = new Date(sale.timestamp || sale.created_at);
-        return saleDate.getMonth() === parseInt(month) && saleDate.getFullYear() === parseInt(year);
-    });
-}
-
-/**
- * Initialize sales module
- */
-function initializeSales() {
-    renderSalesTable();
-    console.log('Sales core module initialized');
 }
 
 // Export core functions for Part 2
@@ -497,9 +448,5 @@ window.SalesCoreModule = {
     getSalesByCustomer,
     searchSales,
     renderSalesTable,
-    getSalesStats,
-    filterSalesByDateRange,
-    filterSalesByMonth,
-    initializeSales,
     sales // For access by other modules
 };
