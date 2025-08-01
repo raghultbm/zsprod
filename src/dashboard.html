@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watch Shop - Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>⌚ Watch Shop</h2>
+                <div class="user-info">
+                    <span id="userName">Loading...</span>
+                    <small id="userRole">Loading...</small>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-module="dashboard">
+                    <span>📊</span> Dashboard
+                </a>
+                <a href="#" class="nav-item" data-module="customers">
+                    <span>👥</span> Customers
+                </a>
+                <a href="#" class="nav-item" data-module="inventory">
+                    <span>📦</span> Inventory
+                </a>
+                <a href="#" class="nav-item" data-module="sales">
+                    <span>💰</span> Sales
+                </a>
+                <a href="#" class="nav-item" data-module="service">
+                    <span>🔧</span> Service
+                </a>
+                <a href="#" class="nav-item" data-module="invoices">
+                    <span>📄</span> Invoices
+                </a>
+                <a href="#" class="nav-item" data-module="users" id="usersNav">
+                    <span>👤</span> User Management
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button id="logoutBtn" class="logout-btn">Logout</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="content-header">
+                <h1 id="pageTitle">Dashboard</h1>
+                <div class="header-actions" id="headerActions">
+                    <!-- Dynamic action buttons will be added here -->
+                </div>
+            </header>
+            
+            <div class="content-body" id="contentBody">
+                <!-- Dashboard Content -->
+                <div id="dashboard-content" class="module-content active">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3>Total Customers</h3>
+                            <div class="stat-number" id="totalCustomers">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Total Items</h3>
+                            <div class="stat-number" id="totalItems">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Low Stock Items</h3>
+                            <div class="stat-number" id="lowStockItems">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Total Users</h3>
+                            <div class="stat-number" id="totalUsers">0</div>
+                        </div>
+                    </div>
+                    
+                    <div class="recent-activity">
+                        <h3>Recent Activity</h3>
+                        <p>Welcome to Watch Shop Management System!</p>
+                    </div>
+                </div>
+
+                <!-- Customers Module -->
+                <div id="customers-content" class="module-content">
+                    <div class="data-table-container">
+                        <table class="data-table" id="customersTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Phone</th>
+                                    <th>Email</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="customersTableBody">
+                                <!-- Dynamic content -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- User Management Module -->
+                <div id="users-content" class="module-content">
+                    <div class="data-table-container">
+                        <table class="data-table" id="usersTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Username</th>
+                                    <th>Full Name</th>
+                                    <th>Role</th>
+                                    <th>Email</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody">
+                                <!-- Dynamic content -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Inventory Module -->
+                <div id="inventory-content" class="module-content">
+                    <div class="inventory-controls">
+                        <div class="search-container">
+                            <input type="text" id="inventorySearch" placeholder="Search by code, name, brand, or model..." class="search-input">
+                            <button onclick="searchInventory()" class="btn btn-secondary">Search</button>
+                            <button onclick="clearSearch()" class="btn btn-secondary">Clear</button>
+                        </div>
+                        <div class="filter-container">
+                            <select id="categoryFilter" onchange="filterByCategory()">
+                                <option value="">All Categories</option>
+                                <option value="watch">Watches</option>
+                                <option value="wallclock">Wall Clocks</option>
+                                <option value="timepiece">Timepieces</option>
+                                <option value="strap">Straps</option>
+                                <option value="chain">Chains</option>
+                                <option value="battery">Batteries</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="data-table-container">
+                        <table class="data-table" id="inventoryTable">
+                            <thead>
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Name</th>
+                                    <th>Category</th>
+                                    <th>Brand</th>
+                                    <th>Model</th>
+                                    <th>Stock</th>
+                                    <th>Cost Price</th>
+                                    <th>Selling Price</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventoryTableBody">
+                                <!-- Dynamic content -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="sales-content" class="module-content">
+                    <h2>Sales Module</h2>
+                    <p>Coming soon...</p>
+                </div>
+
+                <div id="service-content" class="module-content">
+                    <h2>Service Module</h2>
+                    <p>Coming soon...</p>
+                </div>
+
+                <div id="invoices-content" class="module-content">
+                    <h2>Invoices Module</h2>
+                    <p>Coming soon...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Customer Modal -->
+    <div id="customerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="customerModalTitle">Add Customer</h3>
+                <span class="close-btn" onclick="closeModal('customerModal')">&times;</span>
+            </div>
+            <form id="customerForm" class="modal-form">
+                <input type="hidden" id="customerId">
+                <div class="form-group">
+                    <label for="customerName">Name *</label>
+                    <input type="text" id="customerName" required>
+                </div>
+                <div class="form-group">
+                    <label for="customerPhone">Phone</label>
+                    <input type="tel" id="customerPhone">
+                </div>
+                <div class="form-group">
+                    <label for="customerEmail">Email</label>
+                    <input type="email" id="customerEmail">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" onclick="closeModal('customerModal')" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- User Modal -->
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="userModalTitle">Add User</h3>
+                <span class="close-btn" onclick="closeModal('userModal')">&times;</span>
+            </div>
+            <form id="userForm" class="modal-form">
+                <input type="hidden" id="userId">
+                <div class="form-group">
+                    <label for="userUsername">Username *</label>
+                    <input type="text" id="userUsername" required>
+                </div>
+                <div class="form-group" id="passwordGroup">
+                    <label for="userPassword">Password *</label>
+                    <input type="password" id="userPassword" required>
+                </div>
+                <div class="form-group">
+                    <label for="userFullName">Full Name *</label>
+                    <input type="text" id="userFullName" required>
+                </div>
+                <div class="form-group">
+                    <label for="userRole">Role *</label>
+                    <select id="userRole" required>
+                        <option value="">Select Role</option>
+                        <option value="admin">Admin</option>
+                        <option value="manager">Manager</option>
+                        <option value="staff">Staff</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="userEmail">Email</label>
+                    <input type="email" id="userEmail">
+                </div>
+                <div class="form-group">
+                    <label for="userPhone">Phone</label>
+                    <input type="tel" id="userPhone">
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="userActive" checked>
+                        Active User
+                    </label>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" onclick="closeModal('userModal')" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Inventory Modal -->
+    <div id="inventoryModal" class="modal">
+        <div class="modal-content large-modal">
+            <div class="modal-header">
+                <h3 id="inventoryModalTitle">Add Inventory Item</h3>
+                <span class="close-btn" onclick="closeModal('inventoryModal')">&times;</span>
+            </div>
+            <form id="inventoryForm" class="modal-form">
+                <input type="hidden" id="inventoryId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="itemCode">Item Code *</label>
+                        <input type="text" id="itemCode" required placeholder="e.g., WTH001, CHN001">
+                    </div>
+                    <div class="form-group">
+                        <label for="itemName">Item Name *</label>
+                        <input type="text" id="itemName" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="itemCategory">Category *</label>
+                        <select id="itemCategory" required>
+                            <option value="">Select Category</option>
+                            <option value="watch">Watch</option>
+                            <option value="wallclock">Wall Clock</option>
+                            <option value="timepiece">Timepiece</option>
+                            <option value="strap">Strap</option>
+                            <option value="chain">Chain</option>
+                            <option value="battery">Battery</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="itemBrand">Brand</label>
+                        <input type="text" id="itemBrand">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="itemModel">Model</label>
+                        <input type="text" id="itemModel">
+                    </div>
+                    <div class="form-group">
+                        <label for="itemSupplier">Supplier</label>
+                        <input type="text" id="itemSupplier">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="itemDescription">Description</label>
+                    <textarea id="itemDescription" rows="3"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="itemCostPrice">Cost Price</label>
+                        <input type="number" id="itemCostPrice" step="0.01" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="itemSellingPrice">Selling Price</label>
+                        <input type="number" id="itemSellingPrice" step="0.01" min="0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="itemQuantity">Quantity *</label>
+                        <input type="number" id="itemQuantity" required min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="itemMinStock">Min Stock Level</label>
+                        <input type="number" id="itemMinStock" min="0" value="5">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="itemWarranty">Warranty Period</label>
+                        <input type="text" id="itemWarranty" placeholder="e.g., 2 years, 6 months">
+                    </div>
+                    <div class="form-group">
+                        <label for="itemLocation">Location/Shelf</label>
+                        <input type="text" id="itemLocation" placeholder="e.g., A1, B2, Counter">
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" onclick="closeModal('inventoryModal')" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>

@@ -1,42 +1,19 @@
 {
-  "name": "zedson-watchcraft",
+  "name": "watch-shop-app",
   "version": "1.0.0",
-  "description": "Professional Watch Shop Management System for ZEDSON WATCHCRAFT",
-  "main": "index.html",
+  "description": "Watch Shop Management System",
+  "main": "main.js",
   "scripts": {
-    "dev": "live-server --port=3000 --open=/",
-    "start": "live-server --port=8080",
-    "build": "echo 'No build process needed for this project'",
-    "test": "echo 'No tests specified'"
+    "start": "electron .",
+    "dev": "electron . --dev"
   },
-  "keywords": [
-    "watch-shop",
-    "management-system",
-    "inventory",
-    "sales",
-    "service",
-    "invoicing",
-    "customer-management"
-  ],
-  "author": "ZEDSON WATCHCRAFT",
-  "license": "ISC",
+  "keywords": ["electron", "watch", "shop", "management"],
+  "author": "Your Name",
+  "license": "MIT",
   "devDependencies": {
-    "live-server": "^1.2.2"
+    "electron": "^27.0.0"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/zedson-watchcraft/management-system.git"
-  },
-  "bugs": {
-    "url": "https://github.com/zedson-watchcraft/management-system/issues"
-  },
-  "homepage": "https://github.com/zedson-watchcraft/management-system#readme",
-  "engines": {
-    "node": ">=14.0.0"
-  },
-  "browserslist": [
-    "> 1%",
-    "last 2 versions",
-    "not dead"
-  ]
+  "dependencies": {
+    "sqlite3": "^5.1.6"
+  }
 }
