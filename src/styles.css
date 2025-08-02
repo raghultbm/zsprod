@@ -396,7 +396,7 @@ body {
     color: #721c24;
 }
 
-/* Modals */
+/* Modals - UPDATED FOR RESPONSIVENESS */
 .modal {
     display: none;
     position: fixed;
@@ -406,16 +406,33 @@ body {
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
+    overflow-y: auto;
 }
 
 .modal-content {
     background-color: white;
-    margin: 5% auto;
+    margin: 2vh auto;
     padding: 0;
     border-radius: 8px;
     width: 90%;
     max-width: 500px;
+    max-height: 95vh;
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+}
+
+.large-modal .modal-content {
+    max-width: 800px;
+}
+
+.extra-large-modal .modal-content {
+    max-width: 1200px;
+    width: 95%;
+}
+
+.responsive-modal {
+    overflow-y: auto;
 }
 
 .modal-header {
@@ -424,6 +441,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-shrink: 0;
 }
 
 .modal-header h3 {
@@ -444,6 +462,14 @@ body {
 
 .modal-form {
     padding: 25px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.modal-body {
+    padding: 25px;
+    flex: 1;
+    overflow-y: auto;
 }
 
 .modal-actions {
@@ -453,6 +479,7 @@ body {
     margin-top: 25px;
     padding-top: 20px;
     border-top: 1px solid #e1e1e1;
+    flex-shrink: 0;
 }
 
 .checkbox-label {
@@ -565,15 +592,6 @@ body {
 .stock-status.low-stock {
     background: #fff3cd;
     color: #856404;
-}
-
-.large-modal .modal-content {
-    max-width: 800px;
-}
-
-.extra-large-modal .modal-content {
-    max-width: 1200px;
-    width: 95%;
 }
 
 .form-row {
@@ -1235,19 +1253,6 @@ input[type="date"]:focus {
     font-size: 12px;
 }
 
-/* Image Preview */
-.image-preview {
-    max-width: 100px;
-    max-height: 100px;
-    border-radius: 4px;
-    margin-top: 5px;
-    cursor: pointer;
-}
-
-.image-preview:hover {
-    opacity: 0.8;
-}
-
 /* Cost Summary */
 .cost-summary {
     background: #f8f9fa;
@@ -1290,9 +1295,93 @@ input[type="date"]:focus {
     font-size: 12px;
 }
 
-/* Customer Trigger Button */
-.customer-service-trigger {
-    margin-left: 5px;
+/* Customer Action Buttons */
+.customer-action-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin: 20px 0;
+}
+
+.customer-action-buttons .btn {
+    padding: 15px 25px;
+    font-size: 16px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Expenses Module Styles */
+.expenses-container {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 30px;
+    height: calc(100vh - 200px);
+}
+
+.expenses-form-container,
+.expenses-list-container {
+    background: white;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    overflow-y: auto;
+}
+
+.expense-form {
+    margin-bottom: 0;
+}
+
+.expenses-controls {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+/* Invoices Module Styles */
+.invoices-container {
+    background: white;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    height: calc(100vh - 200px);
+    overflow-y: auto;
+}
+
+.invoices-controls {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* Invoice Type Badges */
+.invoice-type {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.invoice-type.sale {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.invoice-type.service {
+    background: #fff3e0;
+    color: #f57c00;
 }
 
 /* Loading and Error States */
@@ -1315,7 +1404,8 @@ input[type="date"]:focus {
 /* Responsive Design */
 @media (max-width: 1024px) {
     .sales-container,
-    .service-container {
+    .service-container,
+    .expenses-container {
         grid-template-columns: 1fr;
         gap: 20px;
     }
@@ -1323,7 +1413,9 @@ input[type="date"]:focus {
     .sales-form-container,
     .sales-history-container,
     .service-form-container,
-    .service-jobs-container {
+    .service-jobs-container,
+    .expenses-form-container,
+    .expenses-list-container {
         height: auto;
         max-height: none;
     }
@@ -1333,6 +1425,13 @@ input[type="date"]:focus {
         gap: 20px;
     }
     
+    .modal-content {
+        width: 95%;
+        margin: 1vh auto;
+        max-height: 98vh;
+    }
+    
+    .large-modal .modal-content,
     .extra-large-modal .modal-content {
         max-width: 95%;
     }
@@ -1381,8 +1480,27 @@ input[type="date"]:focus {
     }
     
     .modal-content {
-        width: 95%;
-        margin: 10% auto;
+        width: 98%;
+        margin: 1vh auto;
+        max-height: 98vh;
+    }
+    
+    .modal-header {
+        padding: 15px 20px;
+    }
+    
+    .modal-form,
+    .modal-body {
+        padding: 20px;
+    }
+    
+    .modal-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .modal-actions .btn {
+        width: 100%;
     }
     
     .inventory-controls {
@@ -1412,17 +1530,14 @@ input[type="date"]:focus {
         gap: 10px;
     }
     
-    .large-modal .modal-content {
-        max-width: 95%;
-    }
-    
     .category-fields {
         padding: 10px;
         margin: 10px 0;
     }
     
     .sales-container,
-    .service-container {
+    .service-container,
+    .expenses-container {
         grid-template-columns: 1fr;
         gap: 15px;
     }
@@ -1430,7 +1545,9 @@ input[type="date"]:focus {
     .sales-form-container,
     .sales-history-container,
     .service-form-container,
-    .service-jobs-container {
+    .service-jobs-container,
+    .expenses-form-container,
+    .expenses-list-container {
         padding: 15px;
     }
     
@@ -1496,9 +1613,34 @@ input[type="date"]:focus {
         flex: 1;
         min-width: 60px;
     }
+    
+    .customer-action-buttons {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .customer-action-buttons .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .expenses-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .expenses-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .invoices-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
 }
 
-/* Print Styles for Service Documents */
+/* Print Styles for Invoices and Service Documents */
 @media print {
     .modal-header,
     .modal-actions {
@@ -1513,67 +1655,67 @@ input[type="date"]:focus {
         max-width: none !important;
     }
     
-    .service-acknowledgment,
-    .service-invoice {
+    .print-invoice,
+    .print-acknowledgment {
         font-family: Arial, sans-serif;
         max-width: 210mm;
         margin: 0 auto;
         padding: 10mm;
     }
     
-    .service-document-header {
+    .print-header {
         text-align: center;
         border-bottom: 2px solid #000;
         margin-bottom: 20px;
         padding-bottom: 10px;
     }
     
-    .service-document-title {
+    .print-title {
         font-size: 24px;
         font-weight: bold;
         margin-bottom: 5px;
     }
     
-    .service-document-subtitle {
+    .print-subtitle {
         font-size: 14px;
         color: #666;
     }
     
-    .service-document-section {
+    .print-section {
         margin-bottom: 15px;
     }
     
-    .service-document-section h4 {
+    .print-section h4 {
         border-bottom: 1px solid #000;
         padding-bottom: 2px;
         margin-bottom: 8px;
     }
     
-    .service-document-row {
+    .print-row {
         display: flex;
         justify-content: space-between;
         margin-bottom: 3px;
     }
     
-    .service-document-table {
+    .print-table {
         width: 100%;
         border-collapse: collapse;
         margin: 10px 0;
     }
     
-    .service-document-table th,
-    .service-document-table td {
+    .print-table th,
+    .print-table td {
         border: 1px solid #000;
         padding: 8px;
         text-align: left;
     }
     
-    .service-document-table th {
+    .print-table th {
         background: #f0f0f0;
         font-weight: bold;
     }
     
-    .service-document-footer {
+    .print-footer {
         margin-top: 30px;
         text-align: center;
         border-top: 1px solid #000;
