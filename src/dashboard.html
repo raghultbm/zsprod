@@ -130,7 +130,7 @@
                 <div id="inventory-content" class="module-content">
                     <div class="inventory-controls">
                         <div class="search-container">
-                            <input type="text" id="inventorySearch" placeholder="Search by code, name, brand, or model..." class="search-input">
+                            <input type="text" id="inventorySearch" placeholder="Search by code, brand, battery code..." class="search-input">
                             <button onclick="searchInventory()" class="btn btn-secondary">Search</button>
                             <button onclick="clearSearch()" class="btn btn-secondary">Clear</button>
                         </div>
@@ -138,12 +138,16 @@
                             <select id="categoryFilter" onchange="filterByCategory()">
                                 <option value="">All Categories</option>
                                 <option value="watch">Watches</option>
-                                <option value="wallclock">Wall Clocks</option>
+                                <option value="clock">Clocks</option>
                                 <option value="timepiece">Timepieces</option>
                                 <option value="strap">Straps</option>
-                                <option value="chain">Chains</option>
                                 <option value="battery">Batteries</option>
-                                <option value="other">Other</option>
+                            </select>
+                            <select id="outletFilter" onchange="filterByOutlet()">
+                                <option value="">All Outlets</option>
+                                <option value="semmanchery">Semmanchery</option>
+                                <option value="navalur">Navalur</option>
+                                <option value="padur">Padur</option>
                             </select>
                         </div>
                     </div>
@@ -152,14 +156,14 @@
                             <thead>
                                 <tr>
                                     <th>Code</th>
-                                    <th>Name</th>
+                                    <th>Date</th>
                                     <th>Category</th>
                                     <th>Brand</th>
-                                    <th>Model</th>
-                                    <th>Stock</th>
-                                    <th>Cost Price</th>
-                                    <th>Selling Price</th>
-                                    <th>Status</th>
+                                    <th>Details</th>
+                                    <th>Quantity</th>
+                                    <th>Warranty</th>
+                                    <th>Price</th>
+                                    <th>Outlet</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -170,9 +174,176 @@
                     </div>
                 </div>
 
+                <!-- Sales Module -->
                 <div id="sales-content" class="module-content">
-                    <h2>Sales Module</h2>
-                    <p>Coming soon...</p>
+                    <div class="sales-container">
+                        <!-- Sales Form -->
+                        <div class="sales-form-container">
+                            <h3>New Sale</h3>
+                            
+                            <!-- Customer Selection -->
+                            <div class="form-section">
+                                <h4>Customer Details</h4>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="customerSearch">Search Customer</label>
+                                        <div class="search-input-container">
+                                            <input type="text" id="customerSearch" placeholder="Search by name or phone number">
+                                            <div id="customerSuggestions" class="suggestions-dropdown"></div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="selectedCustomer">Selected Customer</label>
+                                        <input type="text" id="selectedCustomer" readonly placeholder="No customer selected">
+                                        <input type="hidden" id="selectedCustomerId">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Item Selection -->
+                            <div class="form-section">
+                                <h4>Add Items</h4>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="itemCodeSearch">Item Code</label>
+                                        <div class="search-input-container">
+                                            <input type="text" id="itemCodeSearch" placeholder="Enter or search item code">
+                                            <div id="itemSuggestions" class="suggestions-dropdown"></div>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="itemQuantity">Quantity</label>
+                                        <input type="number" id="itemQuantity" min="1" value="1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="itemPrice">Price</label>
+                                        <input type="number" id="itemPrice" step="0.01" min="0">
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="discountType">Discount Type</label>
+                                        <select id="discountType">
+                                            <option value="none">No Discount</option>
+                                            <option value="percentage">Percentage</option>
+                                            <option value="amount">Amount</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="discountValue">Discount Value</label>
+                                        <input type="number" id="discountValue" step="0.01" min="0" disabled>
+                                    </div>
+                                    <div class="form-group align-end">
+                                        <button type="button" onclick="addItemToSale()" class="btn btn-primary">Add Item</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Selected Items -->
+                            <div class="form-section">
+                                <h4>Sale Items</h4>
+                                <div class="sale-items-container">
+                                    <table class="sale-items-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Code</th>
+                                                <th>Item</th>
+                                                <th>Qty</th>
+                                                <th>Price</th>
+                                                <th>Discount</th>
+                                                <th>Total</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="saleItemsTableBody">
+                                            <!-- Dynamic content -->
+                                        </tbody>
+                                    </table>
+                                    <div id="noItemsMessage" class="no-items-message">
+                                        No items added to sale
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Sale Summary -->
+                            <div class="form-section">
+                                <h4>Sale Summary</h4>
+                                <div class="sale-summary">
+                                    <div class="summary-row">
+                                        <span>Subtotal:</span>
+                                        <span id="saleSubtotal">₹0.00</span>
+                                    </div>
+                                    <div class="summary-row">
+                                        <span>Total Discount:</span>
+                                        <span id="saleTotalDiscount">₹0.00</span>
+                                    </div>
+                                    <div class="summary-row total-row">
+                                        <span>Total Amount:</span>
+                                        <span id="saleTotalAmount">₹0.00</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Payment Method -->
+                            <div class="form-section">
+                                <h4>Payment Method</h4>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="paymentMethod">Payment Method</label>
+                                        <select id="paymentMethod" onchange="toggleMultiplePayments()">
+                                            <option value="cash">Cash</option>
+                                            <option value="upi">UPI</option>
+                                            <option value="card">Card</option>
+                                            <option value="multiple">Multiple Payment Methods</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group" id="singlePaymentAmount">
+                                        <label for="paymentAmount">Payment Amount</label>
+                                        <input type="number" id="paymentAmount" step="0.01" min="0" readonly>
+                                    </div>
+                                </div>
+
+                                <!-- Multiple Payments -->
+                                <div id="multiplePaymentsSection" class="multiple-payments" style="display: none;">
+                                    <h5>Payment Breakdown</h5>
+                                    <div id="paymentBreakdown">
+                                        <!-- Dynamic payment inputs -->
+                                    </div>
+                                    <button type="button" onclick="addPaymentMethod()" class="btn btn-secondary">Add Payment Method</button>
+                                </div>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="form-section">
+                                <div class="form-actions">
+                                    <button type="button" onclick="clearSale()" class="btn btn-secondary">Clear Sale</button>
+                                    <button type="button" onclick="previewSale()" class="btn btn-primary" id="completeSaleBtn">Complete Sale</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sales History -->
+                        <div class="sales-history-container">
+                            <h3>Recent Sales</h3>
+                            <div class="sales-history-table-container">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Customer</th>
+                                            <th>Items</th>
+                                            <th>Total</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="salesHistoryTableBody">
+                                        <!-- Dynamic content -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="service-content" class="module-content">
@@ -278,28 +449,29 @@
             </div>
             <form id="inventoryForm" class="modal-form">
                 <input type="hidden" id="inventoryId">
+                
+                <!-- Basic Information -->
                 <div class="form-row">
                     <div class="form-group">
                         <label for="itemCode">Item Code *</label>
-                        <input type="text" id="itemCode" required placeholder="e.g., WTH001, CHN001">
+                        <input type="text" id="itemCode" required placeholder="e.g., WTH001, CLK001">
                     </div>
                     <div class="form-group">
-                        <label for="itemName">Item Name *</label>
-                        <input type="text" id="itemName" required>
+                        <label for="dateAdded">Date *</label>
+                        <input type="date" id="dateAdded" required>
                     </div>
                 </div>
+
                 <div class="form-row">
                     <div class="form-group">
                         <label for="itemCategory">Category *</label>
-                        <select id="itemCategory" required>
+                        <select id="itemCategory" required onchange="toggleCategoryFields()">
                             <option value="">Select Category</option>
                             <option value="watch">Watch</option>
-                            <option value="wallclock">Wall Clock</option>
+                            <option value="clock">Clock</option>
                             <option value="timepiece">Timepiece</option>
                             <option value="strap">Strap</option>
-                            <option value="chain">Chain</option>
                             <option value="battery">Battery</option>
-                            <option value="other">Other</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -307,55 +479,181 @@
                         <input type="text" id="itemBrand">
                     </div>
                 </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="itemModel">Model</label>
-                        <input type="text" id="itemModel">
-                    </div>
-                    <div class="form-group">
-                        <label for="itemSupplier">Supplier</label>
-                        <input type="text" id="itemSupplier">
+
+                <!-- Watch and Clock/Timepiece Fields -->
+                <div id="watchClockFields" class="category-fields" style="display: none;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="itemType">Type</label>
+                            <select id="itemType">
+                                <option value="">Select Type</option>
+                                <option value="analog">Analog</option>
+                                <option value="digital">Digital</option>
+                            </select>
+                        </div>
+                        <!-- Gender field - only for watches -->
+                        <div class="form-group" id="genderField" style="display: none;">
+                            <label for="itemGender">Gender</label>
+                            <select id="itemGender">
+                                <option value="">Select Gender</option>
+                                <option value="gents">Gents</option>
+                                <option value="ladies">Ladies</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label for="itemDescription">Description</label>
-                    <textarea id="itemDescription" rows="3"></textarea>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="itemCostPrice">Cost Price</label>
-                        <input type="number" id="itemCostPrice" step="0.01" min="0">
+
+                <!-- Strap Fields -->
+                <div id="strapFields" class="category-fields" style="display: none;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="itemMaterial">Material</label>
+                            <select id="itemMaterial">
+                                <option value="">Select Material</option>
+                                <option value="leather">Leather</option>
+                                <option value="fiber">Fiber</option>
+                                <option value="chain">Chain</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="itemSize">Size (mm)</label>
+                            <input type="number" id="itemSize" min="1" placeholder="e.g., 20, 22, 24">
+                        </div>
                     </div>
+                </div>
+
+                <!-- Battery Fields -->
+                <div id="batteryFields" class="category-fields" style="display: none;">
                     <div class="form-group">
-                        <label for="itemSellingPrice">Selling Price</label>
-                        <input type="number" id="itemSellingPrice" step="0.01" min="0">
+                        <label for="itemBatteryCode">Battery Code</label>
+                        <input type="text" id="itemBatteryCode" placeholder="e.g., SR626SW, LR44">
                     </div>
                 </div>
+
+                <!-- Common Fields -->
                 <div class="form-row">
                     <div class="form-group">
                         <label for="itemQuantity">Quantity *</label>
                         <input type="number" id="itemQuantity" required min="0" value="0">
                     </div>
                     <div class="form-group">
-                        <label for="itemMinStock">Min Stock Level</label>
-                        <input type="number" id="itemMinStock" min="0" value="5">
+                        <label for="itemWarranty">Warranty Period (Months)</label>
+                        <input type="number" id="itemWarranty" min="0" placeholder="e.g., 12, 24">
                     </div>
                 </div>
+
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="itemWarranty">Warranty Period</label>
-                        <input type="text" id="itemWarranty" placeholder="e.g., 2 years, 6 months">
+                        <label for="itemPrice">Price *</label>
+                        <input type="number" id="itemPrice" required step="0.01" min="0">
                     </div>
                     <div class="form-group">
-                        <label for="itemLocation">Location/Shelf</label>
-                        <input type="text" id="itemLocation" placeholder="e.g., A1, B2, Counter">
+                        <label for="itemOutlet">Outlet *</label>
+                        <select id="itemOutlet" required>
+                            <option value="">Select Outlet</option>
+                            <option value="semmanchery">Semmanchery</option>
+                            <option value="navalur">Navalur</option>
+                            <option value="padur">Padur</option>
+                        </select>
                     </div>
                 </div>
+
+                <div class="form-group">
+                    <label for="itemComments">Comments</label>
+                    <textarea id="itemComments" rows="3" placeholder="Additional notes or description"></textarea>
+                </div>
+
                 <div class="modal-actions">
                     <button type="button" onclick="closeModal('inventoryModal')" class="btn btn-secondary">Cancel</button>
                     <button type="submit" class="btn btn-primary">Save Item</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Sale Confirmation Modal -->
+    <div id="saleConfirmationModal" class="modal">
+        <div class="modal-content large-modal">
+            <div class="modal-header">
+                <h3>Confirm Sale</h3>
+                <span class="close-btn" onclick="closeModal('saleConfirmationModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="confirmation-section">
+                    <h4>Customer Details</h4>
+                    <p id="confirmCustomerDetails">No customer selected</p>
+                </div>
+
+                <div class="confirmation-section">
+                    <h4>Items</h4>
+                    <table class="confirmation-table">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Item</th>
+                                <th>Qty</th>
+                                <th>Price</th>
+                                <th>Discount</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="confirmItemsTableBody">
+                            <!-- Dynamic content -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="confirmation-section">
+                    <h4>Payment Details</h4>
+                    <div id="confirmPaymentDetails">
+                        <!-- Dynamic content -->
+                    </div>
+                </div>
+
+                <div class="confirmation-section">
+                    <h4>Sale Summary</h4>
+                    <div class="confirmation-summary">
+                        <div class="summary-row">
+                            <span>Subtotal:</span>
+                            <span id="confirmSubtotal">₹0.00</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>Total Discount:</span>
+                            <span id="confirmTotalDiscount">₹0.00</span>
+                        </div>
+                        <div class="summary-row total-row">
+                            <span>Total Amount:</span>
+                            <span id="confirmTotalAmount">₹0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="confirmation-section">
+                    <label for="saleNotes">Notes (Optional)</label>
+                    <textarea id="saleNotes" rows="3" placeholder="Add any additional notes for this sale"></textarea>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" onclick="closeModal('saleConfirmationModal')" class="btn btn-secondary">Cancel</button>
+                <button type="button" onclick="confirmSale()" class="btn btn-primary">Confirm Sale</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sale Details Modal -->
+    <div id="saleDetailsModal" class="modal">
+        <div class="modal-content large-modal">
+            <div class="modal-header">
+                <h3>Sale Details</h3>
+                <span class="close-btn" onclick="closeModal('saleDetailsModal')">&times;</span>
+            </div>
+            <div class="modal-body" id="saleDetailsContent">
+                <!-- Dynamic content -->
+            </div>
+            <div class="modal-actions">
+                <button type="button" onclick="closeModal('saleDetailsModal')" class="btn btn-secondary">Close</button>
+                <button type="button" onclick="printSaleReceipt()" class="btn btn-primary">Print Receipt</button>
+            </div>
         </div>
     </div>
 

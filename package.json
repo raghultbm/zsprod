@@ -7,11 +7,16 @@
     "start": "electron .",
     "dev": "electron . --dev"
   },
-  "keywords": ["electron", "watch", "shop", "management"],
+  "keywords": [
+    "electron",
+    "watch",
+    "shop",
+    "management"
+  ],
   "author": "Your Name",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^27.0.0"
+    "electron": "^37.2.5"
   },
   "dependencies": {
     "sqlite3": "^5.1.6"

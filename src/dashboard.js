@@ -6,6 +6,13 @@ let users = [];
 let inventory = [];
 let filteredInventory = [];
 
+// Sales variables
+let saleItems = [];
+let salePayments = [];
+let selectedCustomer = null;
+let selectedItem = null;
+let sales = [];
+
 // Initialize dashboard
 document.addEventListener('DOMContentLoaded', async () => {
     // Check if user is logged in
@@ -58,6 +65,53 @@ function setupEventListeners() {
     document.getElementById('customerForm').addEventListener('submit', handleCustomerForm);
     document.getElementById('userForm').addEventListener('submit', handleUserForm);
     document.getElementById('inventoryForm').addEventListener('submit', handleInventoryForm);
+
+    // Sales event listeners
+    setupSalesEventListeners();
+}
+
+function setupSalesEventListeners() {
+    // Customer search functionality
+    const customerSearch = document.getElementById('customerSearch');
+    if (customerSearch) {
+        let customerSearchTimeout;
+        customerSearch.addEventListener('input', (e) => {
+            clearTimeout(customerSearchTimeout);
+            customerSearchTimeout = setTimeout(() => {
+                searchCustomers(e.target.value);
+            }, 300);
+        });
+
+        customerSearch.addEventListener('blur', () => {
+            setTimeout(() => {
+                document.getElementById('customerSuggestions').style.display = 'none';
+            }, 200);
+        });
+    }
+
+    // Item search functionality
+    const itemCodeSearch = document.getElementById('itemCodeSearch');
+    if (itemCodeSearch) {
+        let itemSearchTimeout;
+        itemCodeSearch.addEventListener('input', (e) => {
+            clearTimeout(itemSearchTimeout);
+            itemSearchTimeout = setTimeout(() => {
+                searchItems(e.target.value);
+            }, 300);
+        });
+
+        itemCodeSearch.addEventListener('blur', () => {
+            setTimeout(() => {
+                document.getElementById('itemSuggestions').style.display = 'none';
+            }, 200);
+        });
+    }
+
+    // Discount type change
+    const discountType = document.getElementById('discountType');
+    if (discountType) {
+        discountType.addEventListener('change', toggleDiscountInput);
+    }
 }
 
 function switchModule(module) {
@@ -75,6 +129,11 @@ function switchModule(module) {
     
     // Update page title and actions
     updatePageHeader(module);
+    
+    // Load module-specific data
+    if (module === 'sales') {
+        loadSales();
+    }
 }
 
 function updatePageHeader(module) {
@@ -94,6 +153,9 @@ function updatePageHeader(module) {
         case 'inventory':
             pageTitle.textContent = 'Inventory Management';
             headerActions.innerHTML = '<button class="btn btn-primary" onclick="openInventoryModal()">Add Item</button>';
+            break;
+        case 'sales':
+            pageTitle.textContent = 'Sales Management';
             break;
         case 'users':
             pageTitle.textContent = 'User Management';
@@ -118,8 +180,8 @@ async function loadDashboardStats() {
         document.getElementById('totalUsers').textContent = usersData.length;
         document.getElementById('totalItems').textContent = inventoryData.length;
         
-        // Count low stock items
-        const lowStockCount = inventoryData.filter(item => item.quantity <= item.min_stock_level).length;
+        // Count low stock items (items with quantity <= 5)
+        const lowStockCount = inventoryData.filter(item => item.quantity <= 5).length;
         document.getElementById('lowStockItems').textContent = lowStockCount;
     } catch (error) {
         console.error('Error loading dashboard stats:', error);
@@ -268,7 +330,88 @@ async function handleCustomerForm(e) {
     }
 }
 
-// Inventory functions
+// Function to toggle category-specific fields
+function toggleCategoryFields() {
+    const category = document.getElementById('itemCategory').value;
+    
+    // Hide all category-specific fields
+    document.getElementById('watchClockFields').style.display = 'none';
+    document.getElementById('strapFields').style.display = 'none';
+    document.getElementById('batteryFields').style.display = 'none';
+    document.getElementById('genderField').style.display = 'none';
+    
+    // Clear all conditional fields
+    document.getElementById('itemType').value = '';
+    document.getElementById('itemGender').value = '';
+    document.getElementById('itemMaterial').value = '';
+    document.getElementById('itemSize').value = '';
+    document.getElementById('itemBatteryCode').value = '';
+    
+    // Show relevant fields based on category
+    if (category === 'watch') {
+        document.getElementById('watchClockFields').style.display = 'block';
+        document.getElementById('genderField').style.display = 'block';
+    } else if (category === 'clock' || category === 'timepiece') {
+        document.getElementById('watchClockFields').style.display = 'block';
+    } else if (category === 'strap') {
+        document.getElementById('strapFields').style.display = 'block';
+    } else if (category === 'battery') {
+        document.getElementById('batteryFields').style.display = 'block';
+    }
+}
+
+// Updated inventory table rendering
+function renderInventoryTable() {
+    const tbody = document.getElementById('inventoryTableBody');
+    tbody.innerHTML = '';
+    
+    filteredInventory.forEach(item => {
+        const row = document.createElement('tr');
+        
+        // Format date
+        const date = new Date(item.date_added).toLocaleDateString();
+        
+        // Build details column based on category
+        let details = '';
+        if (item.category === 'watch') {
+            details = `${item.type || ''} ${item.gender || ''}`.trim();
+        } else if (item.category === 'clock' || item.category === 'timepiece') {
+            details = item.type || '';
+        } else if (item.category === 'strap') {
+            details = `${item.material || ''} ${item.size_mm ? item.size_mm + 'mm' : ''}`.trim();
+        } else if (item.category === 'battery') {
+            details = item.battery_code || '';
+        }
+        
+        // Format warranty
+        const warranty = item.warranty_months ? `${item.warranty_months} months` : '-';
+        
+        // Format price
+        const price = item.price ? `₹${parseFloat(item.price).toFixed(2)}` : '-';
+        
+        // Capitalize outlet name
+        const outlet = item.outlet ? item.outlet.charAt(0).toUpperCase() + item.outlet.slice(1) : '-';
+        
+        row.innerHTML = `
+            <td>${item.item_code}</td>
+            <td>${date}</td>
+            <td><span class="category-badge ${item.category}">${item.category}</span></td>
+            <td>${item.brand || '-'}</td>
+            <td>${details || '-'}</td>
+            <td>${item.quantity}</td>
+            <td>${warranty}</td>
+            <td>${price}</td>
+            <td>${outlet}</td>
+            <td>
+                <button class="btn btn-sm btn-secondary" onclick="editInventoryItem(${item.id})">Edit</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteInventoryItem(${item.id})">Delete</button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// Updated open inventory modal function
 function openInventoryModal(item = null) {
     const modal = document.getElementById('inventoryModal');
     const form = document.getElementById('inventoryForm');
@@ -276,27 +419,37 @@ function openInventoryModal(item = null) {
     
     form.reset();
     
+    // Set default date to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('dateAdded').value = today;
+    
     if (item) {
         title.textContent = 'Edit Inventory Item';
         document.getElementById('inventoryId').value = item.id;
-        document.getElementById('itemCode').value = item.code;
-        document.getElementById('itemName').value = item.name;
+        document.getElementById('itemCode').value = item.item_code;
+        document.getElementById('dateAdded').value = item.date_added;
         document.getElementById('itemCategory').value = item.category;
         document.getElementById('itemBrand').value = item.brand || '';
-        document.getElementById('itemModel').value = item.model || '';
-        document.getElementById('itemDescription').value = item.description || '';
-        document.getElementById('itemCostPrice').value = item.cost_price || '';
-        document.getElementById('itemSellingPrice').value = item.selling_price || '';
+        document.getElementById('itemType').value = item.type || '';
+        document.getElementById('itemGender').value = item.gender || '';
+        document.getElementById('itemMaterial').value = item.material || '';
+        document.getElementById('itemSize').value = item.size_mm || '';
+        document.getElementById('itemBatteryCode').value = item.battery_code || '';
         document.getElementById('itemQuantity').value = item.quantity;
-        document.getElementById('itemMinStock').value = item.min_stock_level;
-        document.getElementById('itemSupplier').value = item.supplier || '';
-        document.getElementById('itemWarranty').value = item.warranty_period || '';
-        document.getElementById('itemLocation').value = item.location || '';
+        document.getElementById('itemWarranty').value = item.warranty_months || '';
+        document.getElementById('itemPrice').value = item.price || '';
+        document.getElementById('itemOutlet').value = item.outlet;
+        document.getElementById('itemComments').value = item.comments || '';
+        
+        // Show relevant fields for the category
+        toggleCategoryFields();
     } else {
         title.textContent = 'Add Inventory Item';
         document.getElementById('inventoryId').value = '';
         document.getElementById('itemQuantity').value = '0';
-        document.getElementById('itemMinStock').value = '5';
+        
+        // Hide all category fields initially
+        toggleCategoryFields();
     }
     
     modal.style.display = 'block';
@@ -321,23 +474,25 @@ async function deleteInventoryItem(id) {
     }
 }
 
+// Updated handle inventory form function
 async function handleInventoryForm(e) {
     e.preventDefault();
     
     const itemData = {
-        code: document.getElementById('itemCode').value.toUpperCase().trim(),
-        name: document.getElementById('itemName').value,
+        item_code: document.getElementById('itemCode').value.toUpperCase().trim(),
+        date_added: document.getElementById('dateAdded').value,
         category: document.getElementById('itemCategory').value,
-        brand: document.getElementById('itemBrand').value,
-        model: document.getElementById('itemModel').value,
-        description: document.getElementById('itemDescription').value,
-        cost_price: document.getElementById('itemCostPrice').value || null,
-        selling_price: document.getElementById('itemSellingPrice').value || null,
+        brand: document.getElementById('itemBrand').value || null,
+        type: document.getElementById('itemType').value || null,
+        gender: document.getElementById('itemGender').value || null,
+        material: document.getElementById('itemMaterial').value || null,
+        size_mm: document.getElementById('itemSize').value || null,
+        battery_code: document.getElementById('itemBatteryCode').value || null,
         quantity: parseInt(document.getElementById('itemQuantity').value),
-        min_stock_level: parseInt(document.getElementById('itemMinStock').value),
-        supplier: document.getElementById('itemSupplier').value,
-        warranty_period: document.getElementById('itemWarranty').value,
-        location: document.getElementById('itemLocation').value
+        warranty_months: document.getElementById('itemWarranty').value || null,
+        price: parseFloat(document.getElementById('itemPrice').value),
+        outlet: document.getElementById('itemOutlet').value,
+        comments: document.getElementById('itemComments').value || null
     };
     
     const itemId = document.getElementById('inventoryId').value;
@@ -381,18 +536,34 @@ async function searchInventory() {
 function clearSearch() {
     document.getElementById('inventorySearch').value = '';
     document.getElementById('categoryFilter').value = '';
+    document.getElementById('outletFilter').value = '';
     filteredInventory = [...inventory];
     renderInventoryTable();
 }
 
 function filterByCategory() {
     const category = document.getElementById('categoryFilter').value;
+    const outlet = document.getElementById('outletFilter').value;
     
-    if (category) {
-        filteredInventory = inventory.filter(item => item.category === category);
-    } else {
-        filteredInventory = [...inventory];
-    }
+    filteredInventory = inventory.filter(item => {
+        const matchesCategory = !category || item.category === category;
+        const matchesOutlet = !outlet || item.outlet === outlet;
+        return matchesCategory && matchesOutlet;
+    });
+    
+    renderInventoryTable();
+}
+
+// Updated filter by outlet function
+function filterByOutlet() {
+    const outlet = document.getElementById('outletFilter').value;
+    const category = document.getElementById('categoryFilter').value;
+    
+    filteredInventory = inventory.filter(item => {
+        const matchesOutlet = !outlet || item.outlet === outlet;
+        const matchesCategory = !category || item.category === category;
+        return matchesOutlet && matchesCategory;
+    });
     
     renderInventoryTable();
 }
@@ -495,3 +666,661 @@ window.addEventListener('click', (e) => {
         e.target.style.display = 'none';
     }
 });
+// Sales Module Functions - Part 2 of dashboard.js
+// Add this after Part 1
+
+// Load sales data when switching to sales module
+async function loadSales() {
+    try {
+        sales = await ipcRenderer.invoke('get-sales');
+        renderSalesHistory();
+    } catch (error) {
+        console.error('Error loading sales:', error);
+    }
+}
+
+async function searchCustomers(searchTerm) {
+    if (searchTerm.length < 2) {
+        document.getElementById('customerSuggestions').style.display = 'none';
+        return;
+    }
+
+    try {
+        const customers = await ipcRenderer.invoke('search-customers', searchTerm);
+        displayCustomerSuggestions(customers);
+    } catch (error) {
+        console.error('Error searching customers:', error);
+    }
+}
+
+function displayCustomerSuggestions(customers) {
+    const suggestionsDiv = document.getElementById('customerSuggestions');
+    
+    if (customers.length === 0) {
+        suggestionsDiv.style.display = 'none';
+        return;
+    }
+
+    suggestionsDiv.innerHTML = customers.map(customer => 
+        `<div class="suggestion-item" onclick="selectCustomer(${customer.id}, '${customer.name}', '${customer.phone || ''}')">
+            <strong>${customer.name}</strong>
+            ${customer.phone ? `<br><small>${customer.phone}</small>` : ''}
+        </div>`
+    ).join('');
+    
+    suggestionsDiv.style.display = 'block';
+}
+
+function selectCustomer(id, name, phone) {
+    selectedCustomer = { id, name, phone };
+    document.getElementById('selectedCustomer').value = `${name} ${phone ? `(${phone})` : ''}`;
+    document.getElementById('selectedCustomerId').value = id;
+    document.getElementById('customerSearch').value = '';
+    document.getElementById('customerSuggestions').style.display = 'none';
+}
+
+async function searchItems(searchTerm) {
+    if (searchTerm.length < 2) {
+        document.getElementById('itemSuggestions').style.display = 'none';
+        return;
+    }
+
+    try {
+        // First try to get exact match by code
+        const exactMatch = await ipcRenderer.invoke('get-inventory-by-code', searchTerm.toUpperCase());
+        if (exactMatch) {
+            selectItem(exactMatch);
+            return;
+        }
+
+        // Otherwise search for partial matches
+        const items = await ipcRenderer.invoke('search-inventory-for-sale', searchTerm);
+        displayItemSuggestions(items);
+    } catch (error) {
+        console.error('Error searching items:', error);
+    }
+}
+
+function displayItemSuggestions(items) {
+    const suggestionsDiv = document.getElementById('itemSuggestions');
+    
+    if (items.length === 0) {
+        suggestionsDiv.style.display = 'none';
+        return;
+    }
+
+    suggestionsDiv.innerHTML = items.map(item => 
+        `<div class="suggestion-item" onclick="selectItemFromSuggestion(${item.id})">
+            <strong>${item.item_code}</strong> - ${item.brand || 'No Brand'}
+            <br><small>Stock: ${item.quantity} | Price: ₹${item.price || 0}</small>
+        </div>`
+    ).join('');
+    
+    suggestionsDiv.style.display = 'block';
+}
+
+async function selectItemFromSuggestion(itemId) {
+    try {
+        const items = await ipcRenderer.invoke('get-inventory');
+        const selectedItem = items.find(i => i.id === itemId);
+        if (selectedItem) {
+            selectItem(selectedItem);
+        }
+    } catch (error) {
+        console.error('Error selecting item:', error);
+    }
+}
+
+function selectItem(item) {
+    selectedItem = item;
+    document.getElementById('itemCodeSearch').value = item.item_code;
+    document.getElementById('itemPrice').value = item.price || 0;
+    document.getElementById('itemSuggestions').style.display = 'none';
+    
+    // Set max quantity to available stock
+    const quantityInput = document.getElementById('itemQuantity');
+    quantityInput.max = item.quantity;
+    
+    if (item.quantity === 0) {
+        alert('This item is out of stock');
+        clearItemSelection();
+    }
+}
+
+function clearItemSelection() {
+    selectedItem = null;
+    document.getElementById('itemCodeSearch').value = '';
+    document.getElementById('itemPrice').value = '';
+    document.getElementById('itemQuantity').value = '1';
+    document.getElementById('discountType').value = 'none';
+    document.getElementById('discountValue').value = '';
+    toggleDiscountInput();
+}
+
+function toggleDiscountInput() {
+    const discountType = document.getElementById('discountType').value;
+    const discountValueInput = document.getElementById('discountValue');
+    
+    if (discountType === 'none') {
+        discountValueInput.disabled = true;
+        discountValueInput.value = '';
+    } else {
+        discountValueInput.disabled = false;
+    }
+}
+
+function addItemToSale() {
+    if (!selectedItem) {
+        alert('Please select an item first');
+        return;
+    }
+
+    const quantity = parseInt(document.getElementById('itemQuantity').value);
+    const price = parseFloat(document.getElementById('itemPrice').value);
+    const discountType = document.getElementById('discountType').value;
+    const discountValue = parseFloat(document.getElementById('discountValue').value) || 0;
+
+    if (quantity <= 0 || quantity > selectedItem.quantity) {
+        alert(`Invalid quantity. Available stock: ${selectedItem.quantity}`);
+        return;
+    }
+
+    if (price <= 0) {
+        alert('Price must be greater than 0');
+        return;
+    }
+
+    // Calculate line total
+    const subtotal = quantity * price;
+    let discount = 0;
+    
+    if (discountType === 'percentage') {
+        discount = (subtotal * discountValue) / 100;
+    } else if (discountType === 'amount') {
+        discount = discountValue;
+    }
+    
+    const lineTotal = subtotal - discount;
+
+    // Check if item already exists in sale
+    const existingItemIndex = saleItems.findIndex(item => item.inventory_id === selectedItem.id);
+    
+    if (existingItemIndex >= 0) {
+        // Update existing item
+        const existingItem = saleItems[existingItemIndex];
+        existingItem.quantity += quantity;
+        existingItem.line_total = (existingItem.quantity * existingItem.unit_price) - existingItem.discount_amount;
+    } else {
+        // Add new item
+        saleItems.push({
+            inventory_id: selectedItem.id,
+            item_code: selectedItem.item_code,
+            item_name: `${selectedItem.brand || ''} ${selectedItem.category}`.trim(),
+            quantity: quantity,
+            unit_price: price,
+            discount_type: discountType,
+            discount_value: discountValue,
+            discount_amount: discount,
+            line_total: lineTotal,
+            available_stock: selectedItem.quantity
+        });
+    }
+
+    renderSaleItems();
+    calculateSaleTotals();
+    clearItemSelection();
+}
+
+function renderSaleItems() {
+    const tbody = document.getElementById('saleItemsTableBody');
+    const noItemsMessage = document.getElementById('noItemsMessage');
+    
+    if (saleItems.length === 0) {
+        tbody.innerHTML = '';
+        noItemsMessage.style.display = 'block';
+        return;
+    }
+
+    noItemsMessage.style.display = 'none';
+    tbody.innerHTML = saleItems.map((item, index) => {
+        const discountText = item.discount_type === 'none' ? '-' : 
+                           item.discount_type === 'percentage' ? `${item.discount_value}%` : 
+                           `₹${item.discount_value}`;
+        
+        return `
+            <tr>
+                <td>${item.item_code}</td>
+                <td>${item.item_name}</td>
+                <td>${item.quantity}</td>
+                <td>₹${item.unit_price.toFixed(2)}</td>
+                <td>${discountText}</td>
+                <td>₹${item.line_total.toFixed(2)}</td>
+                <td>
+                    <button class="btn btn-sm btn-danger" onclick="removeSaleItem(${index})">Remove</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function removeSaleItem(index) {
+    saleItems.splice(index, 1);
+    renderSaleItems();
+    calculateSaleTotals();
+}
+
+function calculateSaleTotals() {
+    const subtotal = saleItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+    const totalDiscount = saleItems.reduce((sum, item) => sum + item.discount_amount, 0);
+    const totalAmount = subtotal - totalDiscount;
+
+    document.getElementById('saleSubtotal').textContent = `₹${subtotal.toFixed(2)}`;
+    document.getElementById('saleTotalDiscount').textContent = `₹${totalDiscount.toFixed(2)}`;
+    document.getElementById('saleTotalAmount').textContent = `₹${totalAmount.toFixed(2)}`;
+    
+    // Update payment amount for single payment
+    document.getElementById('paymentAmount').value = totalAmount.toFixed(2);
+    
+    // Update multiple payments total
+    updateMultiplePaymentsTotal();
+}
+
+function toggleMultiplePayments() {
+    const paymentMethod = document.getElementById('paymentMethod').value;
+    const singlePaymentSection = document.getElementById('singlePaymentAmount');
+    const multiplePaymentsSection = document.getElementById('multiplePaymentsSection');
+    
+    if (paymentMethod === 'multiple') {
+        singlePaymentSection.style.display = 'none';
+        multiplePaymentsSection.style.display = 'block';
+        initializeMultiplePayments();
+    } else {
+        singlePaymentSection.style.display = 'block';
+        multiplePaymentsSection.style.display = 'none';
+        salePayments = [];
+    }
+}
+
+function initializeMultiplePayments() {
+    salePayments = [];
+    const paymentBreakdown = document.getElementById('paymentBreakdown');
+    paymentBreakdown.innerHTML = '';
+    addPaymentMethod();
+}
+
+function addPaymentMethod() {
+    const paymentBreakdown = document.getElementById('paymentBreakdown');
+    const paymentIndex = salePayments.length;
+    
+    const paymentDiv = document.createElement('div');
+    paymentDiv.className = 'payment-method-row';
+    paymentDiv.innerHTML = `
+        <div class="form-row">
+            <div class="form-group">
+                <select onchange="updatePaymentMethod(${paymentIndex}, this.value)">
+                    <option value="">Select Method</option>
+                    <option value="cash">Cash</option>
+                    <option value="upi">UPI</option>
+                    <option value="card">Card</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <input type="number" step="0.01" min="0" placeholder="Amount" 
+                       onchange="updatePaymentAmount(${paymentIndex}, this.value)">
+            </div>
+            <div class="form-group">
+                <input type="text" placeholder="Reference (optional)" 
+                       onchange="updatePaymentReference(${paymentIndex}, this.value)">
+            </div>
+            <div class="form-group">
+                <button type="button" onclick="removePaymentMethod(${paymentIndex})" 
+                        class="btn btn-sm btn-danger">Remove</button>
+            </div>
+        </div>
+    `;
+    
+    paymentBreakdown.appendChild(paymentDiv);
+    salePayments.push({ payment_method: '', amount: 0, payment_reference: '' });
+}
+
+function updatePaymentMethod(index, method) {
+    salePayments[index].payment_method = method;
+    validatePayments();
+}
+
+function updatePaymentAmount(index, amount) {
+    salePayments[index].amount = parseFloat(amount) || 0;
+    validatePayments();
+}
+
+function updatePaymentReference(index, reference) {
+    salePayments[index].payment_reference = reference;
+}
+
+function removePaymentMethod(index) {
+    salePayments.splice(index, 1);
+    
+    // Re-render payment breakdown
+    const paymentBreakdown = document.getElementById('paymentBreakdown');
+    paymentBreakdown.innerHTML = '';
+    
+    salePayments.forEach((payment, i) => {
+        const paymentDiv = document.createElement('div');
+        paymentDiv.className = 'payment-method-row';
+        paymentDiv.innerHTML = `
+            <div class="form-row">
+                <div class="form-group">
+                    <select onchange="updatePaymentMethod(${i}, this.value)">
+                        <option value="">Select Method</option>
+                        <option value="cash" ${payment.payment_method === 'cash' ? 'selected' : ''}>Cash</option>
+                        <option value="upi" ${payment.payment_method === 'upi' ? 'selected' : ''}>UPI</option>
+                        <option value="card" ${payment.payment_method === 'card' ? 'selected' : ''}>Card</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <input type="number" step="0.01" min="0" placeholder="Amount" value="${payment.amount}"
+                           onchange="updatePaymentAmount(${i}, this.value)">
+                </div>
+                <div class="form-group">
+                    <input type="text" placeholder="Reference (optional)" value="${payment.payment_reference}"
+                           onchange="updatePaymentReference(${i}, this.value)">
+                </div>
+                <div class="form-group">
+                    <button type="button" onclick="removePaymentMethod(${i})" 
+                            class="btn btn-sm btn-danger">Remove</button>
+                </div>
+            </div>
+        `;
+        paymentBreakdown.appendChild(paymentDiv);
+    });
+    
+    validatePayments();
+}
+
+function updateMultiplePaymentsTotal() {
+    // This function can be used to show remaining amount in multiple payments
+    const totalAmount = parseFloat(document.getElementById('saleTotalAmount').textContent.replace('₹', ''));
+    const totalPaid = salePayments.reduce((sum, payment) => sum + payment.amount, 0);
+    const remaining = totalAmount - totalPaid;
+    
+    // You can add a remaining amount display if needed
+}
+
+function validatePayments() {
+    const totalAmount = parseFloat(document.getElementById('saleTotalAmount').textContent.replace('₹', ''));
+    const totalPaid = salePayments.reduce((sum, payment) => sum + payment.amount, 0);
+    
+    const completeSaleBtn = document.getElementById('completeSaleBtn');
+    if (Math.abs(totalAmount - totalPaid) < 0.01) {
+        completeSaleBtn.disabled = false;
+        completeSaleBtn.textContent = 'Complete Sale';
+    } else {
+        completeSaleBtn.disabled = true;
+        completeSaleBtn.textContent = `Complete Sale (₹${(totalAmount - totalPaid).toFixed(2)} remaining)`;
+    }
+}
+
+function previewSale() {
+    if (saleItems.length === 0) {
+        alert('Please add at least one item to the sale');
+        return;
+    }
+
+    const paymentMethod = document.getElementById('paymentMethod').value;
+    
+    // Validate payments
+    if (paymentMethod === 'multiple') {
+        const totalAmount = parseFloat(document.getElementById('saleTotalAmount').textContent.replace('₹', ''));
+        const totalPaid = salePayments.reduce((sum, payment) => sum + payment.amount, 0);
+        
+        if (Math.abs(totalAmount - totalPaid) > 0.01) {
+            alert('Payment amounts do not match the total amount');
+            return;
+        }
+        
+        const incompletePayments = salePayments.filter(p => !p.payment_method || p.amount <= 0);
+        if (incompletePayments.length > 0) {
+            alert('Please complete all payment method details');
+            return;
+        }
+    } else {
+        // Single payment method
+        const paymentAmount = parseFloat(document.getElementById('paymentAmount').value);
+        const totalAmount = parseFloat(document.getElementById('saleTotalAmount').textContent.replace('₹', ''));
+        
+        if (Math.abs(paymentAmount - totalAmount) > 0.01) {
+            alert('Payment amount does not match total amount');
+            return;
+        }
+        
+        salePayments = [{
+            payment_method: paymentMethod,
+            amount: paymentAmount,
+            payment_reference: ''
+        }];
+    }
+
+    // Populate confirmation modal
+    populateConfirmationModal();
+    document.getElementById('saleConfirmationModal').style.display = 'block';
+}
+
+function populateConfirmationModal() {
+    // Customer details
+    const customerDetails = selectedCustomer ? 
+        `${selectedCustomer.name} ${selectedCustomer.phone ? `(${selectedCustomer.phone})` : ''}` : 
+        'Walk-in Customer';
+    document.getElementById('confirmCustomerDetails').textContent = customerDetails;
+
+    // Items
+    const confirmItemsBody = document.getElementById('confirmItemsTableBody');
+    confirmItemsBody.innerHTML = saleItems.map(item => {
+        const discountText = item.discount_type === 'none' ? '-' : 
+                           item.discount_type === 'percentage' ? `${item.discount_value}%` : 
+                           `₹${item.discount_value}`;
+        
+        return `
+            <tr>
+                <td>${item.item_code}</td>
+                <td>${item.item_name}</td>
+                <td>${item.quantity}</td>
+                <td>₹${item.unit_price.toFixed(2)}</td>
+                <td>${discountText}</td>
+                <td>₹${item.line_total.toFixed(2)}</td>
+            </tr>
+        `;
+    }).join('');
+
+    // Payment details
+    const confirmPaymentDetails = document.getElementById('confirmPaymentDetails');
+    confirmPaymentDetails.innerHTML = salePayments.map(payment => `
+        <div class="payment-detail-row">
+            <span>${payment.payment_method.toUpperCase()}: ₹${payment.amount.toFixed(2)}</span>
+            ${payment.payment_reference ? `<small>Ref: ${payment.payment_reference}</small>` : ''}
+        </div>
+    `).join('');
+
+    // Summary
+    document.getElementById('confirmSubtotal').textContent = document.getElementById('saleSubtotal').textContent;
+    document.getElementById('confirmTotalDiscount').textContent = document.getElementById('saleTotalDiscount').textContent;
+    document.getElementById('confirmTotalAmount').textContent = document.getElementById('saleTotalAmount').textContent;
+}
+
+async function confirmSale() {
+    try {
+        const subtotal = parseFloat(document.getElementById('saleSubtotal').textContent.replace('₹', ''));
+        const totalDiscount = parseFloat(document.getElementById('saleTotalDiscount').textContent.replace('₹', ''));
+        const totalAmount = parseFloat(document.getElementById('saleTotalAmount').textContent.replace('₹', ''));
+        const notes = document.getElementById('saleNotes').value;
+
+        const saleData = {
+            sale: {
+                sale_date: new Date().toISOString().split('T')[0],
+                customer_id: selectedCustomer ? selectedCustomer.id : null,
+                subtotal: subtotal,
+                total_discount: totalDiscount,
+                total_amount: totalAmount,
+                notes: notes,
+                created_by: currentUser.id
+            },
+            items: saleItems,
+            payments: salePayments
+        };
+
+        const result = await ipcRenderer.invoke('create-sale', saleData);
+        
+        if (result.success) {
+            alert('Sale completed successfully!');
+            closeModal('saleConfirmationModal');
+            clearSale();
+            await loadSales();
+            await loadDashboardStats(); // Refresh dashboard stats
+        }
+    } catch (error) {
+        console.error('Error completing sale:', error);
+        alert('Error completing sale: ' + error.message);
+    }
+}
+
+function clearSale() {
+    saleItems = [];
+    salePayments = [];
+    selectedCustomer = null;
+    selectedItem = null;
+    
+    // Clear form inputs
+    document.getElementById('customerSearch').value = '';
+    document.getElementById('selectedCustomer').value = '';
+    document.getElementById('selectedCustomerId').value = '';
+    document.getElementById('itemCodeSearch').value = '';
+    document.getElementById('itemQuantity').value = '1';
+    document.getElementById('itemPrice').value = '';
+    document.getElementById('discountType').value = 'none';
+    document.getElementById('discountValue').value = '';
+    document.getElementById('paymentMethod').value = 'cash';
+    document.getElementById('paymentAmount').value = '';
+    document.getElementById('saleNotes').value = '';
+    
+    // Reset UI
+    toggleDiscountInput();
+    toggleMultiplePayments();
+    renderSaleItems();
+    calculateSaleTotals();
+    
+    // Hide suggestions
+    document.getElementById('customerSuggestions').style.display = 'none';
+    document.getElementById('itemSuggestions').style.display = 'none';
+}
+
+function renderSalesHistory() {
+    const tbody = document.getElementById('salesHistoryTableBody');
+    tbody.innerHTML = '';
+    
+    sales.slice(0, 10).forEach(sale => { // Show only last 10 sales
+        const row = document.createElement('tr');
+        const saleDate = new Date(sale.sale_date).toLocaleDateString();
+        
+        row.innerHTML = `
+            <td>${saleDate}</td>
+            <td>${sale.customer_name || 'Walk-in'}</td>
+            <td>${sale.items || '-'}</td>
+            <td>₹${parseFloat(sale.total_amount).toFixed(2)}</td>
+            <td>
+                <button class="btn btn-sm btn-secondary" onclick="viewSaleDetails(${sale.id})">View</button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+async function viewSaleDetails(saleId) {
+    try {
+        const saleDetails = await ipcRenderer.invoke('get-sale-details', saleId);
+        displaySaleDetails(saleDetails);
+        document.getElementById('saleDetailsModal').style.display = 'block';
+    } catch (error) {
+        console.error('Error loading sale details:', error);
+        alert('Error loading sale details');
+    }
+}
+
+function displaySaleDetails(saleDetails) {
+    const { sale, items, payments } = saleDetails;
+    const content = document.getElementById('saleDetailsContent');
+    
+    content.innerHTML = `
+        <div class="sale-detail-section">
+            <h4>Sale Information</h4>
+            <p><strong>Sale Date:</strong> ${new Date(sale.sale_date).toLocaleDateString()}</p>
+            <p><strong>Customer:</strong> ${sale.customer_name || 'Walk-in Customer'}</p>
+            ${sale.customer_phone ? `<p><strong>Phone:</strong> ${sale.customer_phone}</p>` : ''}
+            ${sale.notes ? `<p><strong>Notes:</strong> ${sale.notes}</p>` : ''}
+        </div>
+
+        <div class="sale-detail-section">
+            <h4>Items</h4>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Item</th>
+                        <th>Qty</th>
+                        <th>Price</th>
+                        <th>Discount</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${items.map(item => {
+                        const discountText = item.discount_type === 'none' ? '-' : 
+                                           item.discount_type === 'percentage' ? `${item.discount_value}%` : 
+                                           `₹${item.discount_value}`;
+                        return `
+                            <tr>
+                                <td>${item.item_code}</td>
+                                <td>${item.item_name}</td>
+                                <td>${item.quantity}</td>
+                                <td>₹${parseFloat(item.unit_price).toFixed(2)}</td>
+                                <td>${discountText}</td>
+                                <td>₹${parseFloat(item.line_total).toFixed(2)}</td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="sale-detail-section">
+            <h4>Payment Details</h4>
+            ${payments.map(payment => `
+                <div class="payment-detail-row">
+                    <span><strong>${payment.payment_method.toUpperCase()}:</strong> ₹${parseFloat(payment.amount).toFixed(2)}</span>
+                    ${payment.payment_reference ? `<br><small>Reference: ${payment.payment_reference}</small>` : ''}
+                </div>
+            `).join('')}
+        </div>
+
+        <div class="sale-detail-section">
+            <h4>Summary</h4>
+            <div class="sale-summary">
+                <div class="summary-row">
+                    <span>Subtotal:</span>
+                    <span>₹${parseFloat(sale.subtotal).toFixed(2)}</span>
+                </div>
+                <div class="summary-row">
+                    <span>Total Discount:</span>
+                    <span>₹${parseFloat(sale.total_discount).toFixed(2)}</span>
+                </div>
+                <div class="summary-row total-row">
+                    <span>Total Amount:</span>
+                    <span>₹${parseFloat(sale.total_amount).toFixed(2)}</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function printSaleReceipt() {
+    // This function can be implemented to print receipts
+    alert('Print receipt functionality can be implemented here');
+}
