@@ -89,6 +89,72 @@ function initDatabase() {
       FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE
     )`);
 
+    // Service Jobs table
+    db.run(`CREATE TABLE IF NOT EXISTS service_jobs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      job_number TEXT UNIQUE NOT NULL,
+      customer_id INTEGER,
+      estimated_cost DECIMAL(10,2),
+      advance_amount DECIMAL(10,2) DEFAULT 0,
+      advance_payment_method TEXT CHECK(advance_payment_method IN ('cash', 'upi', 'card')),
+      advance_payment_reference TEXT,
+      final_cost DECIMAL(10,2),
+      final_payment_amount DECIMAL(10,2) DEFAULT 0,
+      final_payment_method TEXT CHECK(final_payment_method IN ('cash', 'upi', 'card')),
+      final_payment_reference TEXT,
+      approximate_delivery_date DATE,
+      actual_delivery_date DATE,
+      location TEXT NOT NULL CHECK(location IN ('semmancheri', 'navalur', 'padur')),
+      status TEXT DEFAULT 'yet_to_start' CHECK(status IN ('yet_to_start', 'in_service_center', 'service_completed', 'delivered', 'returned_to_customer', 'to_be_returned_to_customer')),
+      comments TEXT,
+      created_by INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (customer_id) REFERENCES customers(id),
+      FOREIGN KEY (created_by) REFERENCES users(id)
+    )`);
+
+    // Service Items table
+    db.run(`CREATE TABLE IF NOT EXISTS service_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      service_job_id INTEGER NOT NULL,
+      category TEXT NOT NULL CHECK(category IN ('watch', 'wallclock', 'timepiece')),
+      brand TEXT,
+      gender TEXT CHECK(gender IN ('gents', 'ladies') OR gender IS NULL),
+      case_material TEXT CHECK(case_material IN ('steel', 'gold_tone', 'fiber', 'other') OR case_material IS NULL),
+      strap_material TEXT CHECK(strap_material IN ('leather', 'fiber', 'steel', 'gold_plated') OR strap_material IS NULL),
+      machine_change BOOLEAN,
+      movement_no TEXT,
+      issue_description TEXT NOT NULL,
+      product_image_path TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (service_job_id) REFERENCES service_jobs(id) ON DELETE CASCADE
+    )`);
+
+    // Service Status History table
+    db.run(`CREATE TABLE IF NOT EXISTS service_status_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      service_job_id INTEGER NOT NULL,
+      status TEXT NOT NULL,
+      location TEXT NOT NULL,
+      comments TEXT,
+      changed_by INTEGER,
+      changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (service_job_id) REFERENCES service_jobs(id) ON DELETE CASCADE,
+      FOREIGN KEY (changed_by) REFERENCES users(id)
+    )`);
+
+    // Service Comments table
+    db.run(`CREATE TABLE IF NOT EXISTS service_comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      service_job_id INTEGER NOT NULL,
+      comment TEXT NOT NULL,
+      added_by INTEGER,
+      added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (service_job_id) REFERENCES service_jobs(id) ON DELETE CASCADE,
+      FOREIGN KEY (added_by) REFERENCES users(id)
+    )`);
+
     // Check if inventory table exists and migrate it
     db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='inventory'", (err, row) => {
       if (err) {
@@ -168,7 +234,6 @@ function createNewInventoryTable() {
     }
   });
 }
-
 function migrateInventoryTable() {
   db.serialize(() => {
     // Step 1: Rename old table
@@ -421,6 +486,14 @@ function getRow(sql, params = []) {
   });
 }
 
+// Generate unique job number for service jobs
+function generateJobNumber() {
+  const now = new Date();
+  const year = now.getFullYear().toString().slice(-2);
+  const month = (now.getMonth() + 1).toString().padStart(2, '0');
+  const timestamp = now.getTime().toString().slice(-6);
+  return `SRV${year}${month}${timestamp}`;
+}
 // IPC handlers with improved error handling
 ipcMain.handle('login', async (event, { username, password }) => {
   try {
@@ -633,7 +706,6 @@ ipcMain.handle('search-inventory', async (event, searchTerm) => {
     throw error;
   }
 });
-
 // Sales IPC handlers
 ipcMain.handle('get-sales', async () => {
   try {
@@ -828,6 +900,267 @@ ipcMain.handle('get-sale-details', async (event, saleId) => {
     return { sale, items, payments };
   } catch (error) {
     console.error('Get sale details error:', error);
+    throw error;
+  }
+});
+// Service IPC handlers
+ipcMain.handle('get-service-jobs', async () => {
+  try {
+    return await getData(`
+      SELECT sj.*, c.name as customer_name, c.phone as customer_phone, u.full_name as created_by_name,
+             COUNT(si.id) as items_count
+      FROM service_jobs sj
+      LEFT JOIN customers c ON sj.customer_id = c.id
+      LEFT JOIN users u ON sj.created_by = u.id
+      LEFT JOIN service_items si ON sj.id = si.service_job_id
+      GROUP BY sj.id
+      ORDER BY sj.created_at DESC
+    `);
+  } catch (error) {
+    console.error('Get service jobs error:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('create-service-job', async (event, serviceData) => {
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION');
+
+      try {
+        const { job, items, productImages } = serviceData;
+        const jobNumber = generateJobNumber();
+
+        // Insert main service job record
+        db.run(`INSERT INTO service_jobs (
+          job_number, customer_id, estimated_cost, advance_amount, advance_payment_method,
+          advance_payment_reference, approximate_delivery_date, location, status, comments, created_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+          jobNumber,
+          job.customer_id || null,
+          job.estimated_cost,
+          job.advance_amount,
+          job.advance_payment_method || null,
+          job.advance_payment_reference || null,
+          job.approximate_delivery_date,
+          job.location,
+          'yet_to_start',
+          job.comments || null,
+          job.created_by
+        ], function(err) {
+          if (err) {
+            db.run('ROLLBACK');
+            reject(err);
+            return;
+          }
+
+          const serviceJobId = this.lastID;
+          let itemsProcessed = 0;
+          const totalItems = items.length;
+
+          // Insert service items
+          items.forEach((item, index) => {
+            db.run(`INSERT INTO service_items (
+              service_job_id, category, brand, gender, case_material, strap_material,
+              machine_change, movement_no, issue_description, product_image_path
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+              serviceJobId,
+              item.category,
+              item.brand || null,
+              item.gender || null,
+              item.case_material || null,
+              item.strap_material || null,
+              item.machine_change || null,
+              item.movement_no || null,
+              item.issue_description,
+              item.product_image_path || null
+            ], (err) => {
+              if (err) {
+                db.run('ROLLBACK');
+                reject(err);
+                return;
+              }
+
+              itemsProcessed++;
+              
+              if (itemsProcessed === totalItems) {
+                // Insert initial status history
+                db.run(`INSERT INTO service_status_history (
+                  service_job_id, status, location, comments, changed_by
+                ) VALUES (?, ?, ?, ?, ?)`, [
+                  serviceJobId,
+                  'yet_to_start',
+                  job.location,
+                  'Service job created',
+                  job.created_by
+                ], (err) => {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    reject(err);
+                  } else {
+                    db.run('COMMIT', (err) => {
+                      if (err) {
+                        reject(err);
+                      } else {
+                        resolve({ id: serviceJobId, job_number: jobNumber, success: true });
+                      }
+                    });
+                  }
+                });
+              }
+            });
+          });
+        });
+      } catch (error) {
+        db.run('ROLLBACK');
+        reject(error);
+      }
+    });
+  });
+});
+
+ipcMain.handle('get-service-job-details', async (event, jobId) => {
+  try {
+    const job = await getRow(`
+      SELECT sj.*, c.name as customer_name, c.phone as customer_phone, c.email as customer_email
+      FROM service_jobs sj
+      LEFT JOIN customers c ON sj.customer_id = c.id
+      WHERE sj.id = ?
+    `, [jobId]);
+
+    const items = await getData(`
+      SELECT * FROM service_items WHERE service_job_id = ? ORDER BY id
+    `, [jobId]);
+
+    const statusHistory = await getData(`
+      SELECT ssh.*, u.full_name as changed_by_name
+      FROM service_status_history ssh
+      LEFT JOIN users u ON ssh.changed_by = u.id
+      WHERE ssh.service_job_id = ?
+      ORDER BY ssh.changed_at DESC
+    `, [jobId]);
+
+    const comments = await getData(`
+      SELECT sc.*, u.full_name as added_by_name
+      FROM service_comments sc
+      LEFT JOIN users u ON sc.added_by = u.id
+      WHERE sc.service_job_id = ?
+      ORDER BY sc.added_at DESC
+    `, [jobId]);
+
+    return { job, items, statusHistory, comments };
+  } catch (error) {
+    console.error('Get service job details error:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('update-service-status', async (event, { jobId, status, location, comments, changedBy }) => {
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION');
+
+      // Update main job status
+      db.run(`UPDATE service_jobs SET status = ?, location = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, 
+        [status, location, jobId], (err) => {
+        if (err) {
+          db.run('ROLLBACK');
+          reject(err);
+          return;
+        }
+
+        // Insert status history
+        db.run(`INSERT INTO service_status_history (
+          service_job_id, status, location, comments, changed_by
+        ) VALUES (?, ?, ?, ?, ?)`, [
+          jobId, status, location, comments, changedBy
+        ], (err) => {
+          if (err) {
+            db.run('ROLLBACK');
+            reject(err);
+          } else {
+            db.run('COMMIT', (err) => {
+              if (err) {
+                reject(err);
+              } else {
+                resolve({ success: true });
+              }
+            });
+          }
+        });
+      });
+    });
+  });
+});
+
+ipcMain.handle('add-service-comment', async (event, { jobId, comment, addedBy }) => {
+  try {
+    await runQuery(`INSERT INTO service_comments (service_job_id, comment, added_by) VALUES (?, ?, ?)`, 
+      [jobId, comment, addedBy]);
+    return { success: true };
+  } catch (error) {
+    console.error('Add service comment error:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('complete-service', async (event, { jobId, finalCost, finalPaymentAmount, finalPaymentMethod, finalPaymentReference, actualDeliveryDate, completedBy }) => {
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION');
+
+      // Update job with final details
+      db.run(`UPDATE service_jobs SET 
+        final_cost = ?, final_payment_amount = ?, final_payment_method = ?, 
+        final_payment_reference = ?, actual_delivery_date = ?, status = 'service_completed',
+        updated_at = CURRENT_TIMESTAMP 
+        WHERE id = ?`, [
+        finalCost, finalPaymentAmount, finalPaymentMethod, finalPaymentReference, 
+        actualDeliveryDate, jobId
+      ], (err) => {
+        if (err) {
+          db.run('ROLLBACK');
+          reject(err);
+          return;
+        }
+
+        // Insert status history
+        db.run(`INSERT INTO service_status_history (
+          service_job_id, status, location, comments, changed_by
+        ) VALUES (?, ?, ?, ?, ?)`, [
+          jobId, 'service_completed', 'semmancheri', 'Service completed', completedBy
+        ], (err) => {
+          if (err) {
+            db.run('ROLLBACK');
+            reject(err);
+          } else {
+            db.run('COMMIT', (err) => {
+              if (err) {
+                reject(err);
+              } else {
+                resolve({ success: true });
+              }
+            });
+          }
+        });
+      });
+    });
+  });
+});
+
+ipcMain.handle('search-service-jobs', async (event, searchTerm) => {
+  try {
+    const term = `%${searchTerm}%`;
+    return await getData(`
+      SELECT sj.*, c.name as customer_name, c.phone as customer_phone, u.full_name as created_by_name
+      FROM service_jobs sj
+      LEFT JOIN customers c ON sj.customer_id = c.id
+      LEFT JOIN users u ON sj.created_by = u.id
+      WHERE sj.job_number LIKE ? OR c.name LIKE ? OR c.phone LIKE ?
+      ORDER BY sj.created_at DESC
+    `, [term, term, term]);
+  } catch (error) {
+    console.error('Search service jobs error:', error);
     throw error;
   }
 });
