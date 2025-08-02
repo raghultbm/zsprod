@@ -37,6 +37,9 @@
                 <a href="#" class="nav-item" data-module="invoices">
                     <span>📄</span> Invoices
                 </a>
+                <a href="#" class="nav-item" data-module="expenses">
+                    <span>💸</span> Expenses
+                </a>
                 <a href="#" class="nav-item" data-module="users" id="usersNav">
                     <span>👤</span> User Management
                 </a>
@@ -173,7 +176,6 @@
                         </table>
                     </div>
                 </div>
-
                 <!-- Sales Module -->
                 <div id="sales-content" class="module-content">
                     <div class="sales-container">
@@ -345,7 +347,6 @@
                         </div>
                     </div>
                 </div>
-
                 <!-- Service Module -->
                 <div id="service-content" class="module-content">
                     <div class="service-container">
@@ -474,17 +475,125 @@
                     </div>
                 </div>
 
+                <!-- Invoices Module -->
                 <div id="invoices-content" class="module-content">
-                    <h2>Invoices Module</h2>
-                    <p>Coming soon...</p>
+                    <div class="invoices-container">
+                        <h3>All Invoices</h3>
+                        
+                        <div class="invoices-controls">
+                            <div class="search-container">
+                                <input type="text" id="invoiceSearch" placeholder="Search by invoice number, customer name..." class="search-input">
+                                <button onclick="searchInvoices()" class="btn btn-secondary">Search</button>
+                                <button onclick="clearInvoiceSearch()" class="btn btn-secondary">Clear</button>
+                            </div>
+                            <div class="filter-container">
+                                <select id="invoiceTypeFilter" onchange="filterInvoicesByType()">
+                                    <option value="">All Types</option>
+                                    <option value="sale">Sales Invoices</option>
+                                    <option value="service">Service Invoices</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="data-table-container">
+                            <table class="data-table" id="invoicesTable">
+                                <thead>
+                                    <tr>
+                                        <th>Invoice #</th>
+                                        <th>Type</th>
+                                        <th>Date</th>
+                                        <th>Customer</th>
+                                        <th>Amount</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="invoicesTableBody">
+                                    <!-- Dynamic content -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Expenses Module -->
+                <div id="expenses-content" class="module-content">
+                    <div class="expenses-container">
+                        <div class="expenses-form-container">
+                            <h3>Add New Expense</h3>
+                            
+                            <form id="expenseForm" class="expense-form">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="expenseDate">Date *</label>
+                                        <input type="date" id="expenseDate" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="expenseAmount">Amount *</label>
+                                        <input type="number" id="expenseAmount" step="0.01" min="0" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="expenseMode">Payment Mode *</label>
+                                        <select id="expenseMode" required>
+                                            <option value="">Select Mode</option>
+                                            <option value="cash">Cash</option>
+                                            <option value="upi">UPI</option>
+                                            <option value="card">Card</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="expenseDescription">Description *</label>
+                                    <textarea id="expenseDescription" rows="3" required placeholder="Enter expense description"></textarea>
+                                </div>
+                                
+                                <div class="form-actions">
+                                    <button type="button" onclick="clearExpenseForm()" class="btn btn-secondary">Clear</button>
+                                    <button type="submit" class="btn btn-primary">Add Expense</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="expenses-list-container">
+                            <h3>Expenses List</h3>
+                            
+                            <div class="expenses-controls">
+                                <div class="search-container">
+                                    <input type="text" id="expenseSearch" placeholder="Search expenses..." class="search-input">
+                                    <button onclick="searchExpenses()" class="btn btn-secondary">Search</button>
+                                    <button onclick="clearExpenseSearch()" class="btn btn-secondary">Clear</button>
+                                </div>
+                            </div>
+
+                            <div class="data-table-container">
+                                <table class="data-table" id="expensesTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Description</th>
+                                            <th>Amount</th>
+                                            <th>Mode</th>
+                                            <th>Added By</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="expensesTableBody">
+                                        <!-- Dynamic content -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
     </div>
-
     <!-- Customer Modal -->
     <div id="customerModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content responsive-modal">
             <div class="modal-header">
                 <h3 id="customerModalTitle">Add Customer</h3>
                 <span class="close-btn" onclick="closeModal('customerModal')">&times;</span>
@@ -513,7 +622,7 @@
 
     <!-- User Modal -->
     <div id="userModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content responsive-modal">
             <div class="modal-header">
                 <h3 id="userModalTitle">Add User</h3>
                 <span class="close-btn" onclick="closeModal('userModal')">&times;</span>
@@ -565,7 +674,7 @@
 
     <!-- Inventory Modal -->
     <div id="inventoryModal" class="modal">
-        <div class="modal-content large-modal">
+        <div class="modal-content large-modal responsive-modal">
             <div class="modal-header">
                 <h3 id="inventoryModalTitle">Add Inventory Item</h3>
                 <span class="close-btn" onclick="closeModal('inventoryModal')">&times;</span>
@@ -696,9 +805,9 @@
 
     <!-- Sale Confirmation Modal -->
     <div id="saleConfirmationModal" class="modal">
-        <div class="modal-content large-modal">
+        <div class="modal-content large-modal responsive-modal">
             <div class="modal-header">
-                <h3>Confirm Sale</h3>
+                <h3>Confirm Sale & Generate Invoice</h3>
                 <span class="close-btn" onclick="closeModal('saleConfirmationModal')">&times;</span>
             </div>
             <div class="modal-body">
@@ -758,14 +867,14 @@
             </div>
             <div class="modal-actions">
                 <button type="button" onclick="closeModal('saleConfirmationModal')" class="btn btn-secondary">Cancel</button>
-                <button type="button" onclick="confirmSale()" class="btn btn-primary">Confirm Sale</button>
+                <button type="button" onclick="confirmSale()" class="btn btn-primary">Confirm Sale & Generate Invoice</button>
             </div>
         </div>
     </div>
 
     <!-- Sale Details Modal -->
     <div id="saleDetailsModal" class="modal">
-        <div class="modal-content large-modal">
+        <div class="modal-content large-modal responsive-modal">
             <div class="modal-header">
                 <h3>Sale Details</h3>
                 <span class="close-btn" onclick="closeModal('saleDetailsModal')">&times;</span>
@@ -779,10 +888,9 @@
             </div>
         </div>
     </div>
-
     <!-- Service Item Modal -->
     <div id="serviceItemModal" class="modal">
-        <div class="modal-content large-modal">
+        <div class="modal-content large-modal responsive-modal">
             <div class="modal-header">
                 <h3 id="serviceItemModalTitle">Add Service Item</h3>
                 <span class="close-btn" onclick="closeModal('serviceItemModal')">&times;</span>
@@ -905,7 +1013,7 @@
 
     <!-- Service Job Details Modal -->
     <div id="serviceJobDetailsModal" class="modal">
-        <div class="modal-content extra-large-modal">
+        <div class="modal-content extra-large-modal responsive-modal">
             <div class="modal-header">
                 <h3>Service Job Details</h3>
                 <span class="close-btn" onclick="closeModal('serviceJobDetailsModal')">&times;</span>
@@ -923,7 +1031,7 @@
 
     <!-- Update Service Status Modal -->
     <div id="updateServiceStatusModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content responsive-modal">
             <div class="modal-header">
                 <h3>Update Service Status</h3>
                 <span class="close-btn" onclick="closeModal('updateServiceStatusModal')">&times;</span>
@@ -970,7 +1078,7 @@
 
     <!-- Complete Service Modal -->
     <div id="completeServiceModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content responsive-modal">
             <div class="modal-header">
                 <h3>Complete Service</h3>
                 <span class="close-btn" onclick="closeModal('completeServiceModal')">&times;</span>
@@ -1020,7 +1128,7 @@
 
     <!-- Add Comment Modal -->
     <div id="addCommentModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content responsive-modal">
             <div class="modal-header">
                 <h3>Add Comment</h3>
                 <span class="close-btn" onclick="closeModal('addCommentModal')">&times;</span>
@@ -1038,6 +1146,90 @@
                     <button type="submit" class="btn btn-primary">Add Comment</button>
                 </div>
             </form>
+        </div>
+    </div>
+    <!-- Expense Modal -->
+    <div id="expenseModal" class="modal">
+        <div class="modal-content responsive-modal">
+            <div class="modal-header">
+                <h3 id="expenseModalTitle">Add Expense</h3>
+                <span class="close-btn" onclick="closeModal('expenseModal')">&times;</span>
+            </div>
+            <form id="expenseModalForm" class="modal-form">
+                <input type="hidden" id="expenseModalId">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="expenseModalDate">Date *</label>
+                        <input type="date" id="expenseModalDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="expenseModalAmount">Amount *</label>
+                        <input type="number" id="expenseModalAmount" step="0.01" min="0" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="expenseModalMode">Payment Mode *</label>
+                    <select id="expenseModalMode" required>
+                        <option value="">Select Mode</option>
+                        <option value="cash">Cash</option>
+                        <option value="upi">UPI</option>
+                        <option value="card">Card</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="expenseModalDescription">Description *</label>
+                    <textarea id="expenseModalDescription" rows="3" required placeholder="Enter expense description"></textarea>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" onclick="closeModal('expenseModal')" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Expense</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Customer Action Modal (Sales or Service) -->
+    <div id="customerActionModal" class="modal">
+        <div class="modal-content responsive-modal">
+            <div class="modal-header">
+                <h3>Choose Action</h3>
+                <span class="close-btn" onclick="closeModal('customerActionModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>What would you like to do for <strong id="customerActionName"></strong>?</p>
+                <div class="customer-action-buttons">
+                    <button class="btn btn-primary" onclick="triggerSalesFromCustomer()">
+                        💰 Create Sale
+                    </button>
+                    <button class="btn btn-secondary" onclick="triggerServiceFromCustomer()">
+                        🔧 Create Service Job
+                    </button>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" onclick="closeModal('customerActionModal')" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invoice Viewer Modal -->
+    <div id="invoiceViewerModal" class="modal">
+        <div class="modal-content extra-large-modal responsive-modal">
+            <div class="modal-header">
+                <h3 id="invoiceViewerTitle">Invoice Details</h3>
+                <span class="close-btn" onclick="closeModal('invoiceViewerModal')">&times;</span>
+            </div>
+            <div class="modal-body" id="invoiceViewerContent">
+                <!-- Dynamic content -->
+            </div>
+            <div class="modal-actions">
+                <button type="button" onclick="closeModal('invoiceViewerModal')" class="btn btn-secondary">Close</button>
+                <button type="button" onclick="printCurrentInvoice()" class="btn btn-primary" id="printCurrentInvoiceBtn">Print Invoice</button>
+            </div>
         </div>
     </div>
 

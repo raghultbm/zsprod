@@ -155,6 +155,19 @@ function initDatabase() {
       FOREIGN KEY (added_by) REFERENCES users(id)
     )`);
 
+    // NEW: Expenses table
+    db.run(`CREATE TABLE IF NOT EXISTS expenses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      expense_date DATE NOT NULL,
+      description TEXT NOT NULL,
+      amount DECIMAL(10,2) NOT NULL,
+      payment_mode TEXT NOT NULL CHECK(payment_mode IN ('cash', 'upi', 'card')),
+      created_by INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (created_by) REFERENCES users(id)
+    )`);
+
     // Check if inventory table exists and migrate it
     db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='inventory'", (err, row) => {
       if (err) {
@@ -234,6 +247,7 @@ function createNewInventoryTable() {
     }
   });
 }
+
 function migrateInventoryTable() {
   db.serialize(() => {
     // Step 1: Rename old table
@@ -494,6 +508,7 @@ function generateJobNumber() {
   const timestamp = now.getTime().toString().slice(-6);
   return `SRV${year}${month}${timestamp}`;
 }
+
 // IPC handlers with improved error handling
 ipcMain.handle('login', async (event, { username, password }) => {
   try {
@@ -706,6 +721,7 @@ ipcMain.handle('search-inventory', async (event, searchTerm) => {
     throw error;
   }
 });
+
 // Sales IPC handlers
 ipcMain.handle('get-sales', async () => {
   try {
@@ -903,6 +919,7 @@ ipcMain.handle('get-sale-details', async (event, saleId) => {
     throw error;
   }
 });
+
 // Service IPC handlers
 ipcMain.handle('get-service-jobs', async () => {
   try {
@@ -1161,6 +1178,127 @@ ipcMain.handle('search-service-jobs', async (event, searchTerm) => {
     `, [term, term, term]);
   } catch (error) {
     console.error('Search service jobs error:', error);
+    throw error;
+  }
+});
+
+// NEW: Expenses IPC handlers
+ipcMain.handle('get-expenses', async () => {
+  try {
+    return await getData(`
+      SELECT e.*, u.full_name as created_by_name
+      FROM expenses e
+      LEFT JOIN users u ON e.created_by = u.id
+      ORDER BY e.expense_date DESC, e.created_at DESC
+    `);
+  } catch (error) {
+    console.error('Get expenses error:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('add-expense', async (event, expense) => {
+  try {
+    const { expense_date, description, amount, payment_mode, created_by } = expense;
+    const result = await runQuery(
+      "INSERT INTO expenses (expense_date, description, amount, payment_mode, created_by) VALUES (?, ?, ?, ?, ?)",
+      [expense_date, description, amount, payment_mode, created_by]
+    );
+    return { id: result.id, ...expense };
+  } catch (error) {
+    console.error('Add expense error:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('update-expense', async (event, expense) => {
+  try {
+    const { id, expense_date, description, amount, payment_mode } = expense;
+    await runQuery(
+      "UPDATE expenses SET expense_date = ?, description = ?, amount = ?, payment_mode = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+      [expense_date, description, amount, payment_mode, id]
+    );
+    return expense;
+  } catch (error) {
+    console.error('Update expense error:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('delete-expense', async (event, id) => {
+  try {
+    await runQuery("DELETE FROM expenses WHERE id = ?", [id]);
+    return { success: true };
+  } catch (error) {
+    console.error('Delete expense error:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('search-expenses', async (event, searchTerm) => {
+  try {
+    const term = `%${searchTerm}%`;
+    return await getData(`
+      SELECT e.*, u.full_name as created_by_name
+      FROM expenses e
+      LEFT JOIN users u ON e.created_by = u.id
+      WHERE e.description LIKE ? OR e.payment_mode LIKE ?
+      ORDER BY e.expense_date DESC, e.created_at DESC
+    `, [term, term]);
+  } catch (error) {
+    console.error('Search expenses error:', error);
+    throw error;
+  }
+});
+
+// NEW: Get all invoices (sales + service)
+ipcMain.handle('get-all-invoices', async () => {
+  try {
+    // Get sales invoices
+    const salesInvoices = await getData(`
+      SELECT 
+        'sale' as type,
+        s.id,
+        s.sale_date as date,
+        s.customer_id,
+        c.name as customer_name,
+        c.phone as customer_phone,
+        s.total_amount as amount,
+        s.created_at,
+        'INV-S-' || s.id as invoice_number
+      FROM sales s
+      LEFT JOIN customers c ON s.customer_id = c.id
+      WHERE s.sale_status = 'completed'
+      ORDER BY s.created_at DESC
+    `);
+
+    // Get service invoices (only completed services)
+    const serviceInvoices = await getData(`
+      SELECT 
+        'service' as type,
+        sj.id,
+        sj.actual_delivery_date as date,
+        sj.customer_id,
+        c.name as customer_name,
+        c.phone as customer_phone,
+        sj.final_cost as amount,
+        sj.created_at,
+        'INV-SRV-' || sj.id as invoice_number,
+        sj.job_number
+      FROM service_jobs sj
+      LEFT JOIN customers c ON sj.customer_id = c.id
+      WHERE sj.status = 'service_completed' OR sj.status = 'delivered'
+      ORDER BY sj.created_at DESC
+    `);
+
+    // Combine and sort by date
+    const allInvoices = [...salesInvoices, ...serviceInvoices].sort((a, b) => 
+      new Date(b.created_at) - new Date(a.created_at)
+    );
+
+    return allInvoices;
+  } catch (error) {
+    console.error('Get all invoices error:', error);
     throw error;
   }
 });
