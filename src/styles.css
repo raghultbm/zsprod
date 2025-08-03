@@ -1726,4 +1726,63 @@ input[type="date"]:focus {
     .service-detail-section {
         page-break-inside: avoid;
     }
+    
+    .pulseware-footer {
+    position: fixed;
+    bottom: 0;
+    left: 250px; /* Account for sidebar width */
+    right: 0;
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    color: #ecf0f1;
+    padding: 8px 20px;
+    font-size: 12px;
+    border-top: 2px solid #3498db;
+    z-index: 100;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.footer-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.footer-content p {
+    margin: 0;
+    line-height: 1.4;
+}
+
+.footer-content strong {
+    color: #3498db;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.footer-contact {
+    color: #bdc3c7;
+    font-size: 11px;
+}
+
+.content-body {
+    padding-bottom: 50px; /* Add space for footer */
+}
+
+@media (max-width: 768px) {
+    .pulseware-footer {
+        left: 0;
+        padding: 6px 15px;
+    }
+    
+    .footer-content {
+        flex-direction: column;
+        gap: 2px;
+    }
+    
+    .footer-content p {
+        font-size: 11px;
+        text-align: center;
+    }
+}
 }
