@@ -29,7 +29,8 @@ class CustomerModule {
             this.renderTable();
         } catch (error) {
             console.error('Error loading customers:', error);
-            showError('Error loading customers');
+            const errorMsg = 'Error loading customers';
+            showError ? showError(errorMsg) : alert(errorMsg);
         }
     }
 
@@ -47,9 +48,10 @@ class CustomerModule {
                 <td>${customer.phone || '-'}</td>
                 <td>${customer.email || '-'}</td>
                 <td>
-                    <button class="btn btn-sm btn-primary" onclick="customerModule().triggerAction(${customer.id})">Actions</button>
-                    <button class="btn btn-sm btn-secondary" onclick="customerModule().edit(${customer.id})">Edit</button>
-                    <button class="btn btn-sm btn-danger" onclick="customerModule().delete(${customer.id})">Delete</button>
+                    <button class="btn btn-sm btn-primary" onclick="window.customerModule().createSale(${customer.id})">Sale</button>
+                    <button class="btn btn-sm btn-secondary" onclick="window.customerModule().createService(${customer.id})">Service</button>
+                    <button class="btn btn-sm btn-warning" onclick="window.customerModule().edit(${customer.id})">Edit</button>
+                    <button class="btn btn-sm btn-danger" onclick="window.customerModule().delete(${customer.id})">Delete</button>
                 </td>
             `;
             tbody.appendChild(row);
@@ -91,11 +93,69 @@ class CustomerModule {
             try {
                 await ipcRenderer.invoke('delete-customer', id);
                 await this.loadData();
-                await loadDashboardStats();
-                showSuccess('Customer deleted successfully');
+                if (window.loadDashboardStats) {
+                    await window.loadDashboardStats();
+                }
+                const successMsg = 'Customer deleted successfully';
+                showSuccess ? showSuccess(successMsg) : alert(successMsg);
             } catch (error) {
                 console.error('Error deleting customer:', error);
-                showError('Error deleting customer');
+                const errorMsg = 'Error deleting customer';
+                showError ? showError(errorMsg) : alert(errorMsg);
+            }
+        }
+    }
+
+    // Create Sale - Navigate to sales module with customer pre-selected
+    createSale(customerId) {
+        const customer = this.customers.find(c => c.id === customerId);
+        if (customer) {
+            // Store customer for sales module
+            window.selectedCustomerForSale = customer;
+            
+            // Switch to sales module
+            const salesNavItem = document.querySelector('[data-module="sales"]');
+            if (salesNavItem) {
+                salesNavItem.click();
+                
+                // Wait for module to load, then populate customer
+                setTimeout(() => {
+                    const salesModule = window.salesModule();
+                    if (salesModule && salesModule.selectCustomer) {
+                        salesModule.selectCustomer(
+                            customer.id,
+                            customer.name,
+                            customer.phone || ''
+                        );
+                    }
+                }, 100);
+            }
+        }
+    }
+
+    // Create Service - Navigate to service module with customer pre-selected
+    createService(customerId) {
+        const customer = this.customers.find(c => c.id === customerId);
+        if (customer) {
+            // Store customer for service module
+            window.selectedCustomerForService = customer;
+            
+            // Switch to service module
+            const serviceNavItem = document.querySelector('[data-module="service"]');
+            if (serviceNavItem) {
+                serviceNavItem.click();
+                
+                // Wait for module to load, then populate customer
+                setTimeout(() => {
+                    const serviceModule = window.serviceModule();
+                    if (serviceModule && serviceModule.selectServiceCustomer) {
+                        serviceModule.selectServiceCustomer(
+                            customer.id,
+                            customer.name,
+                            customer.phone || ''
+                        );
+                    }
+                }, 100);
             }
         }
     }
@@ -110,7 +170,8 @@ class CustomerModule {
         };
 
         if (!customerData.name) {
-            showError('Customer name is required');
+            const errorMsg = 'Customer name is required';
+            showError ? showError(errorMsg) : alert(errorMsg);
             return;
         }
         
@@ -120,30 +181,28 @@ class CustomerModule {
             if (customerId) {
                 customerData.id = parseInt(customerId);
                 await ipcRenderer.invoke('update-customer', customerData);
-                showSuccess('Customer updated successfully');
+                const successMsg = 'Customer updated successfully';
+                showSuccess ? showSuccess(successMsg) : alert(successMsg);
             } else {
                 await ipcRenderer.invoke('add-customer', customerData);
-                showSuccess('Customer added successfully');
+                const successMsg = 'Customer added successfully';
+                showSuccess ? showSuccess(successMsg) : alert(successMsg);
             }
             
-            closeModal('customerModal');
+            if (window.closeModal) {
+                window.closeModal('customerModal');
+            } else {
+                document.getElementById('customerModal').style.display = 'none';
+            }
+            
             await this.loadData();
-            await loadDashboardStats();
+            if (window.loadDashboardStats) {
+                await window.loadDashboardStats();
+            }
         } catch (error) {
             console.error('Error saving customer:', error);
-            showError('Error saving customer');
-        }
-    }
-
-    // Trigger action modal for sales/service
-    triggerAction(customerId) {
-        const customer = this.customers.find(c => c.id === customerId);
-        if (customer) {
-            document.getElementById('customerActionName').textContent = customer.name;
-            document.getElementById('customerActionModal').style.display = 'block';
-            
-            // Store customer for action handlers
-            this.selectedCustomerForAction = customer;
+            const errorMsg = 'Error saving customer';
+            showError ? showError(errorMsg) : alert(errorMsg);
         }
     }
 
@@ -167,50 +226,5 @@ class CustomerModule {
         return this.customers;
     }
 }
-
-// Global action handlers for customer actions
-window.triggerSalesFromCustomer = function() {
-    const customerModule = window.customerModule();
-    if (customerModule.selectedCustomerForAction) {
-        closeModal('customerActionModal');
-        
-        // Switch to sales module
-        document.querySelector('[data-module="sales"]').click();
-        
-        // Wait for module to load, then populate customer
-        setTimeout(() => {
-            const salesModule = window.salesModule();
-            if (salesModule) {
-                salesModule.selectCustomer(
-                    customerModule.selectedCustomerForAction.id,
-                    customerModule.selectedCustomerForAction.name,
-                    customerModule.selectedCustomerForAction.phone || ''
-                );
-            }
-        }, 100);
-    }
-};
-
-window.triggerServiceFromCustomer = function() {
-    const customerModule = window.customerModule();
-    if (customerModule.selectedCustomerForAction) {
-        closeModal('customerActionModal');
-        
-        // Switch to service module
-        document.querySelector('[data-module="service"]').click();
-        
-        // Wait for module to load, then populate customer
-        setTimeout(() => {
-            const serviceModule = window.serviceModule();
-            if (serviceModule) {
-                serviceModule.selectServiceCustomer(
-                    customerModule.selectedCustomerForAction.id,
-                    customerModule.selectedCustomerForAction.name,
-                    customerModule.selectedCustomerForAction.phone || ''
-                );
-            }
-        }, 100);
-    }
-};
 
 module.exports = CustomerModule;

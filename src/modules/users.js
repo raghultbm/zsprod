@@ -29,7 +29,8 @@ class UsersModule {
             this.renderTable();
         } catch (error) {
             console.error('Error loading users:', error);
-            showError('Error loading users');
+            const errorMsg = 'Error loading users';
+            showError ? showError(errorMsg) : alert(errorMsg);
         }
     }
 
@@ -53,8 +54,8 @@ class UsersModule {
                     </span>
                 </td>
                 <td>
-                    <button class="btn btn-sm btn-secondary" onclick="usersModule().edit(${user.id})">Edit</button>
-                    ${user.id !== this.currentUser.id ? `<button class="btn btn-sm btn-danger" onclick="usersModule().delete(${user.id})">Delete</button>` : ''}
+                    <button class="btn btn-sm btn-secondary" onclick="window.usersModule().edit(${user.id})">Edit</button>
+                    ${user.id !== this.currentUser.id ? `<button class="btn btn-sm btn-danger" onclick="window.usersModule().delete(${user.id})">Delete</button>` : ''}
                 </td>
             `;
             tbody.appendChild(row);
@@ -130,11 +131,15 @@ class UsersModule {
             try {
                 await ipcRenderer.invoke('delete-user', id);
                 await this.loadData();
-                await loadDashboardStats();
-                showSuccess('User deleted successfully');
+                if (window.loadDashboardStats) {
+                    await window.loadDashboardStats();
+                }
+                const successMsg = 'User deleted successfully';
+                showSuccess ? showSuccess(successMsg) : alert(successMsg);
             } catch (error) {
                 console.error('Error deleting user:', error);
-                showError('Error deleting user');
+                const errorMsg = 'Error deleting user';
+                showError ? showError(errorMsg) : alert(errorMsg);
             }
         }
     }
@@ -153,7 +158,8 @@ class UsersModule {
 
         // Validation
         if (!userData.username || !userData.full_name || !userData.role) {
-            showError('Please fill in all required fields');
+            const errorMsg = 'Please fill in all required fields';
+            showError ? showError(errorMsg) : alert(errorMsg);
             return;
         }
 
@@ -162,7 +168,8 @@ class UsersModule {
         if (!userId) {
             const password = document.getElementById('userPassword')?.value;
             if (!password) {
-                showError('Password is required for new users');
+                const errorMsg = 'Password is required for new users';
+                showError ? showError(errorMsg) : alert(errorMsg);
                 return;
             }
             userData.password = password;
@@ -172,21 +179,32 @@ class UsersModule {
             if (userId) {
                 userData.id = parseInt(userId);
                 await ipcRenderer.invoke('update-user', userData);
-                showSuccess('User updated successfully');
+                const successMsg = 'User updated successfully';
+                showSuccess ? showSuccess(successMsg) : alert(successMsg);
             } else {
                 await ipcRenderer.invoke('add-user', userData);
-                showSuccess('User added successfully');
+                const successMsg = 'User added successfully';
+                showSuccess ? showSuccess(successMsg) : alert(successMsg);
             }
             
-            closeModal('userModal');
+            if (window.closeModal) {
+                window.closeModal('userModal');
+            } else {
+                document.getElementById('userModal').style.display = 'none';
+            }
+            
             await this.loadData();
-            await loadDashboardStats();
+            if (window.loadDashboardStats) {
+                await window.loadDashboardStats();
+            }
         } catch (error) {
             console.error('Error saving user:', error);
-            if (error.message.includes('UNIQUE constraint failed')) {
-                showError('Username already exists. Please choose a different username.');
+            if (error.message && error.message.includes('UNIQUE constraint failed')) {
+                const errorMsg = 'Username already exists. Please choose a different username.';
+                showError ? showError(errorMsg) : alert(errorMsg);
             } else {
-                showError('Error saving user');
+                const errorMsg = 'Error saving user';
+                showError ? showError(errorMsg) : alert(errorMsg);
             }
         }
     }

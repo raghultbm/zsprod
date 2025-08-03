@@ -69,6 +69,16 @@ async function initializeModules() {
         if (usersModule) {
             await usersModule.init();
         }
+
+        // Make modules globally accessible with proper function references
+        window.customerModule = () => customerModule;
+        window.inventoryModule = () => inventoryModule;
+        window.salesModule = () => salesModule;
+        window.serviceModule = () => serviceModule;
+        window.expensesModule = () => expensesModule;
+        window.invoicesModule = () => invoicesModule;
+        window.usersModule = () => usersModule;
+        
     } catch (error) {
         console.error('Error initializing modules:', error);
         alert('Error initializing application modules');
@@ -97,13 +107,19 @@ function switchModule(module) {
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
     });
-    document.querySelector(`[data-module="${module}"]`).classList.add('active');
+    const navItem = document.querySelector(`[data-module="${module}"]`);
+    if (navItem) {
+        navItem.classList.add('active');
+    }
     
     // Update content
     document.querySelectorAll('.module-content').forEach(content => {
         content.classList.remove('active');
     });
-    document.getElementById(`${module}-content`).classList.add('active');
+    const moduleContent = document.getElementById(`${module}-content`);
+    if (moduleContent) {
+        moduleContent.classList.add('active');
+    }
     
     // Update page header and actions
     updatePageHeader(module);
@@ -117,6 +133,8 @@ function updatePageHeader(module) {
     const pageTitle = document.getElementById('pageTitle');
     const headerActions = document.getElementById('headerActions');
     
+    if (!pageTitle || !headerActions) return;
+    
     headerActions.innerHTML = '';
     
     switch (module) {
@@ -125,11 +143,11 @@ function updatePageHeader(module) {
             break;
         case 'customers':
             pageTitle.textContent = 'Customer Management';
-            headerActions.innerHTML = '<button class="btn btn-primary" onclick="customerModule.openModal()">Add Customer</button>';
+            headerActions.innerHTML = '<button class="btn btn-primary" onclick="window.customerModule().openModal()">Add Customer</button>';
             break;
         case 'inventory':
             pageTitle.textContent = 'Inventory Management';
-            headerActions.innerHTML = '<button class="btn btn-primary" onclick="inventoryModule.openModal()">Add Item</button>';
+            headerActions.innerHTML = '<button class="btn btn-primary" onclick="window.inventoryModule().openModal()">Add Item</button>';
             break;
         case 'sales':
             pageTitle.textContent = 'Sales Management';
@@ -146,7 +164,7 @@ function updatePageHeader(module) {
         case 'users':
             pageTitle.textContent = 'User Management';
             if (currentUser.role === 'admin') {
-                headerActions.innerHTML = '<button class="btn btn-primary" onclick="usersModule.openModal()">Add User</button>';
+                headerActions.innerHTML = '<button class="btn btn-primary" onclick="window.usersModule().openModal()">Add User</button>';
             }
             break;
         default:
@@ -158,27 +176,25 @@ async function loadModuleData(module) {
     try {
         switch (module) {
             case 'customers':
-                await customerModule.loadData();
+                if (customerModule) await customerModule.loadData();
                 break;
             case 'inventory':
-                await inventoryModule.loadData();
+                if (inventoryModule) await inventoryModule.loadData();
                 break;
             case 'sales':
-                await salesModule.loadData();
+                if (salesModule) await salesModule.loadData();
                 break;
             case 'service':
-                await serviceModule.loadData();
+                if (serviceModule) await serviceModule.loadData();
                 break;
             case 'invoices':
-                await invoicesModule.loadData();
+                if (invoicesModule) await invoicesModule.loadData();
                 break;
             case 'expenses':
-                await expensesModule.loadData();
+                if (expensesModule) await expensesModule.loadData();
                 break;
             case 'users':
-                if (usersModule) {
-                    await usersModule.loadData();
-                }
+                if (usersModule) await usersModule.loadData();
                 break;
         }
     } catch (error) {
@@ -194,13 +210,18 @@ async function loadDashboardStats() {
             ipcRenderer.invoke('get-inventory')
         ]);
         
-        document.getElementById('totalCustomers').textContent = customersData.length;
-        document.getElementById('totalUsers').textContent = usersData.length;
-        document.getElementById('totalItems').textContent = inventoryData.length;
+        const totalCustomersEl = document.getElementById('totalCustomers');
+        const totalUsersEl = document.getElementById('totalUsers');
+        const totalItemsEl = document.getElementById('totalItems');
+        const lowStockItemsEl = document.getElementById('lowStockItems');
+        
+        if (totalCustomersEl) totalCustomersEl.textContent = customersData.length;
+        if (totalUsersEl) totalUsersEl.textContent = usersData.length;
+        if (totalItemsEl) totalItemsEl.textContent = inventoryData.length;
         
         // Count low stock items (items with quantity <= 5)
         const lowStockCount = inventoryData.filter(item => item.quantity <= 5).length;
-        document.getElementById('lowStockItems').textContent = lowStockCount;
+        if (lowStockItemsEl) lowStockItemsEl.textContent = lowStockCount;
     } catch (error) {
         console.error('Error loading dashboard stats:', error);
     }
@@ -279,15 +300,202 @@ window.addEventListener('click', (e) => {
     }
 });
 
-// Export for global access
-window.customerModule = () => customerModule;
-window.inventoryModule = () => inventoryModule;
-window.salesModule = () => salesModule;
-window.serviceModule = () => serviceModule;
-window.expensesModule = () => expensesModule;
-window.invoicesModule = () => invoicesModule;
-window.usersModule = () => usersModule;
+// Make functions globally available
 window.closeModal = closeModal;
 window.showSuccess = showSuccess;
 window.showError = showError;
 window.loadDashboardStats = loadDashboardStats;
+
+// Global functions for Sales Module
+window.addItemToSale = function() {
+    const salesModule = window.salesModule();
+    if (salesModule && salesModule.addItemToSale) {
+        salesModule.addItemToSale();
+    }
+};
+
+window.previewSale = function() {
+    const salesModule = window.salesModule();
+    if (salesModule && salesModule.previewSale) {
+        salesModule.previewSale();
+    }
+};
+
+window.confirmSale = function() {
+    const salesModule = window.salesModule();
+    if (salesModule && salesModule.confirmSale) {
+        salesModule.confirmSale();
+    }
+};
+
+window.clearSale = function() {
+    const salesModule = window.salesModule();
+    if (salesModule && salesModule.clearSale) {
+        salesModule.clearSale();
+    }
+};
+
+window.toggleMultiplePayments = function() {
+    const salesModule = window.salesModule();
+    if (salesModule && salesModule.toggleMultiplePayments) {
+        salesModule.toggleMultiplePayments();
+    }
+};
+
+window.addPaymentMethod = function() {
+    const salesModule = window.salesModule();
+    if (salesModule && salesModule.addPaymentMethod) {
+        salesModule.addPaymentMethod();
+    }
+};
+
+window.printSaleReceipt = function() {
+    const salesModule = window.salesModule();
+    if (salesModule && salesModule.printSaleReceipt) {
+        salesModule.printSaleReceipt();
+    }
+};
+
+// Global functions for Service Module
+window.addServiceItem = function() {
+    const serviceModule = window.serviceModule();
+    if (serviceModule && serviceModule.addServiceItem) {
+        serviceModule.addServiceItem();
+    }
+};
+
+window.createServiceJob = function() {
+    const serviceModule = window.serviceModule();
+    if (serviceModule && serviceModule.createServiceJob) {
+        serviceModule.createServiceJob();
+    }
+};
+
+window.clearServiceJob = function() {
+    const serviceModule = window.serviceModule();
+    if (serviceModule && serviceModule.clearServiceJob) {
+        serviceModule.clearServiceJob();
+    }
+};
+
+window.searchServiceJobs = function() {
+    const serviceModule = window.serviceModule();
+    if (serviceModule && serviceModule.searchServiceJobs) {
+        serviceModule.searchServiceJobs();
+    }
+};
+
+window.clearServiceSearch = function() {
+    const serviceModule = window.serviceModule();
+    if (serviceModule && serviceModule.clearServiceSearch) {
+        serviceModule.clearServiceSearch();
+    }
+};
+
+window.toggleServiceCategoryFields = function() {
+    const serviceModule = window.serviceModule();
+    if (serviceModule && serviceModule.toggleServiceCategoryFields) {
+        serviceModule.toggleServiceCategoryFields();
+    }
+};
+
+window.printServiceAcknowledgment = function() {
+    const serviceModule = window.serviceModule();
+    if (serviceModule && serviceModule.printServiceAcknowledgment) {
+        serviceModule.printServiceAcknowledgment();
+    }
+};
+
+window.printServiceInvoice = function() {
+    const serviceModule = window.serviceModule();
+    if (serviceModule && serviceModule.printServiceInvoice) {
+        serviceModule.printServiceInvoice();
+    }
+};
+
+// Global functions for Inventory Module
+window.searchInventory = function() {
+    const inventoryModule = window.inventoryModule();
+    if (inventoryModule && inventoryModule.searchInventory) {
+        inventoryModule.searchInventory();
+    }
+};
+
+window.clearSearch = function() {
+    const inventoryModule = window.inventoryModule();
+    if (inventoryModule && inventoryModule.clearSearch) {
+        inventoryModule.clearSearch();
+    }
+};
+
+window.filterByCategory = function() {
+    const inventoryModule = window.inventoryModule();
+    if (inventoryModule && inventoryModule.filterInventory) {
+        inventoryModule.filterInventory();
+    }
+};
+
+window.filterByOutlet = function() {
+    const inventoryModule = window.inventoryModule();
+    if (inventoryModule && inventoryModule.filterInventory) {
+        inventoryModule.filterInventory();
+    }
+};
+
+window.toggleCategoryFields = function() {
+    const inventoryModule = window.inventoryModule();
+    if (inventoryModule && inventoryModule.toggleCategoryFields) {
+        inventoryModule.toggleCategoryFields();
+    }
+};
+
+// Global functions for Expenses Module
+window.clearExpenseForm = function() {
+    const expensesModule = window.expensesModule();
+    if (expensesModule && expensesModule.clearExpenseForm) {
+        expensesModule.clearExpenseForm();
+    }
+};
+
+window.searchExpenses = function() {
+    const expensesModule = window.expensesModule();
+    if (expensesModule && expensesModule.searchExpenses) {
+        expensesModule.searchExpenses();
+    }
+};
+
+window.clearExpenseSearch = function() {
+    const expensesModule = window.expensesModule();
+    if (expensesModule && expensesModule.clearExpenseSearch) {
+        expensesModule.clearExpenseSearch();
+    }
+};
+
+// Global functions for Invoices Module
+window.searchInvoices = function() {
+    const invoicesModule = window.invoicesModule();
+    if (invoicesModule && invoicesModule.searchInvoices) {
+        invoicesModule.searchInvoices();
+    }
+};
+
+window.clearInvoiceSearch = function() {
+    const invoicesModule = window.invoicesModule();
+    if (invoicesModule && invoicesModule.clearInvoiceSearch) {
+        invoicesModule.clearInvoiceSearch();
+    }
+};
+
+window.filterInvoicesByType = function() {
+    const invoicesModule = window.invoicesModule();
+    if (invoicesModule && invoicesModule.filterInvoicesByType) {
+        invoicesModule.filterInvoicesByType();
+    }
+};
+
+window.printCurrentInvoice = function() {
+    const invoicesModule = window.invoicesModule();
+    if (invoicesModule && invoicesModule.printCurrentInvoice) {
+        invoicesModule.printCurrentInvoice();
+    }
+};

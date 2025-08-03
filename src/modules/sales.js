@@ -99,23 +99,23 @@ class SalesModule {
     }
 
     displayCustomerSuggestions(customers) {
-        const suggestionsDiv = document.getElementById('customerSuggestions');
-        if (!suggestionsDiv) return;
-        
-        if (customers.length === 0) {
-            suggestionsDiv.style.display = 'none';
-            return;
-        }
-
-        suggestionsDiv.innerHTML = customers.map(customer => 
-            `<div class="suggestion-item" onclick="salesModule().selectCustomer(${customer.id}, '${customer.name}', '${customer.phone || ''}')">
-                <strong>${customer.name}</strong>
-                ${customer.phone ? `<br><small>${customer.phone}</small>` : ''}
-            </div>`
-        ).join('');
-        
-        suggestionsDiv.style.display = 'block';
+    const suggestionsDiv = document.getElementById('customerSuggestions');
+    if (!suggestionsDiv) return;
+    
+    if (customers.length === 0) {
+        suggestionsDiv.style.display = 'none';
+        return;
     }
+
+    suggestionsDiv.innerHTML = customers.map(customer => 
+        `<div class="suggestion-item" onclick="window.salesModule().selectCustomer(${customer.id}, '${customer.name}', '${customer.phone || ''}')">
+            <strong>${customer.name}</strong>
+            ${customer.phone ? `<br><small>${customer.phone}</small>` : ''}
+        </div>`
+    ).join('');
+    
+    suggestionsDiv.style.display = 'block';
+}
 
     selectCustomer(id, name, phone) {
         this.selectedCustomer = { id, name, phone };
@@ -163,34 +163,34 @@ class SalesModule {
     }
 
     displayItemSuggestions(items) {
-        const suggestionsDiv = document.getElementById('itemSuggestions');
-        if (!suggestionsDiv) return;
-        
-        if (items.length === 0) {
-            suggestionsDiv.style.display = 'none';
-            return;
-        }
-
-        suggestionsDiv.innerHTML = items.map(item => 
-            `<div class="suggestion-item" onclick="salesModule().selectItemFromSuggestion(${item.id})">
-                <strong>${item.item_code}</strong> - ${item.brand || 'No Brand'}
-                <br><small>Stock: ${item.quantity} | Price: ₹${item.price || 0}</small>
-            </div>`
-        ).join('');
-        
-        suggestionsDiv.style.display = 'block';
+    const suggestionsDiv = document.getElementById('itemSuggestions');
+    if (!suggestionsDiv) return;
+    
+    if (items.length === 0) {
+        suggestionsDiv.style.display = 'none';
+        return;
     }
+
+    suggestionsDiv.innerHTML = items.map(item => 
+        `<div class="suggestion-item" onclick="window.salesModule().selectItemFromSuggestion(${item.id})">
+            <strong>${item.item_code}</strong> - ${item.brand || 'No Brand'}
+            <br><small>Stock: ${item.quantity} | Price: ₹${item.price || 0}</small>
+        </div>`
+    ).join('');
+    
+    suggestionsDiv.style.display = 'block';
+}
 
     async selectItemFromSuggestion(itemId) {
-        try {
-            const selectedItem = this.inventoryModule.getItemById(itemId);
-            if (selectedItem) {
-                this.selectItem(selectedItem);
-            }
-        } catch (error) {
-            console.error('Error selecting item:', error);
+    try {
+        const selectedItem = this.inventoryModule.getItemById(itemId);
+        if (selectedItem) {
+            this.selectItem(selectedItem);
         }
+    } catch (error) {
+        console.error('Error selecting item:', error);
     }
+}
 
     selectItem(item) {
         this.selectedItem = item;
@@ -318,45 +318,45 @@ class SalesModule {
     }
 
     renderSaleItems() {
-        const tbody = document.getElementById('saleItemsTableBody');
-        const noItemsMessage = document.getElementById('noItemsMessage');
-        
-        if (!tbody) return;
-        
-        if (this.saleItems.length === 0) {
-            tbody.innerHTML = '';
-            if (noItemsMessage) noItemsMessage.style.display = 'block';
-            return;
-        }
-
-        if (noItemsMessage) noItemsMessage.style.display = 'none';
-        
-        tbody.innerHTML = this.saleItems.map((item, index) => {
-            const discountText = item.discount_type === 'none' ? '-' : 
-                               item.discount_type === 'percentage' ? `${item.discount_value}%` : 
-                               `₹${item.discount_value}`;
-            
-            return `
-                <tr>
-                    <td>${item.item_code}</td>
-                    <td>${item.item_name}</td>
-                    <td>${item.quantity}</td>
-                    <td>₹${item.unit_price.toFixed(2)}</td>
-                    <td>${discountText}</td>
-                    <td>₹${item.line_total.toFixed(2)}</td>
-                    <td>
-                        <button class="btn btn-sm btn-danger" onclick="salesModule().removeSaleItem(${index})">Remove</button>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+    const tbody = document.getElementById('saleItemsTableBody');
+    const noItemsMessage = document.getElementById('noItemsMessage');
+    
+    if (!tbody) return;
+    
+    if (this.saleItems.length === 0) {
+        tbody.innerHTML = '';
+        if (noItemsMessage) noItemsMessage.style.display = 'block';
+        return;
     }
+
+    if (noItemsMessage) noItemsMessage.style.display = 'none';
+    
+    tbody.innerHTML = this.saleItems.map((item, index) => {
+        const discountText = item.discount_type === 'none' ? '-' : 
+                           item.discount_type === 'percentage' ? `${item.discount_value}%` : 
+                           `₹${item.discount_value}`;
+        
+        return `
+            <tr>
+                <td>${item.item_code}</td>
+                <td>${item.item_name}</td>
+                <td>${item.quantity}</td>
+                <td>₹${item.unit_price.toFixed(2)}</td>
+                <td>${discountText}</td>
+                <td>₹${item.line_total.toFixed(2)}</td>
+                <td>
+                    <button class="btn btn-sm btn-danger" onclick="window.salesModule().removeSaleItem(${index})">Remove</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
 
     removeSaleItem(index) {
-        this.saleItems.splice(index, 1);
-        this.renderSaleItems();
-        this.calculateSaleTotals();
-    }
+    this.saleItems.splice(index, 1);
+    this.renderSaleItems();
+    this.calculateSaleTotals();
+}
 
     calculateSaleTotals() {
         const subtotal = this.saleItems.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
@@ -440,67 +440,67 @@ class SalesModule {
         this.salePayments.push({ payment_method: '', amount: 0, payment_reference: '' });
     }
 
-    updatePaymentMethod(index, method) {
-        if (this.salePayments[index]) {
-            this.salePayments[index].payment_method = method;
-        }
-        this.validatePayments();
+updatePaymentMethod(index, method) {
+    if (this.salePayments[index]) {
+        this.salePayments[index].payment_method = method;
     }
+    this.validatePayments();
+}
 
-    updatePaymentAmount(index, amount) {
-        if (this.salePayments[index]) {
-            this.salePayments[index].amount = parseFloat(amount) || 0;
-        }
-        this.validatePayments();
+updatePaymentAmount(index, amount) {
+    if (this.salePayments[index]) {
+        this.salePayments[index].amount = parseFloat(amount) || 0;
     }
+    this.validatePayments();
+}
 
-    updatePaymentReference(index, reference) {
-        if (this.salePayments[index]) {
-            this.salePayments[index].payment_reference = reference;
-        }
+updatePaymentReference(index, reference) {
+    if (this.salePayments[index]) {
+        this.salePayments[index].payment_reference = reference;
     }
+}
 
-    removePaymentMethod(index) {
-        this.salePayments.splice(index, 1);
+   removePaymentMethod(index) {
+    this.salePayments.splice(index, 1);
+    
+    // Re-render payment breakdown
+    const paymentBreakdown = document.getElementById('paymentBreakdown');
+    if (paymentBreakdown) {
+        paymentBreakdown.innerHTML = '';
         
-        // Re-render payment breakdown
-        const paymentBreakdown = document.getElementById('paymentBreakdown');
-        if (paymentBreakdown) {
-            paymentBreakdown.innerHTML = '';
-            
-            this.salePayments.forEach((payment, i) => {
-                const paymentDiv = document.createElement('div');
-                paymentDiv.className = 'payment-method-row';
-                paymentDiv.innerHTML = `
-                    <div class="form-row">
-                        <div class="form-group">
-                            <select onchange="salesModule().updatePaymentMethod(${i}, this.value)">
-                                <option value="">Select Method</option>
-                                <option value="cash" ${payment.payment_method === 'cash' ? 'selected' : ''}>Cash</option>
-                                <option value="upi" ${payment.payment_method === 'upi' ? 'selected' : ''}>UPI</option>
-                                <option value="card" ${payment.payment_method === 'card' ? 'selected' : ''}>Card</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <input type="number" step="0.01" min="0" placeholder="Amount" value="${payment.amount}"
-                                   onchange="salesModule().updatePaymentAmount(${i}, this.value)">
-                        </div>
-                        <div class="form-group">
-                            <input type="text" placeholder="Reference (optional)" value="${payment.payment_reference}"
-                                   onchange="salesModule().updatePaymentReference(${i}, this.value)">
-                        </div>
-                        <div class="form-group">
-                            <button type="button" onclick="salesModule().removePaymentMethod(${i})" 
-                                    class="btn btn-sm btn-danger">Remove</button>
-                        </div>
+        this.salePayments.forEach((payment, i) => {
+            const paymentDiv = document.createElement('div');
+            paymentDiv.className = 'payment-method-row';
+            paymentDiv.innerHTML = `
+                <div class="form-row">
+                    <div class="form-group">
+                        <select onchange="window.salesModule().updatePaymentMethod(${i}, this.value)">
+                            <option value="">Select Method</option>
+                            <option value="cash" ${payment.payment_method === 'cash' ? 'selected' : ''}>Cash</option>
+                            <option value="upi" ${payment.payment_method === 'upi' ? 'selected' : ''}>UPI</option>
+                            <option value="card" ${payment.payment_method === 'card' ? 'selected' : ''}>Card</option>
+                        </select>
                     </div>
-                `;
-                paymentBreakdown.appendChild(paymentDiv);
-            });
-        }
-        
-        this.validatePayments();
+                    <div class="form-group">
+                        <input type="number" step="0.01" min="0" placeholder="Amount" value="${payment.amount}"
+                               onchange="window.salesModule().updatePaymentAmount(${i}, this.value)">
+                    </div>
+                    <div class="form-group">
+                        <input type="text" placeholder="Reference (optional)" value="${payment.payment_reference}"
+                               onchange="window.salesModule().updatePaymentReference(${i}, this.value)">
+                    </div>
+                    <div class="form-group">
+                        <button type="button" onclick="window.salesModule().removePaymentMethod(${i})" 
+                                class="btn btn-sm btn-danger">Remove</button>
+                    </div>
+                </div>
+            `;
+            paymentBreakdown.appendChild(paymentDiv);
+        });
     }
+    
+    this.validatePayments();
+}
 
     updateMultiplePaymentsTotal() {
         // This function can be used to show remaining amount in multiple payments
@@ -724,27 +724,27 @@ class SalesModule {
     }
 
     renderSalesHistory() {
-        const tbody = document.getElementById('salesHistoryTableBody');
-        if (!tbody) return;
+    const tbody = document.getElementById('salesHistoryTableBody');
+    if (!tbody) return;
 
-        tbody.innerHTML = '';
+    tbody.innerHTML = '';
+    
+    this.sales.slice(0, 10).forEach(sale => { // Show only last 10 sales
+        const row = document.createElement('tr');
+        const saleDate = new Date(sale.sale_date).toLocaleDateString();
         
-        this.sales.slice(0, 10).forEach(sale => { // Show only last 10 sales
-            const row = document.createElement('tr');
-            const saleDate = new Date(sale.sale_date).toLocaleDateString();
-            
-            row.innerHTML = `
-                <td>${saleDate}</td>
-                <td>${sale.customer_name || 'Walk-in'}</td>
-                <td>${sale.items || '-'}</td>
-                <td>₹${parseFloat(sale.total_amount).toFixed(2)}</td>
-                <td>
-                    <button class="btn btn-sm btn-secondary" onclick="salesModule().viewSaleDetails(${sale.id})">View</button>
-                </td>
-            `;
-            tbody.appendChild(row);
-        });
-    }
+        row.innerHTML = `
+            <td>${saleDate}</td>
+            <td>${sale.customer_name || 'Walk-in'}</td>
+            <td>${sale.items || '-'}</td>
+            <td>₹${parseFloat(sale.total_amount).toFixed(2)}</td>
+            <td>
+                <button class="btn btn-sm btn-secondary" onclick="window.salesModule().viewSaleDetails(${sale.id})">View</button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
 
     async viewSaleDetails(saleId) {
         try {
@@ -888,6 +888,34 @@ window.printSaleReceipt = function() {
     const salesModule = window.salesModule();
     if (salesModule) {
         salesModule.printSaleReceipt();
+    }
+};
+
+window.removeSaleItem = function(index) {
+    const salesModule = window.salesModule();
+    if (salesModule && salesModule.removeSaleItem) {
+        salesModule.removeSaleItem(index);
+    }
+};
+
+window.selectCustomerFromSales = function(id, name, phone) {
+    const salesModule = window.salesModule();
+    if (salesModule && salesModule.selectCustomer) {
+        salesModule.selectCustomer(id, name, phone);
+    }
+};
+
+window.selectItemFromSales = function(itemId) {
+    const salesModule = window.salesModule();
+    if (salesModule && salesModule.selectItemFromSuggestion) {
+        salesModule.selectItemFromSuggestion(itemId);
+    }
+};
+
+window.viewSaleDetails = function(saleId) {
+    const salesModule = window.salesModule();
+    if (salesModule && salesModule.viewSaleDetails) {
+        salesModule.viewSaleDetails(saleId);
     }
 };
 

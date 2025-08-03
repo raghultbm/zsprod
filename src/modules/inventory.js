@@ -234,76 +234,133 @@ class InventoryModule {
         }
     }
 
-    async handleFormSubmit(e) {
-        e.preventDefault();
-        
-        const itemData = this.collectFormData();
-        
-        // Validation
-        if (!itemData.item_code || !itemData.category || !itemData.date_added || !itemData.outlet) {
-            showError('Please fill in all required fields');
-            return;
-        }
+    // In src/modules/inventory.js - Replace the handleFormSubmit method with this fixed version
 
-        // Debug: Log the price value to check what's being collected
-        console.log('Price value:', itemData.price, 'Type:', typeof itemData.price);
-
-        // Fix: Better price validation
-        if (itemData.price === null || itemData.price === undefined || isNaN(itemData.price) || itemData.price <= 0) {
-            showError('Please enter a valid price greater than 0');
-            return;
-        }
-        
-        const itemId = document.getElementById('inventoryId').value;
-        
-        try {
-            if (itemId) {
-                itemData.id = parseInt(itemId);
-                await ipcRenderer.invoke('update-inventory-item', itemData);
-                showSuccess('Inventory item updated successfully');
-            } else {
-                await ipcRenderer.invoke('add-inventory-item', itemData);
-                showSuccess('Inventory item added successfully');
-            }
-            
-            closeModal('inventoryModal');
-            await this.loadData();
-            await loadDashboardStats();
-        } catch (error) {
-            console.error('Error saving inventory item:', error);
-            if (error.message.includes('UNIQUE constraint failed')) {
-                showError('Item code already exists. Please use a different code.');
-            } else {
-                showError('Error saving inventory item');
-            }
-        }
+async handleFormSubmit(e) {
+    e.preventDefault();
+    
+    const itemData = this.collectFormData();
+    
+    // Basic required field validation
+    if (!itemData.item_code || !itemData.category || !itemData.date_added || !itemData.outlet) {
+        showError('Please fill in all required fields (Item Code, Category, Date, Outlet)');
+        return;
     }
 
-    collectFormData() {
-        // Get the price field value and ensure it's properly converted
+    // Debug: Log the price value to help with troubleshooting
+    console.log('Validating price:', itemData.price, 'Type:', typeof itemData.price);
+
+    // Fix: Improved price validation with better error messages
+    if (itemData.price === null || itemData.price === undefined || isNaN(itemData.price) || itemData.price <= 0) {
+        // Get the actual field value for better error reporting
         const priceField = document.getElementById('itemPrice');
-        const priceValue = priceField ? priceField.value : '';
+        const priceFieldValue = priceField ? priceField.value : 'N/A';
         
-        // Debug: Log the price field value
-        console.log('Price field value:', priceValue, 'Field exists:', !!priceField);
+        console.error('Price validation failed:', {
+            priceData: itemData.price,
+            priceFieldValue: priceFieldValue,
+            priceFieldExists: !!priceField
+        });
         
-        return {
-            item_code: document.getElementById('itemCode')?.value?.toUpperCase().trim(),
-            date_added: document.getElementById('dateAdded')?.value,
-            category: document.getElementById('itemCategory')?.value,
-            brand: document.getElementById('itemBrand')?.value || null,
-            type: document.getElementById('itemType')?.value || null,
-            gender: document.getElementById('itemGender')?.value || null,
-            material: document.getElementById('itemMaterial')?.value || null,
-            size_mm: document.getElementById('itemSize')?.value || null,
-            battery_code: document.getElementById('itemBatteryCode')?.value || null,
-            quantity: parseInt(document.getElementById('itemQuantity')?.value) || 0,
-            warranty_months: document.getElementById('itemWarranty')?.value || null,
-            price: priceValue ? parseFloat(priceValue) : 0, // Fix: Better price handling
-            outlet: document.getElementById('itemOutlet')?.value,
-            comments: document.getElementById('itemComments')?.value || null
-        };
+        showError(`Please enter a valid price greater than 0. Current value: "${priceFieldValue}"`);
+        
+        // Focus on the price field to help user
+        if (priceField) {
+            priceField.focus();
+            priceField.select();
+        }
+        return;
     }
+    
+    const itemId = document.getElementById('inventoryId').value;
+    
+    try {
+        if (itemId) {
+            itemData.id = parseInt(itemId);
+            await ipcRenderer.invoke('update-inventory-item', itemData);
+            showSuccess('Inventory item updated successfully');
+        } else {
+            await ipcRenderer.invoke('add-inventory-item', itemData);
+            showSuccess('Inventory item added successfully');
+        }
+        
+        closeModal('inventoryModal');
+        await this.loadData();
+        await loadDashboardStats();
+    } catch (error) {
+        console.error('Error saving inventory item:', error);
+        if (error.message.includes('UNIQUE constraint failed')) {
+            showError('Item code already exists. Please use a different code.');
+        } else {
+            showError('Error saving inventory item: ' + error.message);
+        }
+    }
+}
+
+    // In src/modules/inventory.js - Replace the collectFormData method with this fixed version
+
+collectFormData() {
+    // Get all form field values
+    const itemCode = document.getElementById('itemCode')?.value?.toUpperCase().trim();
+    const dateAdded = document.getElementById('dateAdded')?.value;
+    const category = document.getElementById('itemCategory')?.value;
+    const brand = document.getElementById('itemBrand')?.value || null;
+    const type = document.getElementById('itemType')?.value || null;
+    const gender = document.getElementById('itemGender')?.value || null;
+    const material = document.getElementById('itemMaterial')?.value || null;
+    const sizeValue = document.getElementById('itemSize')?.value;
+    const batteryCode = document.getElementById('itemBatteryCode')?.value || null;
+    const quantityValue = document.getElementById('itemQuantity')?.value;
+    const warrantyValue = document.getElementById('itemWarranty')?.value;
+    const priceValue = document.getElementById('itemPrice')?.value;
+    const outlet = document.getElementById('itemOutlet')?.value;
+    const comments = document.getElementById('itemComments')?.value || null;
+    
+    // Debug logging to check values
+    console.log('Form field values:');
+    console.log('Price field exists:', !!document.getElementById('itemPrice'));
+    console.log('Price field value:', priceValue);
+    console.log('Price field type:', typeof priceValue);
+    
+    // Parse numeric values with proper validation
+    const size_mm = sizeValue ? parseInt(sizeValue) : null;
+    const quantity = quantityValue ? parseInt(quantityValue) : 0;
+    const warranty_months = warrantyValue ? parseInt(warrantyValue) : null;
+    
+    // Fix: Better price parsing and validation
+    let price = 0;
+    if (priceValue && priceValue.trim() !== '') {
+        const parsedPrice = parseFloat(priceValue);
+        if (!isNaN(parsedPrice) && parsedPrice > 0) {
+            price = parsedPrice;
+        } else {
+            console.error('Invalid price value:', priceValue);
+            price = 0; // This will trigger the validation error
+        }
+    } else {
+        console.error('Price field is empty or undefined');
+        price = 0; // This will trigger the validation error
+    }
+    
+    console.log('Final parsed price:', price);
+    
+    return {
+        item_code: itemCode,
+        date_added: dateAdded,
+        category: category,
+        brand: brand,
+        type: type,
+        gender: gender,
+        material: material,
+        size_mm: size_mm,
+        battery_code: batteryCode,
+        quantity: quantity,
+        warranty_months: warranty_months,
+        price: price,
+        outlet: outlet,
+        comments: comments
+    };
+}
 
     async searchInventory() {
         const searchTerm = document.getElementById('inventorySearch')?.value?.trim();
