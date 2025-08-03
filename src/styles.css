@@ -128,21 +128,43 @@ body {
 .sidebar-header {
     padding: 20px;
     border-bottom: 1px solid #34495e;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
+
+.sidebar-logo-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+
 
 .sidebar-header h2 {
     margin-bottom: 10px;
     font-size: 1.5rem;
 }
 
+.user-info {
+    text-align: center;
+    width: 100%;
+}
+
 .user-info span {
     display: block;
     font-weight: 500;
+    color: #ecf0f1;
+    margin-bottom: 2px;
 }
 
 .user-info small {
     color: #bdc3c7;
     text-transform: capitalize;
+    font-size: 12px;
 }
 
 .sidebar-nav {
@@ -1784,5 +1806,25 @@ input[type="date"]:focus {
         font-size: 11px;
         text-align: center;
     }
+}
+.login-logo {
+    max-width: 80px !important;
+    max-height: 80px !important;
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain !important;
+}
+
+.sidebar-logo {
+    max-width: 50px !important;
+    max-height: 50px !important;
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain !important;
+    filter: brightness(0) invert(1) !important;
+}
+
+.login-header h1, .sidebar-header h2 {
+    display: none;
 }
 }

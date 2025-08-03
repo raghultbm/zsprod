@@ -9,41 +9,45 @@
 <body>
     <div class="app-container">
         <!-- Sidebar -->
+       <!-- Updated Sidebar Header Section for dashboard.html -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h2>⌚ Watch Shop</h2>
+                <div class="sidebar-logo-container">
+                    <img src="../assets/icon.png" alt="Logo" class="sidebar-logo">
+                </div>
                 <div class="user-info">
                     <span id="userName">Loading...</span>
                     <small id="userRole">Loading...</small>
                 </div>
             </div>
             
-            <nav class="sidebar-nav">
-                <a href="#" class="nav-item active" data-module="dashboard">
-                    <span>📊</span> Dashboard
-                </a>
-                <a href="#" class="nav-item" data-module="customers">
-                    <span>👥</span> Customers
-                </a>
-                <a href="#" class="nav-item" data-module="inventory">
-                    <span>📦</span> Inventory
-                </a>
-                <a href="#" class="nav-item" data-module="sales">
-                    <span>💰</span> Sales
-                </a>
-                <a href="#" class="nav-item" data-module="service">
-                    <span>🔧</span> Service
-                </a>
-                <a href="#" class="nav-item" data-module="invoices">
-                    <span>📄</span> Invoices
-                </a>
-                <a href="#" class="nav-item" data-module="expenses">
-                    <span>💸</span> Expenses
-                </a>
-                <a href="#" class="nav-item" data-module="users" id="usersNav">
-                    <span>👤</span> User Management
-                </a>
-            </nav>
+            <!-- Rest of sidebar remains the same -->
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item active" data-module="dashboard">
+                <span>📊</span> Dashboard
+            </a>
+            <a href="#" class="nav-item" data-module="customers">
+                <span>👥</span> Customers
+            </a>
+            <a href="#" class="nav-item" data-module="inventory">
+                <span>📦</span> Inventory
+            </a>
+            <a href="#" class="nav-item" data-module="sales">
+                <span>💰</span> Sales
+            </a>
+            <a href="#" class="nav-item" data-module="service">
+                <span>🔧</span> Service
+            </a>
+            <a href="#" class="nav-item" data-module="invoices">
+                <span>📄</span> Invoices
+            </a>
+            <a href="#" class="nav-item" data-module="expenses">
+                <span>💸</span> Expenses
+            </a>
+            <a href="#" class="nav-item" data-module="users" id="usersNav">
+                <span>👤</span> User Management
+            </a>
+        </nav>
             
             <div class="sidebar-footer">
                 <button id="logoutBtn" class="logout-btn">Logout</button>
