@@ -8,10 +8,13 @@ const ServiceModule = require('./modules/service');
 const ExpensesModule = require('./modules/expenses');
 const InvoicesModule = require('./modules/invoices');
 const UsersModule = require('./modules/users');
+const DashboardEnhanced = require('./modules/dashboard-enhanced');
 
 // Global state
 let currentUser = null;
 let activeModule = null;
+let dashboardEnhanced;
+
 
 // Module instances
 let customerModule, inventoryModule, salesModule, serviceModule, expensesModule, invoicesModule, usersModule;
@@ -55,6 +58,12 @@ async function initializeModules() {
         serviceModule = new ServiceModule(currentUser, customerModule);
         expensesModule = new ExpensesModule(currentUser);
         invoicesModule = new InvoicesModule(currentUser);
+        dashboardEnhanced = new DashboardEnhanced(currentUser);
+        await dashboardEnhanced.init();
+
+        // Make dashboard module globally accessible
+        window.dashboardEnhanced = () => dashboardEnhanced;
+
         if (currentUser.role === 'admin') {
             usersModule = new UsersModule(currentUser);
         }
@@ -83,6 +92,8 @@ async function initializeModules() {
         console.error('Error initializing modules:', error);
         alert('Error initializing application modules');
     }
+
+
 }
 
 function setupEventListeners() {
@@ -127,6 +138,12 @@ function switchModule(module) {
     // Set active module and load data
     activeModule = module;
     loadModuleData(module);
+
+    if (module === 'dashboard' && dashboardEnhanced) {
+        setTimeout(() => {
+            dashboardEnhanced.refreshData();
+        }, 100);
+    }
 }
 
 function updatePageHeader(module) {
@@ -204,6 +221,9 @@ async function loadModuleData(module) {
 
 async function loadDashboardStats() {
     try {
+        if (dashboardEnhanced) {
+            await dashboardEnhanced.refreshData();
+        } else {
         const [customersData, usersData, inventoryData] = await Promise.all([
             ipcRenderer.invoke('get-customers'),
             ipcRenderer.invoke('get-users'),
@@ -222,6 +242,7 @@ async function loadDashboardStats() {
         // Count low stock items (items with quantity <= 5)
         const lowStockCount = inventoryData.filter(item => item.quantity <= 5).length;
         if (lowStockItemsEl) lowStockItemsEl.textContent = lowStockCount;
+    }
     } catch (error) {
         console.error('Error loading dashboard stats:', error);
     }

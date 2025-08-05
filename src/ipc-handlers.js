@@ -805,3 +805,270 @@ function setupIpcHandlers() {
 }
 
 module.exports = { setupIpcHandlers };
+
+// Add these IPC handlers to src/ipc-handlers.js
+
+// COB (Close of Business) handlers
+ipcMain.handle('create-cob-record', async (event, cobData) => {
+    try {
+        const {
+            business_date, total_sales, total_services, total_expenses,
+            cash_sales, cash_services, cash_expenses,
+            account_sales, account_services, account_expenses,
+            opening_cash_balance, opening_account_balance,
+            closing_cash_balance, closing_account_balance,
+            notes, created_by
+        } = cobData;
+
+        const result = await runQuery(
+            `INSERT INTO cob_records (
+                business_date, total_sales, total_services, total_expenses,
+                cash_sales, cash_services, cash_expenses,
+                account_sales, account_services, account_expenses,
+                opening_cash_balance, opening_account_balance,
+                closing_cash_balance, closing_account_balance,
+                notes, created_by
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                business_date, total_sales, total_services, total_expenses,
+                cash_sales, cash_services, cash_expenses,
+                account_sales, account_services, account_expenses,
+                opening_cash_balance, opening_account_balance,
+                closing_cash_balance, closing_account_balance,
+                notes, created_by
+            ]
+        );
+
+        return { id: result.id, success: true };
+    } catch (error) {
+        console.error('Create COB record error:', error);
+        throw error;
+    }
+});
+
+ipcMain.handle('get-cob-record', async (event, businessDate) => {
+    try {
+        const record = await getRow(`
+            SELECT cob.*, u.full_name as created_by_name
+            FROM cob_records cob
+            LEFT JOIN users u ON cob.created_by = u.id
+            WHERE cob.business_date = ?
+        `, [businessDate]);
+
+        return record;
+    } catch (error) {
+        console.error('Get COB record error:', error);
+        throw error;
+    }
+});
+
+ipcMain.handle('get-cob-records', async (event, options = {}) => {
+    try {
+        let query = `
+            SELECT cob.*, u.full_name as created_by_name
+            FROM cob_records cob
+            LEFT JOIN users u ON cob.created_by = u.id
+        `;
+        let params = [];
+
+        if (options.startDate && options.endDate) {
+            query += ' WHERE cob.business_date BETWEEN ? AND ?';
+            params = [options.startDate, options.endDate];
+        }
+
+        query += ' ORDER BY cob.business_date DESC';
+
+        if (options.limit) {
+            query += ' LIMIT ?';
+            params.push(options.limit);
+        }
+
+        return await getData(query, params);
+    } catch (error) {
+        console.error('Get COB records error:', error);
+        throw error;
+    }
+});
+
+ipcMain.handle('update-cob-record', async (event, cobData) => {
+    try {
+        const {
+            id, total_sales, total_services, total_expenses,
+            cash_sales, cash_services, cash_expenses,
+            account_sales, account_services, account_expenses,
+            opening_cash_balance, opening_account_balance,
+            closing_cash_balance, closing_account_balance,
+            notes
+        } = cobData;
+
+        await runQuery(
+            `UPDATE cob_records SET 
+                total_sales = ?, total_services = ?, total_expenses = ?,
+                cash_sales = ?, cash_services = ?, cash_expenses = ?,
+                account_sales = ?, account_services = ?, account_expenses = ?,
+                opening_cash_balance = ?, opening_account_balance = ?,
+                closing_cash_balance = ?, closing_account_balance = ?,
+                notes = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?`,
+            [
+                total_sales, total_services, total_expenses,
+                cash_sales, cash_services, cash_expenses,
+                account_sales, account_services, account_expenses,
+                opening_cash_balance, opening_account_balance,
+                closing_cash_balance, closing_account_balance,
+                notes, id
+            ]
+        );
+
+        return { success: true };
+    } catch (error) {
+        console.error('Update COB record error:', error);
+        throw error;
+    }
+});
+
+ipcMain.handle('delete-cob-record', async (event, id) => {
+    try {
+        await runQuery("DELETE FROM cob_records WHERE id = ?", [id]);
+        return { success: true };
+    } catch (error) {
+        console.error('Delete COB record error:', error);
+        throw error;
+    }
+});
+
+// Ledger analytics handlers
+ipcMain.handle('get-ledger-summary', async (event, options = {}) => {
+    try {
+        const { startDate, endDate } = options;
+        const today = new Date().toISOString().split('T')[0];
+        const targetDate = startDate || today;
+
+        // Get sales for the date
+        const sales = await getData(`
+            SELECT s.*, sp.payment_method, sp.amount as payment_amount
+            FROM sales s
+            LEFT JOIN sale_payments sp ON s.id = sp.sale_id
+            WHERE s.sale_date = ?
+        `, [targetDate]);
+
+        // Get services for the date
+        const services = await getData(`
+            SELECT * FROM service_jobs 
+            WHERE DATE(created_at) = ?
+        `, [targetDate]);
+
+        // Get expenses for the date
+        const expenses = await getData(`
+            SELECT * FROM expenses 
+            WHERE expense_date = ?
+        `, [targetDate]);
+
+        // Calculate totals
+        const salesTotal = sales.reduce((sum, sale) => sum + parseFloat(sale.total_amount || 0), 0);
+        const servicesTotal = services.reduce((sum, job) => sum + parseFloat(job.final_cost || job.estimated_cost || 0), 0);
+        const expensesTotal = expenses.reduce((sum, expense) => sum + parseFloat(expense.amount || 0), 0);
+
+        return {
+            date: targetDate,
+            sales: {
+                transactions: sales,
+                total: salesTotal,
+                count: sales.length
+            },
+            services: {
+                transactions: services,
+                total: servicesTotal,
+                count: services.length
+            },
+            expenses: {
+                transactions: expenses,
+                total: expensesTotal,
+                count: expenses.length
+            },
+            summary: {
+                totalIncome: salesTotal + servicesTotal,
+                totalExpenses: expensesTotal,
+                netIncome: salesTotal + servicesTotal - expensesTotal
+            }
+        };
+    } catch (error) {
+        console.error('Get ledger summary error:', error);
+        throw error;
+    }
+});
+
+ipcMain.handle('get-payment-breakdown', async (event, businessDate) => {
+    try {
+        const breakdown = {
+            cash: { sales: 0, services: 0, expenses: 0, total: 0 },
+            upi: { sales: 0, services: 0, expenses: 0, total: 0 },
+            card: { sales: 0, services: 0, expenses: 0, total: 0 }
+        };
+
+        // Get sales payments
+        const salesPayments = await getData(`
+            SELECT sp.payment_method, sp.amount
+            FROM sale_payments sp
+            JOIN sales s ON sp.sale_id = s.id
+            WHERE s.sale_date = ?
+        `, [businessDate]);
+
+        salesPayments.forEach(payment => {
+            const method = payment.payment_method.toLowerCase();
+            if (breakdown[method]) {
+                breakdown[method].sales += parseFloat(payment.amount);
+            }
+        });
+
+        // Get service payments
+        const servicePayments = await getData(`
+            SELECT advance_payment_method, advance_amount, final_payment_method, final_payment_amount
+            FROM service_jobs
+            WHERE DATE(created_at) = ?
+        `, [businessDate]);
+
+        servicePayments.forEach(job => {
+            // Advance payment
+            if (job.advance_amount && job.advance_payment_method) {
+                const method = job.advance_payment_method.toLowerCase();
+                if (breakdown[method]) {
+                    breakdown[method].services += parseFloat(job.advance_amount);
+                }
+            }
+            
+            // Final payment
+            if (job.final_payment_amount && job.final_payment_method) {
+                const method = job.final_payment_method.toLowerCase();
+                if (breakdown[method]) {
+                    breakdown[method].services += parseFloat(job.final_payment_amount);
+                }
+            }
+        });
+
+        // Get expenses
+        const expensePayments = await getData(`
+            SELECT payment_mode, amount
+            FROM expenses
+            WHERE expense_date = ?
+        `, [businessDate]);
+
+        expensePayments.forEach(expense => {
+            const method = expense.payment_mode.toLowerCase();
+            if (breakdown[method]) {
+                breakdown[method].expenses += parseFloat(expense.amount);
+            }
+        });
+
+        // Calculate totals
+        Object.keys(breakdown).forEach(method => {
+            const methodData = breakdown[method];
+            methodData.total = methodData.sales + methodData.services - methodData.expenses;
+        });
+
+        return breakdown;
+    } catch (error) {
+        console.error('Get payment breakdown error:', error);
+        throw error;
+    }
+});

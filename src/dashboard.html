@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Watch Shop - Dashboard</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="dashboard-enhanced.css">
 </head>
 <body>
     <div class="app-container">
@@ -63,31 +64,45 @@
             
             <div class="content-body" id="contentBody">
                 <!-- Dashboard Content -->
-                <div id="dashboard-content" class="module-content active">
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <h3>Total Customers</h3>
-                            <div class="stat-number" id="totalCustomers">0</div>
-                        </div>
-                        <div class="stat-card">
-                            <h3>Total Items</h3>
-                            <div class="stat-number" id="totalItems">0</div>
-                        </div>
-                        <div class="stat-card">
-                            <h3>Low Stock Items</h3>
-                            <div class="stat-number" id="lowStockItems">0</div>
-                        </div>
-                        <div class="stat-card">
-                            <h3>Total Users</h3>
-                            <div class="stat-number" id="totalUsers">0</div>
-                        </div>
-                    </div>
-                    
-                    <div class="recent-activity">
-                        <h3>Recent Activity</h3>
-                        <p>Welcome to Watch Shop Management System!</p>
-                    </div>
-                </div>
+               <div id="dashboard-content" class="module-content active">
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>👥 Total Customers</h3>
+            <div class="stat-number" id="totalCustomers">0</div>
+        </div>
+        <div class="stat-card">
+            <h3>📦 Total Items</h3>
+            <div class="stat-number" id="totalItems">0</div>
+        </div>
+        <div class="stat-card">
+            <h3>💰 Today's Sales</h3>
+            <div class="stat-number" id="todaysSales">₹0.00</div>
+        </div>
+        <div class="stat-card">
+            <h3>🔧 Incomplete Services</h3>
+            <div class="stat-number" id="incompleteServices">0</div>
+        </div>
+        <div class="stat-card">
+            <h3>📄 Total Invoices</h3>
+            <div class="stat-number" id="totalInvoices">0</div>
+        </div>
+        <div class="stat-card">
+            <h3>⚠️ Low Stock Items</h3>
+            <div class="stat-number" id="lowStockItems">0</div>
+        </div>
+        <div class="stat-card">
+            <h3>👤 Total Users</h3>
+            <div class="stat-number" id="totalUsers">0</div>
+        </div>
+    </div>
+    
+    <div class="recent-activity">
+        <h3>📈 Business Overview</h3>
+        <p>Welcome to Watch Shop Management System!</p>
+        <p>Click on any stat card above to view detailed information.</p>
+    </div>
+</div>
+
 
                 <!-- Customers Module -->
                 <div id="customers-content" class="module-content">
@@ -648,6 +663,7 @@
 
     <!-- Load all module scripts -->
     <script src="dashboard.js"></script>
+    <script src="modules/dashboard-enhanced.js"></script>
 </body>
 </html>
                 <div class="user-info">

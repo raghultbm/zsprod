@@ -173,6 +173,30 @@ function createTables() {
                 FOREIGN KEY (created_by) REFERENCES users(id)
             )`);
 
+            // COB (Close of Business) Records table
+db.run(`CREATE TABLE IF NOT EXISTS cob_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    business_date DATE NOT NULL UNIQUE,
+    total_sales DECIMAL(10,2) DEFAULT 0,
+    total_services DECIMAL(10,2) DEFAULT 0,
+    total_expenses DECIMAL(10,2) DEFAULT 0,
+    cash_sales DECIMAL(10,2) DEFAULT 0,
+    cash_services DECIMAL(10,2) DEFAULT 0,
+    cash_expenses DECIMAL(10,2) DEFAULT 0,
+    account_sales DECIMAL(10,2) DEFAULT 0,
+    account_services DECIMAL(10,2) DEFAULT 0,
+    account_expenses DECIMAL(10,2) DEFAULT 0,
+    opening_cash_balance DECIMAL(10,2) DEFAULT 0,
+    opening_account_balance DECIMAL(10,2) DEFAULT 0,
+    closing_cash_balance DECIMAL(10,2) DEFAULT 0,
+    closing_account_balance DECIMAL(10,2) DEFAULT 0,
+    notes TEXT,
+    created_by INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id)
+)`);
+
             // Check and migrate inventory table
             checkInventoryTable(resolve, reject);
         });
@@ -390,3 +414,4 @@ module.exports = {
     generateJobNumber,
     getDatabase: () => db
 };
+

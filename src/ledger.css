@@ -1,0 +1,719 @@
+/* src/ledger.css - Ledger Module Styles */
+
+/* Main Ledger Container */
+.ledger-container {
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Loading Styles */
+.ledger-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    color: #666;
+    font-size: 16px;
+}
+
+.loading-spinner {
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #3498db;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin-right: 15px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Ledger Controls */
+.ledger-controls {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.date-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.date-selector label {
+    font-weight: 500;
+    color: #2c3e50;
+    white-space: nowrap;
+}
+
+.date-selector input {
+    padding: 8px 12px;
+    border: 2px solid #e1e1e1;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.date-selector input:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+.control-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+/* Summary Cards */
+.ledger-summary {
+    margin-bottom: 30px;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.summary-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.summary-card.positive {
+    border-left: 4px solid #27ae60;
+}
+
+.summary-card.negative {
+    border-left: 4px solid #e74c3c;
+}
+
+.summary-card.cash {
+    border-left: 4px solid #f39c12;
+}
+
+.summary-card.account {
+    border-left: 4px solid #3498db;
+}
+
+.summary-icon {
+    font-size: 24px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8f9fa;
+    border-radius: 50%;
+}
+
+.summary-content {
+    flex: 1;
+}
+
+.summary-label {
+    font-size: 12px;
+    color: #666;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.summary-value {
+    font-size: 20px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.summary-value.positive {
+    color: #27ae60;
+}
+
+.summary-value.negative {
+    color: #e74c3c;
+}
+
+/* Payment Breakdown Section */
+.payment-breakdown-section {
+    background: white;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+}
+
+.payment-breakdown-section h3 {
+    color: #2c3e50;
+    margin-bottom: 20px;
+    font-size: 1.3rem;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 8px;
+}
+
+.payment-breakdown-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.payment-breakdown-card {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 20px;
+    border-left: 4px solid #3498db;
+}
+
+.payment-breakdown-card h4 {
+    color: #2c3e50;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.breakdown-details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid #e1e1e1;
+}
+
+.breakdown-row:last-child {
+    border-bottom: none;
+}
+
+.breakdown-row.total-row {
+    border-top: 2px solid #2c3e50;
+    margin-top: 8px;
+    padding-top: 12px;
+    font-size: 16px;
+}
+
+/* Transactions Section */
+.transactions-section {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+    overflow: hidden;
+}
+
+.transaction-tabs {
+    display: flex;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e1e1e1;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 15px 20px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-weight: 500;
+    color: #666;
+    transition: all 0.3s;
+}
+
+.tab-btn:hover {
+    background: #e9ecef;
+    color: #2c3e50;
+}
+
+.tab-btn.active {
+    color: #3498db;
+    border-bottom-color: #3498db;
+    background: white;
+}
+
+.transaction-tab {
+    display: none;
+    padding: 0;
+}
+
+.transaction-tab.active {
+    display: block;
+}
+
+.transaction-table-container {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.transaction-table-container .data-table {
+    margin: 0;
+}
+
+.transaction-table-container .data-table th {
+    position: sticky;
+    top: 0;
+    background: #f8f9fa;
+    z-index: 10;
+}
+
+.no-data {
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    padding: 40px !important;
+}
+
+/* COB Section */
+.cob-status-section {
+    margin-bottom: 30px;
+}
+
+.cob-completed {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    border-radius: 8px;
+    padding: 20px;
+    color: #155724;
+}
+
+.cob-completed h4 {
+    color: #155724;
+    margin-bottom: 15px;
+}
+
+.cob-completed p {
+    margin-bottom: 8px;
+}
+
+.cob-section {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    border-left: 4px solid #e74c3c;
+}
+
+.cob-header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.cob-header h3 {
+    color: #2c3e50;
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+}
+
+.cob-header p {
+    color: #666;
+    font-size: 14px;
+}
+
+.cob-summary {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 25px;
+}
+
+.cob-summary h4 {
+    color: #2c3e50;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+}
+
+.cob-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.cob-summary-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: white;
+    border-radius: 4px;
+    border-left: 3px solid #3498db;
+}
+
+.cob-summary-label {
+    font-weight: 500;
+    color: #555;
+}
+
+.cob-summary-value {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.cob-form {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.cob-form .form-group {
+    margin-bottom: 25px;
+}
+
+.cob-form label {
+    display: block;
+    margin-bottom: 8px;
+    color: #2c3e50;
+    font-weight: 500;
+}
+
+.cob-form textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e1e1e1;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 100px;
+}
+
+.cob-form textarea:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+.cob-actions {
+    text-align: center;
+}
+
+.cob-warning {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 20px;
+    color: #856404;
+}
+
+.cob-warning p {
+    margin: 0;
+    font-size: 14px;
+}
+
+.btn-large {
+    padding: 15px 30px;
+    font-size: 16px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Payment Mode Badges */
+.payment-mode {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.payment-mode.cash {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.payment-mode.upi {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.payment-mode.card {
+    background: #d4edda;
+    color: #155724;
+}
+
+/* Service Status in Ledger */
+.service-status {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.service-status.yet-to-start {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.service-status.in-service-center {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.service-status.service-completed {
+    background: #d4edda;
+    color: #155724;
+}
+
+.service-status.delivered {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .ledger-controls {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+    }
+    
+    .date-selector {
+        justify-content: center;
+    }
+    
+    .control-buttons {
+        justify-content: center;
+    }
+    
+    .summary-grid {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 15px;
+    }
+    
+    .payment-breakdown-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .cob-summary-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .ledger-container {
+        padding: 15px;
+    }
+    
+    .ledger-controls {
+        padding: 15px;
+    }
+    
+    .summary-card {
+        padding: 15px;
+        gap: 10px;
+    }
+    
+    .summary-icon {
+        font-size: 20px;
+        width: 35px;
+        height: 35px;
+    }
+    
+    .summary-value {
+        font-size: 18px;
+    }
+    
+    .payment-breakdown-section,
+    .cob-section {
+        padding: 20px;
+    }
+    
+    .transaction-tabs {
+        flex-direction: column;
+    }
+    
+    .tab-btn {
+        text-align: left;
+        border-bottom: 1px solid #e1e1e1;
+        border-left: 3px solid transparent;
+    }
+    
+    .tab-btn.active {
+        border-left-color: #3498db;
+        border-bottom-color: #e1e1e1;
+    }
+    
+    .transaction-table-container {
+        overflow-x: auto;
+    }
+    
+    .breakdown-row {
+        font-size: 14px;
+    }
+    
+    .cob-summary-item {
+        padding: 10px;
+    }
+    
+    .btn-large {
+        width: 100%;
+        padding: 12px 20px;
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .summary-card {
+        text-align: center;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .control-buttons {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .control-buttons .btn {
+        width: 100%;
+    }
+    
+    .breakdown-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    
+    .cob-summary-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+}
+
+/* Print Styles for COB Report */
+@media print {
+    .ledger-controls,
+    .cob-section,
+    .btn,
+    .cob-actions {
+        display: none !important;
+    }
+    
+    .ledger-container {
+        padding: 0;
+    }
+    
+    .summary-grid,
+    .payment-breakdown-grid {
+        break-inside: avoid;
+    }
+    
+    .transaction-tab {
+        display: block !important;
+        page-break-before: always;
+    }
+    
+    .transaction-tab:first-child {
+        page-break-before: avoid;
+    }
+    
+    .data-table {
+        font-size: 12px;
+    }
+    
+    .data-table th,
+    .data-table td {
+        padding: 6px;
+    }
+}
+
+/* Animation for data updates */
+.ledger-update-animation {
+    animation: dataUpdate 0.5s ease-in-out;
+}
+
+@keyframes dataUpdate {
+    0% { opacity: 0.7; transform: scale(0.98); }
+    50% { opacity: 0.9; transform: scale(1.01); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+/* Enhanced color coding */
+.positive {
+    color: #27ae60 !important;
+}
+
+.negative {
+    color: #e74c3c !important;
+}
+
+.neutral {
+    color: #7f8c8d !important;
+}
+
+/* Special styling for zero values */
+.zero-value {
+    color: #95a5a6;
+    font-style: italic;
+}
+
+/* Highlight current day */
+.current-day {
+    background: linear-gradient(45deg, #3498db, #2980b9);
+    color: white;
+}
+
+.current-day .summary-value {
+    color: white;
+}
+
+/* Enhanced focus states */
+.form-control:focus,
+input:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+/* Loading states for individual sections */
+.section-loading {
+    position: relative;
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.section-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
