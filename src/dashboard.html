@@ -9,7 +9,6 @@
 <body>
     <div class="app-container">
         <!-- Sidebar -->
-       <!-- Updated Sidebar Header Section for dashboard.html -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <div class="sidebar-logo-container">
@@ -21,7 +20,6 @@
                 </div>
             </div>
             
-            <!-- Rest of sidebar remains the same -->
         <nav class="sidebar-nav">
             <a href="#" class="nav-item active" data-module="dashboard">
                 <span>📊</span> Dashboard
@@ -97,11 +95,12 @@
                         <table class="data-table" id="customersTable">
                             <thead>
                                 <tr>
-                                    <th>ID</th>
-                                    <th>Name</th>
-                                    <th>Phone</th>
-                                    <th>Email</th>
-                                    <th>Actions</th>
+                                    <th><strong>ID</strong></th>
+                                    <th><strong>Name</strong></th>
+                                    <th><strong>Phone</strong></th>
+                                    <th><strong>Email</strong></th>
+                                    <th><strong>Net Value</strong></th>
+                                    <th><strong>Actions</strong></th>
                                 </tr>
                             </thead>
                             <tbody id="customersTableBody">
@@ -117,13 +116,13 @@
                         <table class="data-table" id="usersTable">
                             <thead>
                                 <tr>
-                                    <th>ID</th>
-                                    <th>Username</th>
-                                    <th>Full Name</th>
-                                    <th>Role</th>
-                                    <th>Email</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
+                                    <th><strong>ID</strong></th>
+                                    <th><strong>Username</strong></th>
+                                    <th><strong>Full Name</strong></th>
+                                    <th><strong>Role</strong></th>
+                                    <th><strong>Email</strong></th>
+                                    <th><strong>Status</strong></th>
+                                    <th><strong>Actions</strong></th>
                                 </tr>
                             </thead>
                             <tbody id="usersTableBody">
@@ -162,16 +161,16 @@
                         <table class="data-table" id="inventoryTable">
                             <thead>
                                 <tr>
-                                    <th>Code</th>
-                                    <th>Date</th>
-                                    <th>Category</th>
-                                    <th>Brand</th>
-                                    <th>Details</th>
-                                    <th>Quantity</th>
-                                    <th>Warranty</th>
-                                    <th>Price</th>
-                                    <th>Outlet</th>
-                                    <th>Actions</th>
+                                    <th><strong>Code</strong></th>
+                                    <th><strong>Date</strong></th>
+                                    <th><strong>Category</strong></th>
+                                    <th><strong>Brand</strong></th>
+                                    <th><strong>Details</strong></th>
+                                    <th><strong>Quantity</strong></th>
+                                    <th><strong>Warranty</strong></th>
+                                    <th><strong>Price</strong></th>
+                                    <th><strong>Outlet</strong></th>
+                                    <th><strong>Actions</strong></th>
                                 </tr>
                             </thead>
                             <tbody id="inventoryTableBody">
@@ -183,308 +182,319 @@
                 
                 <!-- Sales Module -->
                 <div id="sales-content" class="module-content">
-                    <div class="sales-container">
-                        <!-- Sales Form -->
-                        <div class="sales-form-container">
-                            <h3>New Sale</h3>
-                            
-                            <!-- Customer Selection -->
-                            <div class="form-section">
-                                <h4>Customer Details</h4>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="customerSearch">Search Customer</label>
-                                        <div class="search-input-container">
-                                            <input type="text" id="customerSearch" placeholder="Search by name or phone number">
-                                            <div id="customerSuggestions" class="suggestions-dropdown"></div>
-                                        </div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="selectedCustomer">Selected Customer</label>
-                                        <input type="text" id="selectedCustomer" readonly placeholder="No customer selected">
-                                        <input type="hidden" id="selectedCustomerId">
-                                    </div>
-                                </div>
-                            </div>
+                    <!-- Sales Controls -->
+                    <div class="sales-controls">
+                        <div class="search-container">
+                            <input type="text" id="salesSearch" placeholder="Search by invoice, customer, date..." class="search-input">
+                        </div>
+                        <div class="action-container">
+                            <button id="newSaleButton" onclick="toggleNewSaleForm()" class="btn btn-primary">New Sale</button>
+                        </div>
+                    </div>
 
-                            <!-- Item Selection -->
-                            <div class="form-section">
-                                <h4>Add Items</h4>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="itemCodeSearch">Item Code</label>
-                                        <div class="search-input-container">
-                                            <input type="text" id="itemCodeSearch" placeholder="Enter or search item code">
-                                            <div id="itemSuggestions" class="suggestions-dropdown"></div>
-                                        </div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="itemQuantity">Quantity</label>
-                                        <input type="number" id="itemQuantity" min="1" value="1">
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="itemPrice">Price</label>
-                                        <input type="number" id="itemPrice" step="0.01" min="0">
+                    <!-- Sales Form (Hidden by default) -->
+                    <div id="salesFormContainer" class="sales-form-container" style="display: none;">
+                        <h3><strong>New Sale</strong></h3>
+                        
+                        <!-- Customer Selection -->
+                        <div class="form-section">
+                            <h4><strong>Customer Details</strong></h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="customerSearch"><strong>Search Customer</strong></label>
+                                    <div class="search-input-container">
+                                        <input type="text" id="customerSearch" placeholder="Search by name or phone number">
+                                        <div id="customerSuggestions" class="suggestions-dropdown"></div>
                                     </div>
                                 </div>
-                                
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="discountType">Discount Type</label>
-                                        <select id="discountType">
-                                            <option value="none">No Discount</option>
-                                            <option value="percentage">Percentage</option>
-                                            <option value="amount">Amount</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="discountValue">Discount Value</label>
-                                        <input type="number" id="discountValue" step="0.01" min="0" disabled>
-                                    </div>
-                                    <div class="form-group align-end">
-                                        <button type="button" onclick="addItemToSale()" class="btn btn-primary">Add Item</button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Selected Items -->
-                            <div class="form-section">
-                                <h4>Sale Items</h4>
-                                <div class="sale-items-container">
-                                    <table class="sale-items-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Code</th>
-                                                <th>Item</th>
-                                                <th>Qty</th>
-                                                <th>Price</th>
-                                                <th>Discount</th>
-                                                <th>Total</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="saleItemsTableBody">
-                                            <!-- Dynamic content -->
-                                        </tbody>
-                                    </table>
-                                    <div id="noItemsMessage" class="no-items-message">
-                                        No items added to sale
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Sale Summary -->
-                            <div class="form-section">
-                                <h4>Sale Summary</h4>
-                                <div class="sale-summary">
-                                    <div class="summary-row">
-                                        <span>Subtotal:</span>
-                                        <span id="saleSubtotal">₹0.00</span>
-                                    </div>
-                                    <div class="summary-row">
-                                        <span>Total Discount:</span>
-                                        <span id="saleTotalDiscount">₹0.00</span>
-                                    </div>
-                                    <div class="summary-row total-row">
-                                        <span>Total Amount:</span>
-                                        <span id="saleTotalAmount">₹0.00</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Payment Method -->
-                            <div class="form-section">
-                                <h4>Payment Method</h4>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="paymentMethod">Payment Method</label>
-                                        <select id="paymentMethod" onchange="toggleMultiplePayments()">
-                                            <option value="cash">Cash</option>
-                                            <option value="upi">UPI</option>
-                                            <option value="card">Card</option>
-                                            <option value="multiple">Multiple Payment Methods</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group" id="singlePaymentAmount">
-                                        <label for="paymentAmount">Payment Amount</label>
-                                        <input type="number" id="paymentAmount" step="0.01" min="0" readonly>
-                                    </div>
-                                </div>
-
-                                <!-- Multiple Payments -->
-                                <div id="multiplePaymentsSection" class="multiple-payments" style="display: none;">
-                                    <h5>Payment Breakdown</h5>
-                                    <div id="paymentBreakdown">
-                                        <!-- Dynamic payment inputs -->
-                                    </div>
-                                    <button type="button" onclick="addPaymentMethod()" class="btn btn-secondary">Add Payment Method</button>
-                                </div>
-                            </div>
-
-                            <!-- Actions -->
-                            <div class="form-section">
-                                <div class="form-actions">
-                                    <button type="button" onclick="clearSale()" class="btn btn-secondary">Clear Sale</button>
-                                    <button type="button" onclick="previewSale()" class="btn btn-primary" id="completeSaleBtn">Complete Sale</button>
+                                <div class="form-group">
+                                    <label for="selectedCustomer"><strong>Selected Customer</strong></label>
+                                    <input type="text" id="selectedCustomer" readonly placeholder="No customer selected">
+                                    <input type="hidden" id="selectedCustomerId">
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Sales History -->
-                        <div class="sales-history-container">
-                            <h3>Recent Sales</h3>
-                            <div class="sales-history-table-container">
-                                <table class="data-table">
+                        <!-- Item Selection -->
+                        <div class="form-section">
+                            <h4><strong>Add Items</strong></h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="itemCodeSearch"><strong>Item Code</strong></label>
+                                    <div class="search-input-container">
+                                        <input type="text" id="itemCodeSearch" placeholder="Enter or search item code">
+                                        <div id="itemSuggestions" class="suggestions-dropdown"></div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="itemQuantity"><strong>Quantity</strong></label>
+                                    <input type="number" id="itemQuantity" min="1" value="1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="itemPrice"><strong>Price</strong></label>
+                                    <input type="number" id="itemPrice" step="0.01" min="0">
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="discountType"><strong>Discount Type</strong></label>
+                                    <select id="discountType">
+                                        <option value="none">No Discount</option>
+                                        <option value="percentage">Percentage</option>
+                                        <option value="amount">Amount</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="discountValue"><strong>Discount Value</strong></label>
+                                    <input type="number" id="discountValue" step="0.01" min="0" disabled>
+                                </div>
+                                <div class="form-group align-end">
+                                    <button type="button" onclick="addItemToSale()" class="btn btn-primary">Add Item</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Selected Items -->
+                        <div class="form-section">
+                            <h4><strong>Sale Items</strong></h4>
+                            <div class="sale-items-container">
+                                <table class="sale-items-table">
                                     <thead>
                                         <tr>
-                                            <th>Date</th>
-                                            <th>Customer</th>
-                                            <th>Items</th>
-                                            <th>Total</th>
-                                            <th>Actions</th>
+                                            <th><strong>Code</strong></th>
+                                            <th><strong>Item</strong></th>
+                                            <th><strong>Qty</strong></th>
+                                            <th><strong>Price</strong></th>
+                                            <th><strong>Discount</strong></th>
+                                            <th><strong>Total</strong></th>
+                                            <th><strong>Actions</strong></th>
                                         </tr>
                                     </thead>
-                                    <tbody id="salesHistoryTableBody">
+                                    <tbody id="saleItemsTableBody">
                                         <!-- Dynamic content -->
                                     </tbody>
                                 </table>
+                                <div id="noItemsMessage" class="no-items-message">
+                                    No items added to sale
+                                </div>
                             </div>
                         </div>
+
+                        <!-- Sale Summary -->
+                        <div class="form-section">
+                            <h4><strong>Sale Summary</strong></h4>
+                            <div class="sale-summary">
+                                <div class="summary-row">
+                                    <span><strong>Subtotal:</strong></span>
+                                    <span id="saleSubtotal"><strong>₹0.00</strong></span>
+                                </div>
+                                <div class="summary-row">
+                                    <span><strong>Total Discount:</strong></span>
+                                    <span id="saleTotalDiscount"><strong>₹0.00</strong></span>
+                                </div>
+                                <div class="summary-row total-row">
+                                    <span><strong>Total Amount:</strong></span>
+                                    <span id="saleTotalAmount"><strong>₹0.00</strong></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Payment Method -->
+                        <div class="form-section">
+                            <h4><strong>Payment Method</strong></h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="paymentMethod"><strong>Payment Method</strong></label>
+                                    <select id="paymentMethod" onchange="toggleMultiplePayments()">
+                                        <option value="cash">Cash</option>
+                                        <option value="upi">UPI</option>
+                                        <option value="card">Card</option>
+                                        <option value="multiple">Multiple Payment Methods</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" id="singlePaymentAmount">
+                                    <label for="paymentAmount"><strong>Payment Amount</strong></label>
+                                    <input type="number" id="paymentAmount" step="0.01" min="0" readonly>
+                                </div>
+                            </div>
+
+                            <!-- Multiple Payments -->
+                            <div id="multiplePaymentsSection" class="multiple-payments" style="display: none;">
+                                <h5><strong>Payment Breakdown</strong></h5>
+                                <div id="paymentBreakdown">
+                                    <!-- Dynamic payment inputs -->
+                                </div>
+                                <button type="button" onclick="addPaymentMethod()" class="btn btn-secondary">Add Payment Method</button>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="form-section">
+                            <div class="form-actions">
+                                <button type="button" onclick="clearSale()" class="btn btn-secondary">Clear Sale</button>
+                                <button type="button" onclick="previewSale()" class="btn btn-primary" id="completeSaleBtn">Complete Sale</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sales Table -->
+                    <div class="data-table-container">
+                        <h3><strong>All Sales</strong></h3>
+                        <table class="data-table" id="salesTable">
+                            <thead>
+                                <tr>
+                                    <th><strong>Invoice #</strong></th>
+                                    <th><strong>Date</strong></th>
+                                    <th><strong>Time</strong></th>
+                                    <th><strong>Customer</strong></th>
+                                    <th><strong>Items</strong></th>
+                                    <th><strong>Total</strong></th>
+                                    <th><strong>Created By</strong></th>
+                                    <th><strong>Actions</strong></th>
+                                </tr>
+                            </thead>
+                            <tbody id="salesTableBody">
+                                <!-- Dynamic content -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
                 
                 <!-- Service Module -->
                 <div id="service-content" class="module-content">
-                    <div class="service-container">
-                        <!-- Service Form -->
-                        <div class="service-form-container">
-                            <h3>New Service Job</h3>
-                            
-                            <!-- Customer Selection -->
-                            <div class="form-section">
-                                <h4>Customer Details</h4>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="serviceCustomerSearch">Search Customer</label>
-                                        <div class="search-input-container">
-                                            <input type="text" id="serviceCustomerSearch" placeholder="Search by name or phone number">
-                                            <div id="serviceCustomerSuggestions" class="suggestions-dropdown"></div>
-                                        </div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="serviceSelectedCustomer">Selected Customer</label>
-                                        <input type="text" id="serviceSelectedCustomer" readonly placeholder="No customer selected">
-                                        <input type="hidden" id="serviceSelectedCustomerId">
-                                    </div>
-                                </div>
-                            </div>
+                    <!-- Service Controls -->
+                    <div class="service-controls">
+                        <div class="search-container">
+                            <input type="text" id="serviceJobSearch" placeholder="Search by job number, customer, status..." class="search-input">
+                        </div>
+                        <div class="action-container">
+                            <button id="newServiceButton" onclick="toggleNewServiceForm()" class="btn btn-primary">New Service Job</button>
+                        </div>
+                    </div>
 
-                            <!-- Service Items -->
-                            <div class="form-section">
-                                <h4>Service Items</h4>
-                                <div id="serviceItemsContainer">
-                                    <!-- Service items will be added dynamically -->
-                                </div>
-                                <button type="button" onclick="addServiceItem()" class="btn btn-primary">Add Item</button>
-                            </div>
-
-                            <!-- Job Details -->
-                            <div class="form-section">
-                                <h4>Job Details</h4>
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="estimatedCost">Estimated Cost</label>
-                                        <input type="number" id="estimatedCost" step="0.01" min="0" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="advanceAmount">Advance Amount</label>
-                                        <input type="number" id="advanceAmount" step="0.01" min="0" value="0">
-                                    </div>
-                                </div>
-                                
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="advancePaymentMethod">Advance Payment Method</label>
-                                        <select id="advancePaymentMethod">
-                                            <option value="">No Advance</option>
-                                            <option value="cash">Cash</option>
-                                            <option value="upi">UPI</option>
-                                            <option value="card">Card</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="advancePaymentReference">Payment Reference</label>
-                                        <input type="text" id="advancePaymentReference" placeholder="Optional">
-                                    </div>
-                                </div>
-
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="approximateDeliveryDate">Approximate Delivery Date</label>
-                                        <input type="date" id="approximateDeliveryDate" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="serviceLocation">Location</label>
-                                        <select id="serviceLocation" required>
-                                            <option value="">Select Location</option>
-                                            <option value="semmancheri">Semmancheri</option>
-                                            <option value="navalur">Navalur</option>
-                                            <option value="padur">Padur</option>
-                                        </select>
-                                    </div>
-                                </div>
-
+                    <!-- Service Form (Hidden by default) -->
+                    <div id="serviceFormContainer" class="service-form-container" style="display: none;">
+                        <h3><strong>New Service Job</strong></h3>
+                        
+                        <!-- Customer Selection -->
+                        <div class="form-section">
+                            <h4><strong>Customer Details</strong></h4>
+                            <div class="form-row">
                                 <div class="form-group">
-                                    <label for="serviceJobComments">Comments</label>
-                                    <textarea id="serviceJobComments" rows="3" placeholder="Any additional notes"></textarea>
+                                    <label for="serviceCustomerSearch"><strong>Search Customer</strong></label>
+                                    <div class="search-input-container">
+                                        <input type="text" id="serviceCustomerSearch" placeholder="Search by name or phone number">
+                                        <div id="serviceCustomerSuggestions" class="suggestions-dropdown"></div>
+                                    </div>
                                 </div>
-                            </div>
-
-                            <!-- Actions -->
-                            <div class="form-section">
-                                <div class="form-actions">
-                                    <button type="button" onclick="clearServiceJob()" class="btn btn-secondary">Clear</button>
-                                    <button type="button" onclick="createServiceJob()" class="btn btn-primary">Create Service Job</button>
+                                <div class="form-group">
+                                    <label for="serviceSelectedCustomer"><strong>Selected Customer</strong></label>
+                                    <input type="text" id="serviceSelectedCustomer" readonly placeholder="No customer selected">
+                                    <input type="hidden" id="serviceSelectedCustomerId">
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Service Jobs List -->
-                        <div class="service-jobs-container">
-                            <h3>Service Jobs</h3>
+                        <!-- Service Items -->
+                        <div class="form-section">
+                            <h4><strong>Service Items</strong></h4>
+                            <div id="serviceItemsContainer">
+                                <!-- Service items will be added dynamically -->
+                            </div>
+                            <button type="button" onclick="addServiceItem()" class="btn btn-primary">Add Item</button>
+                        </div>
+
+                        <!-- Job Details -->
+                        <div class="form-section">
+                            <h4><strong>Job Details</strong></h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="estimatedCost"><strong>Estimated Cost</strong></label>
+                                    <input type="number" id="estimatedCost" step="0.01" min="0" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="advanceAmount"><strong>Advance Amount</strong></label>
+                                    <input type="number" id="advanceAmount" step="0.01" min="0" value="0">
+                                </div>
+                            </div>
                             
-                            <div class="service-search-container">
-                                <input type="text" id="serviceJobSearch" placeholder="Search by job number, customer name, or phone">
-                                <button onclick="searchServiceJobs()" class="btn btn-secondary">Search</button>
-                                <button onclick="clearServiceSearch()" class="btn btn-secondary">Clear</button>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="advancePaymentMethod"><strong>Advance Payment Method</strong></label>
+                                    <select id="advancePaymentMethod">
+                                        <option value="">No Advance</option>
+                                        <option value="cash">Cash</option>
+                                        <option value="upi">UPI</option>
+                                        <option value="card">Card</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="advancePaymentReference"><strong>Payment Reference</strong></label>
+                                    <input type="text" id="advancePaymentReference" placeholder="Optional">
+                                </div>
                             </div>
 
-                            <div class="service-jobs-table-container">
-                                <table class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Job #</th>
-                                            <th>Customer</th>
-                                            <th>Items</th>
-                                            <th>Status</th>
-                                            <th>Location</th>
-                                            <th>Est. Cost</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="serviceJobsTableBody">
-                                        <!-- Dynamic content -->
-                                    </tbody>
-                                </table>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="approximateDeliveryDate"><strong>Approximate Delivery Date</strong></label>
+                                    <input type="date" id="approximateDeliveryDate" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="serviceLocation"><strong>Location</strong></label>
+                                    <select id="serviceLocation" required>
+                                        <option value="">Select Location</option>
+                                        <option value="semmancheri">Semmancheri</option>
+                                        <option value="navalur">Navalur</option>
+                                        <option value="padur">Padur</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="serviceJobComments"><strong>Comments</strong></label>
+                                <textarea id="serviceJobComments" rows="3" placeholder="Any additional notes"></textarea>
                             </div>
                         </div>
+
+                        <!-- Actions -->
+                        <div class="form-section">
+                            <div class="form-actions">
+                                <button type="button" onclick="clearServiceJob()" class="btn btn-secondary">Clear</button>
+                                <button type="button" onclick="createServiceJob()" class="btn btn-primary">Create Service Job</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Service Jobs Table -->
+                    <div class="data-table-container">
+                        <h3><strong>All Service Jobs</strong></h3>
+                        <table class="data-table" id="serviceJobsTable">
+                            <thead>
+                                <tr>
+                                    <th><strong>Job #</strong></th>
+                                    <th><strong>Date</strong></th>
+                                    <th><strong>Time</strong></th>
+                                    <th><strong>Customer</strong></th>
+                                    <th><strong>Items</strong></th>
+                                    <th><strong>Status</strong></th>
+                                    <th><strong>Location</strong></th>
+                                    <th><strong>Est. Cost</strong></th>
+                                    <th><strong>Created By</strong></th>
+                                    <th><strong>Actions</strong></th>
+                                </tr>
+                            </thead>
+                            <tbody id="serviceJobsTableBody">
+                                <!-- Dynamic content -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
                 <!-- Invoices Module -->
                 <div id="invoices-content" class="module-content">
                     <div class="invoices-container">
-                        <h3>All Invoices</h3>
+                        <h3><strong>All Invoices</strong></h3>
                         
                         <div class="invoices-controls">
                             <div class="search-container">
@@ -505,12 +515,12 @@
                             <table class="data-table" id="invoicesTable">
                                 <thead>
                                     <tr>
-                                        <th>Invoice #</th>
-                                        <th>Type</th>
-                                        <th>Date</th>
-                                        <th>Customer</th>
-                                        <th>Amount</th>
-                                        <th>Actions</th>
+                                        <th><strong>Invoice #</strong></th>
+                                        <th><strong>Type</strong></th>
+                                        <th><strong>Date</strong></th>
+                                        <th><strong>Customer</strong></th>
+                                        <th><strong>Amount</strong></th>
+                                        <th><strong>Actions</strong></th>
                                     </tr>
                                 </thead>
                                 <tbody id="invoicesTableBody">
@@ -525,23 +535,23 @@
                 <div id="expenses-content" class="module-content">
                     <div class="expenses-container">
                         <div class="expenses-form-container">
-                            <h3>Add New Expense</h3>
+                            <h3><strong>Add New Expense</strong></h3>
                             
                             <form id="expenseForm" class="expense-form">
                                 <div class="form-row">
                                     <div class="form-group">
-                                        <label for="expenseDate">Date *</label>
+                                        <label for="expenseDate"><strong>Date *</strong></label>
                                         <input type="date" id="expenseDate" required>
                                     </div>
                                     <div class="form-group">
-                                        <label for="expenseAmount">Amount *</label>
+                                        <label for="expenseAmount"><strong>Amount *</strong></label>
                                         <input type="number" id="expenseAmount" step="0.01" min="0" required>
                                     </div>
                                 </div>
                                 
                                 <div class="form-row">
                                     <div class="form-group">
-                                        <label for="expenseMode">Payment Mode *</label>
+                                        <label for="expenseMode"><strong>Payment Mode *</strong></label>
                                         <select id="expenseMode" required>
                                             <option value="">Select Mode</option>
                                             <option value="cash">Cash</option>
@@ -552,7 +562,7 @@
                                 </div>
                                 
                                 <div class="form-group">
-                                    <label for="expenseDescription">Description *</label>
+                                    <label for="expenseDescription"><strong>Description *</strong></label>
                                     <textarea id="expenseDescription" rows="3" required placeholder="Enter expense description"></textarea>
                                 </div>
                                 
@@ -564,7 +574,7 @@
                         </div>
 
                         <div class="expenses-list-container">
-                            <h3>Expenses List</h3>
+                            <h3><strong>Expenses List</strong></h3>
                             
                             <div class="expenses-controls">
                                 <div class="search-container">
@@ -578,12 +588,12 @@
                                 <table class="data-table" id="expensesTable">
                                     <thead>
                                         <tr>
-                                            <th>Date</th>
-                                            <th>Description</th>
-                                            <th>Amount</th>
-                                            <th>Mode</th>
-                                            <th>Added By</th>
-                                            <th>Actions</th>
+                                            <th><strong>Date</strong></th>
+                                            <th><strong>Description</strong></th>
+                                            <th><strong>Amount</strong></th>
+                                            <th><strong>Mode</strong></th>
+                                            <th><strong>Added By</strong></th>
+                                            <th><strong>Actions</strong></th>
                                         </tr>
                                     </thead>
                                     <tbody id="expensesTableBody">
@@ -606,7 +616,7 @@
         </div>
     </footer>
 
-    <!-- All the existing modals from your original dashboard.html (lines 585-1148) -->
+    <!-- All the modals (keeping existing modals) -->
     <!-- Customer Modal -->
     <div id="customerModal" class="modal">
         <div class="modal-content responsive-modal">
@@ -617,15 +627,15 @@
             <form id="customerForm" class="modal-form">
                 <input type="hidden" id="customerId">
                 <div class="form-group">
-                    <label for="customerName">Name *</label>
+                    <label for="customerName"><strong>Name *</strong></label>
                     <input type="text" id="customerName" required>
                 </div>
                 <div class="form-group">
-                    <label for="customerPhone">Phone</label>
+                    <label for="customerPhone"><strong>Phone</strong></label>
                     <input type="tel" id="customerPhone">
                 </div>
                 <div class="form-group">
-                    <label for="customerEmail">Email</label>
+                    <label for="customerEmail"><strong>Email</strong></label>
                     <input type="email" id="customerEmail">
                 </div>
                 <div class="modal-actions">
@@ -636,10 +646,602 @@
         </div>
     </div>
 
-    <!-- Add all other modals here from your original file... -->
-    <!-- For brevity, I'm showing just the customer modal, but you need to copy ALL modals from lines 585-1148 of your original dashboard.html -->
-
     <!-- Load all module scripts -->
     <script src="dashboard.js"></script>
 </body>
 </html>
+                <div class="user-info">
+                    <span id="userName">Loading...</span>
+                    <small id="userRole">Loading...</small>
+                </div>
+            </div>
+            
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item active" data-module="dashboard">
+                <span>📊</span> Dashboard
+            </a>
+            <a href="#" class="nav-item" data-module="customers">
+                <span>👥</span> Customers
+            </a>
+            <a href="#" class="nav-item" data-module="inventory">
+                <span>📦</span> Inventory
+            </a>
+            <a href="#" class="nav-item" data-module="sales">
+                <span>💰</span> Sales
+            </a>
+            <a href="#" class="nav-item" data-module="service">
+                <span>🔧</span> Service
+            </a>
+            <a href="#" class="nav-item" data-module="invoices">
+                <span>📄</span> Invoices
+            </a>
+            <a href="#" class="nav-item" data-module="expenses">
+                <span>💸</span> Expenses
+            </a>
+            <a href="#" class="nav-item" data-module="users" id="usersNav">
+                <span>👤</span> User Management
+            </a>
+        </nav>
+            
+            <div class="sidebar-footer">
+                <button id="logoutBtn" class="logout-btn">Logout</button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="content-header">
+                <h1 id="pageTitle">Dashboard</h1>
+                <div class="header-actions" id="headerActions">
+                    <!-- Dynamic action buttons will be added here -->
+                </div>
+            </header>
+            
+            <div class="content-body" id="contentBody">
+                <!-- Dashboard Content -->
+                <div id="dashboard-content" class="module-content active">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3>Total Customers</h3>
+                            <div class="stat-number" id="totalCustomers">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Total Items</h3>
+                            <div class="stat-number" id="totalItems">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Low Stock Items</h3>
+                            <div class="stat-number" id="lowStockItems">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Total Users</h3>
+                            <div class="stat-number" id="totalUsers">0</div>
+                        </div>
+                    </div>
+                    
+                    <div class="recent-activity">
+                        <h3>Recent Activity</h3>
+                        <p>Welcome to Watch Shop Management System!</p>
+                    </div>
+                </div>
+
+                <!-- Customers Module -->
+                <div id="customers-content" class="module-content">
+                    <div class="data-table-container">
+                        <table class="data-table" id="customersTable">
+                            <thead>
+                                <tr>
+                                    <th><strong>ID</strong></th>
+                                    <th><strong>Name</strong></th>
+                                    <th><strong>Phone</strong></th>
+                                    <th><strong>Email</strong></th>
+                                    <th><strong>Net Value</strong></th>
+                                    <th><strong>Actions</strong></th>
+                                </tr>
+                            </thead>
+                            <tbody id="customersTableBody">
+                                <!-- Dynamic content -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- User Management Module -->
+                <div id="users-content" class="module-content">
+                    <div class="data-table-container">
+                        <table class="data-table" id="usersTable">
+                            <thead>
+                                <tr>
+                                    <th><strong>ID</strong></th>
+                                    <th><strong>Username</strong></th>
+                                    <th><strong>Full Name</strong></th>
+                                    <th><strong>Role</strong></th>
+                                    <th><strong>Email</strong></th>
+                                    <th><strong>Status</strong></th>
+                                    <th><strong>Actions</strong></th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody">
+                                <!-- Dynamic content -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Inventory Module -->
+                <div id="inventory-content" class="module-content">
+                    <div class="inventory-controls">
+                        <div class="search-container">
+                            <input type="text" id="inventorySearch" placeholder="Search by code, brand, battery code..." class="search-input">
+                            <button onclick="searchInventory()" class="btn btn-secondary">Search</button>
+                            <button onclick="clearSearch()" class="btn btn-secondary">Clear</button>
+                        </div>
+                        <div class="filter-container">
+                            <select id="categoryFilter" onchange="filterByCategory()">
+                                <option value="">All Categories</option>
+                                <option value="watch">Watches</option>
+                                <option value="clock">Clocks</option>
+                                <option value="timepiece">Timepieces</option>
+                                <option value="strap">Straps</option>
+                                <option value="battery">Batteries</option>
+                            </select>
+                            <select id="outletFilter" onchange="filterByOutlet()">
+                                <option value="">All Outlets</option>
+                                <option value="semmanchery">Semmanchery</option>
+                                <option value="navalur">Navalur</option>
+                                <option value="padur">Padur</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="data-table-container">
+                        <table class="data-table" id="inventoryTable">
+                            <thead>
+                                <tr>
+                                    <th><strong>Code</strong></th>
+                                    <th><strong>Date</strong></th>
+                                    <th><strong>Category</strong></th>
+                                    <th><strong>Brand</strong></th>
+                                    <th><strong>Details</strong></th>
+                                    <th><strong>Quantity</strong></th>
+                                    <th><strong>Warranty</strong></th>
+                                    <th><strong>Price</strong></th>
+                                    <th><strong>Outlet</strong></th>
+                                    <th><strong>Actions</strong></th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventoryTableBody">
+                                <!-- Dynamic content -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+<!-- Sales Module -->
+                <div id="sales-content" class="module-content">
+                    <!-- Sales Controls -->
+                    <div class="sales-controls">
+                        <div class="search-container">
+                            <input type="text" id="salesSearch" placeholder="Search by invoice, customer, date..." class="search-input">
+                        </div>
+                        <div class="action-container">
+                            <button id="newSaleButton" onclick="toggleNewSaleForm()" class="btn btn-primary">New Sale</button>
+                        </div>
+                    </div>
+
+                    <!-- Sales Form (Hidden by default) -->
+                    <div id="salesFormContainer" class="sales-form-container" style="display: none;">
+                        <h3><strong>New Sale</strong></h3>
+                        
+                        <!-- Customer Selection -->
+                        <div class="form-section">
+                            <h4><strong>Customer Details</strong></h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="customerSearch"><strong>Search Customer</strong></label>
+                                    <div class="search-input-container">
+                                        <input type="text" id="customerSearch" placeholder="Search by name or phone number">
+                                        <div id="customerSuggestions" class="suggestions-dropdown"></div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="selectedCustomer"><strong>Selected Customer</strong></label>
+                                    <input type="text" id="selectedCustomer" readonly placeholder="No customer selected">
+                                    <input type="hidden" id="selectedCustomerId">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Item Selection -->
+                        <div class="form-section">
+                            <h4><strong>Add Items</strong></h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="itemCodeSearch"><strong>Item Code</strong></label>
+                                    <div class="search-input-container">
+                                        <input type="text" id="itemCodeSearch" placeholder="Enter or search item code">
+                                        <div id="itemSuggestions" class="suggestions-dropdown"></div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="itemQuantity"><strong>Quantity</strong></label>
+                                    <input type="number" id="itemQuantity" min="1" value="1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="itemPrice"><strong>Price</strong></label>
+                                    <input type="number" id="itemPrice" step="0.01" min="0">
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="discountType"><strong>Discount Type</strong></label>
+                                    <select id="discountType">
+                                        <option value="none">No Discount</option>
+                                        <option value="percentage">Percentage</option>
+                                        <option value="amount">Amount</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="discountValue"><strong>Discount Value</strong></label>
+                                    <input type="number" id="discountValue" step="0.01" min="0" disabled>
+                                </div>
+                                <div class="form-group align-end">
+                                    <button type="button" onclick="addItemToSale()" class="btn btn-primary">Add Item</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Selected Items -->
+                        <div class="form-section">
+                            <h4><strong>Sale Items</strong></h4>
+                            <div class="sale-items-container">
+                                <table class="sale-items-table">
+                                    <thead>
+                                        <tr>
+                                            <th><strong>Code</strong></th>
+                                            <th><strong>Item</strong></th>
+                                            <th><strong>Qty</strong></th>
+                                            <th><strong>Price</strong></th>
+                                            <th><strong>Discount</strong></th>
+                                            <th><strong>Total</strong></th>
+                                            <th><strong>Actions</strong></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="saleItemsTableBody">
+                                        <!-- Dynamic content -->
+                                    </tbody>
+                                </table>
+                                <div id="noItemsMessage" class="no-items-message">
+                                    No items added to sale
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sale Summary -->
+                        <div class="form-section">
+                            <h4><strong>Sale Summary</strong></h4>
+                            <div class="sale-summary">
+                                <div class="summary-row">
+                                    <span><strong>Subtotal:</strong></span>
+                                    <span id="saleSubtotal"><strong>₹0.00</strong></span>
+                                </div>
+                                <div class="summary-row">
+                                    <span><strong>Total Discount:</strong></span>
+                                    <span id="saleTotalDiscount"><strong>₹0.00</strong></span>
+                                </div>
+                                <div class="summary-row total-row">
+                                    <span><strong>Total Amount:</strong></span>
+                                    <span id="saleTotalAmount"><strong>₹0.00</strong></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Payment Method -->
+                        <div class="form-section">
+                            <h4><strong>Payment Method</strong></h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="paymentMethod"><strong>Payment Method</strong></label>
+                                    <select id="paymentMethod" onchange="toggleMultiplePayments()">
+                                        <option value="cash">Cash</option>
+                                        <option value="upi">UPI</option>
+                                        <option value="card">Card</option>
+                                        <option value="multiple">Multiple Payment Methods</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" id="singlePaymentAmount">
+                                    <label for="paymentAmount"><strong>Payment Amount</strong></label>
+                                    <input type="number" id="paymentAmount" step="0.01" min="0" readonly>
+                                </div>
+                            </div>
+
+                            <!-- Multiple Payments -->
+                            <div id="multiplePaymentsSection" class="multiple-payments" style="display: none;">
+                                <h5><strong>Payment Breakdown</strong></h5>
+                                <div id="paymentBreakdown">
+                                    <!-- Dynamic payment inputs -->
+                                </div>
+                                <button type="button" onclick="addPaymentMethod()" class="btn btn-secondary">Add Payment Method</button>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="form-section">
+                            <div class="form-actions">
+                                <button type="button" onclick="clearSale()" class="btn btn-secondary">Clear Sale</button>
+                                <button type="button" onclick="previewSale()" class="btn btn-primary" id="completeSaleBtn">Complete Sale</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sales Table -->
+                    <div class="data-table-container">
+                        <h3><strong>All Sales</strong></h3>
+                        <table class="data-table" id="salesTable">
+                            <thead>
+                                <tr>
+                                    <th><strong>Invoice #</strong></th>
+                                    <th><strong>Date</strong></th>
+                                    <th><strong>Time</strong></th>
+                                    <th><strong>Customer</strong></th>
+                                    <th><strong>Items</strong></th>
+                                    <th><strong>Total</strong></th>
+                                    <th><strong>Created By</strong></th>
+                                    <th><strong>Actions</strong></th>
+                                </tr>
+                            </thead>
+                            <tbody id="salesTableBody">
+                                <!-- Dynamic content -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Service Module -->
+                <div id="service-content" class="module-content">
+                    <!-- Service Controls -->
+                    <div class="service-controls">
+                        <div class="search-container">
+                            <input type="text" id="serviceJobSearch" placeholder="Search by job number, customer, status..." class="search-input">
+                        </div>
+                        <div class="action-container">
+                            <button id="newServiceButton" onclick="toggleNewServiceForm()" class="btn btn-primary">New Service Job</button>
+                        </div>
+                    </div>
+
+                    <!-- Service Form (Hidden by default) -->
+                    <div id="serviceFormContainer" class="service-form-container" style="display: none;">
+                        <h3><strong>New Service Job</strong></h3>
+                        
+                        <!-- Customer Selection -->
+                        <div class="form-section">
+                            <h4><strong>Customer Details</strong></h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="serviceCustomerSearch"><strong>Search Customer</strong></label>
+                                    <div class="search-input-container">
+                                        <input type="text" id="serviceCustomerSearch" placeholder="Search by name or phone number">
+                                        <div id="serviceCustomerSuggestions" class="suggestions-dropdown"></div>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="serviceSelectedCustomer"><strong>Selected Customer</strong></label>
+                                    <input type="text" id="serviceSelectedCustomer" readonly placeholder="No customer selected">
+                                    <input type="hidden" id="serviceSelectedCustomerId">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Service Items -->
+                        <div class="form-section">
+                            <h4><strong>Service Items</strong></h4>
+                            <div id="serviceItemsContainer">
+                                <!-- Service items will be added dynamically -->
+                            </div>
+                            <button type="button" onclick="addServiceItem()" class="btn btn-primary">Add Item</button>
+                        </div>
+
+                        <!-- Job Details -->
+                        <div class="form-section">
+                            <h4><strong>Job Details</strong></h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="estimatedCost"><strong>Estimated Cost</strong></label>
+                                    <input type="number" id="estimatedCost" step="0.01" min="0" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="advanceAmount"><strong>Advance Amount</strong></label>
+                                    <input type="number" id="advanceAmount" step="0.01" min="0" value="0">
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="advancePaymentMethod"><strong>Advance Payment Method</strong></label>
+                                    <select id="advancePaymentMethod">
+                                        <option value="">No Advance</option>
+                                        <option value="cash">Cash</option>
+                                        <option value="upi">UPI</option>
+                                        <option value="card">Card</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="advancePaymentReference"><strong>Payment Reference</strong></label>
+                                    <input type="text" id="advancePaymentReference" placeholder="Optional">
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="approximateDeliveryDate"><strong>Approximate Delivery Date</strong></label>
+                                    <input type="date" id="approximateDeliveryDate" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="serviceLocation"><strong>Location</strong></label>
+                                    <select id="serviceLocation" required>
+                                        <option value="">Select Location</option>
+                                        <option value="semmancheri">Semmancheri</option>
+                                        <option value="navalur">Navalur</option>
+                                        <option value="padur">Padur</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="serviceJobComments"><strong>Comments</strong></label>
+                                <textarea id="serviceJobComments" rows="3" placeholder="Any additional notes"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="form-section">
+                            <div class="form-actions">
+                                <button type="button" onclick="clearServiceJob()" class="btn btn-secondary">Clear</button>
+                                <button type="button" onclick="createServiceJob()" class="btn btn-primary">Create Service Job</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Service Jobs Table -->
+                    <div class="data-table-container">
+                        <h3><strong>All Service Jobs</strong></h3>
+                        <table class="data-table" id="serviceJobsTable">
+                            <thead>
+                                <tr>
+                                    <th><strong>Job #</strong></th>
+                                    <th><strong>Date</strong></th>
+                                    <th><strong>Time</strong></th>
+                                    <th><strong>Customer</strong></th>
+                                    <th><strong>Items</strong></th>
+                                    <th><strong>Status</strong></th>
+                                    <th><strong>Location</strong></th>
+                                    <th><strong>Est. Cost</strong></th>
+                                    <th><strong>Created By</strong></th>
+                                    <th><strong>Actions</strong></th>
+                                </tr>
+                            </thead>
+                            <tbody id="serviceJobsTableBody">
+                                <!-- Dynamic content -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+                <!-- Invoices Module -->
+                <div id="invoices-content" class="module-content">
+                    <div class="invoices-container">
+                        <h3><strong>All Invoices</strong></h3>
+                        
+                        <div class="invoices-controls">
+                            <div class="search-container">
+                                <input type="text" id="invoiceSearch" placeholder="Search by invoice number, customer name..." class="search-input">
+                                <button onclick="searchInvoices()" class="btn btn-secondary">Search</button>
+                                <button onclick="clearInvoiceSearch()" class="btn btn-secondary">Clear</button>
+                            </div>
+                            <div class="filter-container">
+                                <select id="invoiceTypeFilter" onchange="filterInvoicesByType()">
+                                    <option value="">All Types</option>
+                                    <option value="sale">Sales Invoices</option>
+                                    <option value="service">Service Invoices</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="data-table-container">
+                            <table class="data-table" id="invoicesTable">
+                                <thead>
+                                    <tr>
+                                        <th><strong>Invoice #</strong></th>
+                                        <th><strong>Type</strong></th>
+                                        <th><strong>Date</strong></th>
+                                        <th><strong>Customer</strong></th>
+                                        <th><strong>Amount</strong></th>
+                                        <th><strong>Actions</strong></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="invoicesTableBody">
+                                    <!-- Dynamic content -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Expenses Module -->
+                <div id="expenses-content" class="module-content">
+                    <div class="expenses-container">
+                        <div class="expenses-form-container">
+                            <h3><strong>Add New Expense</strong></h3>
+                            
+                            <form id="expenseForm" class="expense-form">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="expenseDate"><strong>Date *</strong></label>
+                                        <input type="date" id="expenseDate" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="expenseAmount"><strong>Amount *</strong></label>
+                                        <input type="number" id="expenseAmount" step="0.01" min="0" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="expenseMode"><strong>Payment Mode *</strong></label>
+                                        <select id="expenseMode" required>
+                                            <option value="">Select Mode</option>
+                                            <option value="cash">Cash</option>
+                                            <option value="upi">UPI</option>
+                                            <option value="card">Card</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="expenseDescription"><strong>Description *</strong></label>
+                                    <textarea id="expenseDescription" rows="3" required placeholder="Enter expense description"></textarea>
+                                </div>
+                                
+                                <div class="form-actions">
+                                    <button type="button" onclick="clearExpenseForm()" class="btn btn-secondary">Clear</button>
+                                    <button type="submit" class="btn btn-primary">Add Expense</button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="expenses-list-container">
+                            <h3><strong>Expenses List</strong></h3>
+                            
+                            <div class="expenses-controls">
+                                <div class="search-container">
+                                    <input type="text" id="expenseSearch" placeholder="Search expenses..." class="search-input">
+                                    <button onclick="searchExpenses()" class="btn btn-secondary">Search</button>
+                                    <button onclick="clearExpenseSearch()" class="btn btn-secondary">Clear</button>
+                                </div>
+                            </div>
+
+                            <div class="data-table-container">
+                                <table class="data-table" id="expensesTable">
+                                    <thead>
+                                        <tr>
+                                            <th><strong>Date</strong></th>
+                                            <th><strong>Description</strong></th>
+                                            <th><strong>Amount</strong></th>
+                                            <th><strong>Mode</strong></th>
+                                            <th><strong>Added By</strong></th>
+                                            <th><strong>Actions</strong></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="expensesTableBody">
+                                        <!-- Dynamic content -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    

@@ -135,15 +135,6 @@ body {
     justify-content: center;
 }
 
-.sidebar-logo-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 10px;
-}
-
-
-
 .sidebar-header h2 {
     margin-bottom: 10px;
     font-size: 1.5rem;
@@ -664,14 +655,6 @@ input[type="date"]:focus {
     height: calc(100vh - 200px);
 }
 
-.sales-form-container {
-    background: white;
-    padding: 25px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    overflow-y: auto;
-}
-
 .sales-history-container {
     background: white;
     padding: 25px;
@@ -710,6 +693,14 @@ input[type="date"]:focus {
 .search-input-container {
     position: relative;
 }
+
+.action-container {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+
 
 .suggestions-dropdown {
     position: absolute;
@@ -941,13 +932,36 @@ input[type="date"]:focus {
     height: calc(100vh - 200px);
 }
 
-.service-form-container,
+.sales-form-container,
+.service-form-container {
+    background: white;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+.sales-table-container,
 .service-jobs-container {
     background: white;
     padding: 25px;
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     overflow-y: auto;
+}
+
+/* Sales and Service Controls - Match Inventory Controls */
+.sales-controls,
+.service-controls {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    align-items: center;
 }
 
 /* Service Items Container */
@@ -1263,16 +1277,24 @@ input[type="date"]:focus {
     line-height: 1.4;
 }
 
-/* Action Buttons */
+/* Service Actions Fix */
 .service-actions {
     display: flex;
     gap: 5px;
     flex-wrap: wrap;
+    align-items: center;
 }
 
 .service-actions .btn {
     padding: 4px 8px;
     font-size: 12px;
+    white-space: nowrap;
+}
+
+/* Ensure proper button functionality */
+.service-actions .btn:hover {
+    opacity: 0.8;
+    transform: none;
 }
 
 /* Cost Summary */
@@ -1557,12 +1579,14 @@ input[type="date"]:focus {
         margin: 10px 0;
     }
     
-    .sales-container,
-    .service-container,
-    .expenses-container {
-        grid-template-columns: 1fr;
-        gap: 15px;
-    }
+  /* Sales and Service Layout - Fixed to match Inventory layout */
+.sales-container,
+.service-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    height: auto; /* Changed from calc(100vh - 200px) */
+}
     
     .sales-form-container,
     .sales-history-container,
@@ -1813,18 +1837,50 @@ input[type="date"]:focus {
     width: auto !important;
     height: auto !important;
     object-fit: contain !important;
+    display: block !important;
+    margin: 0 auto !important;
 }
 
-.sidebar-logo {
-    max-width: 50px !important;
-    max-height: 50px !important;
-    width: auto !important;
-    height: auto !important;
-    object-fit: contain !important;
-    filter: brightness(0) invert(1) !important;
-}
+  .sales-controls,
+    .service-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+    
+    .search-container {
+        min-width: auto;
+        width: 100%;
+    }
+    
+    .action-container {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .service-actions {
+        justify-content: center;
+    }
+    
+    .service-actions .btn {
+        flex: 1;
+        min-width: 60px;
+    }
+    
+    .sidebar-logo {
+        max-width: 35px !important;
+        max-height: 35px !important;
+    }
+    
+    .sidebar-logo-container {
+        height: 40px !important;
+        margin-bottom: 10px !important;
+    }
 
-.login-header h1, .sidebar-header h2 {
-    display: none;
+
+/* Hide text headers when logo is present */
+.login-header h1, 
+.sidebar-header h2 {
+    display: none !important;
 }
 }

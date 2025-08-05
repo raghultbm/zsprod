@@ -356,6 +356,13 @@ window.printSaleReceipt = function() {
     }
 };
 
+window.toggleNewSaleForm = function() {
+    const salesModule = window.salesModule();
+    if (salesModule && salesModule.toggleNewSaleForm) {
+        salesModule.toggleNewSaleForm();
+    }
+};
+
 // Global functions for Service Module
 window.addServiceItem = function() {
     const serviceModule = window.serviceModule();
@@ -410,6 +417,13 @@ window.printServiceInvoice = function() {
     const serviceModule = window.serviceModule();
     if (serviceModule && serviceModule.printServiceInvoice) {
         serviceModule.printServiceInvoice();
+    }
+};
+
+window.toggleNewServiceForm = function() {
+    const serviceModule = window.serviceModule();
+    if (serviceModule && serviceModule.toggleNewServiceForm) {
+        serviceModule.toggleNewServiceForm();
     }
 };
 
