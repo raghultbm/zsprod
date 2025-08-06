@@ -51,9 +51,10 @@ function createTables() {
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )`);
 
-            // Sales tables
+            // Updated Sales table with invoice_number
             db.run(`CREATE TABLE IF NOT EXISTS sales (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                invoice_number TEXT UNIQUE,
                 sale_date DATE NOT NULL,
                 customer_id INTEGER,
                 subtotal DECIMAL(10,2) NOT NULL,
@@ -67,6 +68,7 @@ function createTables() {
                 FOREIGN KEY (customer_id) REFERENCES customers(id),
                 FOREIGN KEY (created_by) REFERENCES users(id)
             )`);
+
 
             db.run(`CREATE TABLE IF NOT EXISTS sale_items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -94,10 +96,11 @@ function createTables() {
                 FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE
             )`);
 
-            // Service Jobs table
+            // Updated Service Jobs table with invoice_number
             db.run(`CREATE TABLE IF NOT EXISTS service_jobs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 job_number TEXT UNIQUE NOT NULL,
+                invoice_number TEXT UNIQUE,
                 customer_id INTEGER,
                 estimated_cost DECIMAL(10,2),
                 advance_amount DECIMAL(10,2) DEFAULT 0,
@@ -174,31 +177,34 @@ function createTables() {
             )`);
 
             // COB (Close of Business) Records table
-db.run(`CREATE TABLE IF NOT EXISTS cob_records (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    business_date DATE NOT NULL UNIQUE,
-    total_sales DECIMAL(10,2) DEFAULT 0,
-    total_services DECIMAL(10,2) DEFAULT 0,
-    total_expenses DECIMAL(10,2) DEFAULT 0,
-    cash_sales DECIMAL(10,2) DEFAULT 0,
-    cash_services DECIMAL(10,2) DEFAULT 0,
-    cash_expenses DECIMAL(10,2) DEFAULT 0,
-    account_sales DECIMAL(10,2) DEFAULT 0,
-    account_services DECIMAL(10,2) DEFAULT 0,
-    account_expenses DECIMAL(10,2) DEFAULT 0,
-    opening_cash_balance DECIMAL(10,2) DEFAULT 0,
-    opening_account_balance DECIMAL(10,2) DEFAULT 0,
-    closing_cash_balance DECIMAL(10,2) DEFAULT 0,
-    closing_account_balance DECIMAL(10,2) DEFAULT 0,
-    notes TEXT,
-    created_by INTEGER,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (created_by) REFERENCES users(id)
-)`);
+            db.run(`CREATE TABLE IF NOT EXISTS cob_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                business_date DATE NOT NULL UNIQUE,
+                total_sales DECIMAL(10,2) DEFAULT 0,
+                total_services DECIMAL(10,2) DEFAULT 0,
+                total_expenses DECIMAL(10,2) DEFAULT 0,
+                cash_sales DECIMAL(10,2) DEFAULT 0,
+                cash_services DECIMAL(10,2) DEFAULT 0,
+                cash_expenses DECIMAL(10,2) DEFAULT 0,
+                account_sales DECIMAL(10,2) DEFAULT 0,
+                account_services DECIMAL(10,2) DEFAULT 0,
+                account_expenses DECIMAL(10,2) DEFAULT 0,
+                opening_cash_balance DECIMAL(10,2) DEFAULT 0,
+                opening_account_balance DECIMAL(10,2) DEFAULT 0,
+                closing_cash_balance DECIMAL(10,2) DEFAULT 0,
+                closing_account_balance DECIMAL(10,2) DEFAULT 0,
+                notes TEXT,
+                created_by INTEGER,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (created_by) REFERENCES users(id)
+            )`);
 
             // Check and migrate inventory table
             checkInventoryTable(resolve, reject);
+
+            // Check if invoice_number columns exist and add them if they don't
+            checkAndAddInvoiceColumns(resolve, reject);
         });
     });
 }
@@ -268,6 +274,51 @@ function createNewInventoryTable(resolve, reject) {
             console.log('New inventory table created successfully');
             createDefaultAdmin(resolve, reject);
         }
+    });
+}
+
+function checkAndAddInvoiceColumns(resolve, reject) {
+    // Check sales table for invoice_number column
+    db.all("PRAGMA table_info(sales)", (err, salesColumns) => {
+        if (err) {
+            console.error('Error getting sales table info:', err);
+            reject(err);
+            return;
+        }
+
+        const salesHasInvoiceNumber = salesColumns.some(col => col.name === 'invoice_number');
+        
+        if (!salesHasInvoiceNumber) {
+            console.log('Adding invoice_number column to sales table...');
+            db.run("ALTER TABLE sales ADD COLUMN invoice_number TEXT UNIQUE", (err) => {
+                if (err) {
+                    console.error('Error adding invoice_number to sales:', err);
+                }
+            });
+        }
+
+        // Check service_jobs table for invoice_number column
+        db.all("PRAGMA table_info(service_jobs)", (err, serviceColumns) => {
+            if (err) {
+                console.error('Error getting service_jobs table info:', err);
+                reject(err);
+                return;
+            }
+
+            const serviceHasInvoiceNumber = serviceColumns.some(col => col.name === 'invoice_number');
+            
+            if (!serviceHasInvoiceNumber) {
+                console.log('Adding invoice_number column to service_jobs table...');
+                db.run("ALTER TABLE service_jobs ADD COLUMN invoice_number TEXT UNIQUE", (err) => {
+                    if (err) {
+                        console.error('Error adding invoice_number to service_jobs:', err);
+                    }
+                });
+            }
+
+            // Continue with existing table creation
+            checkInventoryTable(resolve, reject);
+        });
     });
 }
 

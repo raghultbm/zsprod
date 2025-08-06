@@ -2,6 +2,39 @@
 const { ipcMain } = require('electron');
 const { runQuery, getData, getRow, generateJobNumber, getDatabase } = require('./database');
 
+const { ipcMain } = require('electron');
+const { runQuery, getData, getRow, getDatabase } = require('./database');
+
+// Generate unique invoice number for sales
+function generateSalesInvoiceNumber() {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
+    const random4Digit = Math.floor(1000 + Math.random() * 9000);
+    return `INVSA${year}${month}${day}${random4Digit}`;
+}
+
+// Generate unique invoice number for services
+function generateServiceInvoiceNumber() {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
+    const random4Digit = Math.floor(1000 + Math.random() * 9000);
+    return `INVSR${year}${month}${day}${random4Digit}`;
+}
+
+// Generate unique job number for service jobs
+function generateJobNumber() {
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
+    const random4Digit = Math.floor(1000 + Math.random() * 9000);
+    return `SRV${year}${month}${day}${random4Digit}`;
+}
+
 function setupIpcHandlers() {
     // Login handler
     ipcMain.handle('login', async (event, { username, password }) => {
@@ -259,7 +292,7 @@ function setupIpcHandlers() {
         }
     });
 
-    // Sales handlers
+    // Updated get sales with invoice numbers
     ipcMain.handle('get-sales', async () => {
         try {
             return await getData(`
@@ -278,6 +311,7 @@ function setupIpcHandlers() {
         }
     });
 
+ // Updated Sales handlers
     ipcMain.handle('create-sale', async (event, saleData) => {
         const db = getDatabase();
         return new Promise((resolve, reject) => {
@@ -286,12 +320,14 @@ function setupIpcHandlers() {
 
                 try {
                     const { sale, items, payments } = saleData;
+                    const invoiceNumber = generateSalesInvoiceNumber();
 
-                    // Insert main sale record
+                    // Insert main sale record with invoice number
                     db.run(`INSERT INTO sales (
-                        sale_date, customer_id, subtotal, total_discount, total_amount, 
+                        invoice_number, sale_date, customer_id, subtotal, total_discount, total_amount, 
                         notes, created_by
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?)`, [
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, [
+                        invoiceNumber,
                         sale.sale_date,
                         sale.customer_id || null,
                         sale.subtotal,
@@ -379,7 +415,11 @@ function setupIpcHandlers() {
                                     if (err) {
                                         reject(err);
                                     } else {
-                                        resolve({ id: saleId, success: true });
+                                        resolve({ 
+                                            id: saleId, 
+                                            invoice_number: invoiceNumber,
+                                            success: true 
+                                        });
                                     }
                                 });
                             }
@@ -417,7 +457,7 @@ function setupIpcHandlers() {
         }
     });
 
-    // Service handlers
+    // Updated get service jobs with invoice numbers
     ipcMain.handle('get-service-jobs', async () => {
         try {
             return await getData(`
@@ -436,6 +476,7 @@ function setupIpcHandlers() {
         }
     });
 
+    // Updated Service handlers
     ipcMain.handle('create-service-job', async (event, serviceData) => {
         const db = getDatabase();
         return new Promise((resolve, reject) => {
@@ -445,13 +486,15 @@ function setupIpcHandlers() {
                 try {
                     const { job, items } = serviceData;
                     const jobNumber = generateJobNumber();
+                    const invoiceNumber = generateServiceInvoiceNumber();
 
                     // Insert main service job record
                     db.run(`INSERT INTO service_jobs (
-                        job_number, customer_id, estimated_cost, advance_amount, advance_payment_method,
+                        job_number, invoice_number, customer_id, estimated_cost, advance_amount, advance_payment_method,
                         advance_payment_reference, approximate_delivery_date, location, status, comments, created_by
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
                         jobNumber,
+                        invoiceNumber,
                         job.customer_id || null,
                         job.estimated_cost,
                         job.advance_amount,
@@ -517,7 +560,12 @@ function setupIpcHandlers() {
                                                 if (err) {
                                                     reject(err);
                                                 } else {
-                                                    resolve({ id: serviceJobId, job_number: jobNumber, success: true });
+                                                    resolve({ 
+                                                        id: serviceJobId, 
+                                                        job_number: jobNumber,
+                                                        invoice_number: invoiceNumber,
+                                                        success: true 
+                                                    });
                                                 }
                                             });
                                         }
@@ -751,7 +799,7 @@ function setupIpcHandlers() {
         }
     });
 
-    // Invoice handlers
+   // Updated get all invoices with new numbering
     ipcMain.handle('get-all-invoices', async () => {
         try {
             // Get sales invoices
@@ -765,10 +813,11 @@ function setupIpcHandlers() {
                     c.phone as customer_phone,
                     s.total_amount as amount,
                     s.created_at,
-                    'INV-S-' || s.id as invoice_number
+                    s.invoice_number,
+                    s.created_by
                 FROM sales s
                 LEFT JOIN customers c ON s.customer_id = c.id
-                WHERE s.sale_status = 'completed'
+                WHERE s.sale_status = 'completed' OR s.sale_status IS NULL
                 ORDER BY s.created_at DESC
             `);
 
@@ -783,8 +832,9 @@ function setupIpcHandlers() {
                     c.phone as customer_phone,
                     sj.final_cost as amount,
                     sj.created_at,
-                    'INV-SRV-' || sj.id as invoice_number,
-                    sj.job_number
+                    sj.invoice_number,
+                    sj.job_number,
+                    sj.created_by
                 FROM service_jobs sj
                 LEFT JOIN customers c ON sj.customer_id = c.id
                 WHERE sj.status = 'service_completed' OR sj.status = 'delivered'

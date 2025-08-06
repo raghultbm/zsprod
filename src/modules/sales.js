@@ -131,7 +131,7 @@ class SalesModule {
             const saleTime = new Date(sale.created_at).toLocaleTimeString();
             
             row.innerHTML = `
-                <td><strong>INV-S-${sale.id}</strong></td>
+                <td><strong>${sale.invoice_number || `INV-S-${sale.id}`}</strong></td>
                 <td><strong>${saleDate}</strong></td>
                 <td><strong>${saleTime}</strong></td>
                 <td><strong>${sale.customer_name || 'Walk-in'}</strong></td>
@@ -141,6 +141,7 @@ class SalesModule {
                 <td>
                     <button class="btn btn-sm btn-secondary" onclick="window.salesModule().viewSaleDetails(${sale.id})">View</button>
                     <button class="btn btn-sm btn-primary" onclick="window.salesModule().printSaleInvoice(${sale.id})">Print</button>
+                    ${sale.customer_phone ? `<button class="btn btn-sm btn-success" onclick="window.salesModule().sendSaleWhatsApp(${sale.id})">WhatsApp</button>` : ''}
                 </td>
             `;
             tbody.appendChild(row);
@@ -750,7 +751,7 @@ class SalesModule {
             const result = await ipcRenderer.invoke('create-sale', saleData);
             
             if (result.success) {
-                showSuccess('Sale completed successfully!');
+                showSuccess(`Sale completed successfully! Invoice: ${result.invoice_number}`);
                 closeModal('saleConfirmationModal');
                 this.clearSale();
                 await this.loadData();
@@ -822,6 +823,7 @@ class SalesModule {
         content.innerHTML = `
             <div class="sale-detail-section">
                 <h4><strong>Sale Information</strong></h4>
+                <p><strong>Invoice Number:</strong> ${sale.invoice_number || `INV-S-${sale.id}`}</p>
                 <p><strong>Sale Date:</strong> ${new Date(sale.sale_date).toLocaleDateString()}</p>
                 <p><strong>Sale Time:</strong> ${new Date(sale.created_at).toLocaleTimeString()}</p>
                 <p><strong>Customer:</strong> ${sale.customer_name || 'Walk-in Customer'}</p>
@@ -868,7 +870,7 @@ class SalesModule {
                     <div class="payment-detail-row">
                         <span><strong>${payment.payment_method.toUpperCase()}:</strong> ₹${parseFloat(payment.amount).toFixed(2)}</span>
                         ${payment.payment_reference ? `<br><small>Reference: ${payment.payment_reference}</small>` : ''}
-                    </div
+                    </div>
                     `).join('')}
             </div>
 
@@ -902,108 +904,232 @@ class SalesModule {
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>Sale Invoice - INV-S-${sale.id}</title>
+                    <title>Sale Invoice - ${sale.invoice_number || `INV-S-${sale.id}`}</title>
                     <style>
-                        body { font-family: Arial, sans-serif; margin: 20px; }
-                        .header { text-align: center; border-bottom: 2px solid #000; margin-bottom: 20px; padding-bottom: 10px; }
-                        .company-name { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
-                        .company-tagline { font-size: 14px; color: #666; }
-                        .invoice-title { font-size: 18px; font-weight: bold; margin: 15px 0; }
-                        .invoice-info { display: flex; justify-content: space-between; margin-bottom: 20px; }
-                        .customer-info { margin-bottom: 20px; }
-                        .table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-                        .table th, .table td { border: 1px solid #000; padding: 8px; text-align: left; }
-                        .table th { background: #f0f0f0; font-weight: bold; }
-                        .summary { text-align: right; margin: 20px 0; }
-                        .summary-row { margin: 5px 0; }
-                        .total-row { font-weight: bold; font-size: 16px; border-top: 2px solid #000; padding-top: 10px; }
-                        .footer { margin-top: 30px; text-align: center; border-top: 1px solid #000; padding-top: 10px; }
+                        @media print {
+                            body { margin: 0; }
+                            @page { 
+                                size: A4 portrait; 
+                                margin: 0; 
+                            }
+                        }
+                        body { 
+                            font-family: Arial, sans-serif; 
+                            margin: 0; 
+                            padding: 0; 
+                        }
+                        .invoice-container {
+                            width: 210mm;
+                            min-height: 297mm;
+                            margin: 0 auto;
+                            padding: 20mm;
+                            font-size: 12px;
+                            position: relative;
+                            box-sizing: border-box;
+                        }
+                        .invoice-header {
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            margin-bottom: 30px;
+                            border-bottom: 2px solid #2c3e50;
+                            padding-bottom: 15px;
+                        }
+                        .invoice-logo {
+                            flex: 1;
+                        }
+                        .invoice-logo img {
+                            max-width: 80px;
+                            max-height: 80px;
+                        }
+                        .invoice-title {
+                            flex: 2;
+                            text-align: center;
+                        }
+                        .shop-address {
+                            flex: 1;
+                            text-align: right;
+                            font-size: 10px;
+                            line-height: 1.4;
+                        }
+                        table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin-bottom: 20px;
+                            border: 1px solid #bdc3c7;
+                        }
+                        th, td {
+                            border: 1px solid #bdc3c7;
+                            padding: 8px;
+                            text-align: left;
+                        }
+                        th {
+                            background-color: #ecf0f1;
+                            font-weight: bold;
+                        }
+                        .invoice-footer {
+                            position: absolute;
+                            bottom: 20mm;
+                            left: 20mm;
+                            right: 20mm;
+                            text-align: center;
+                            border-top: 2px solid #2c3e50;
+                            padding-top: 15px;
+                        }
                     </style>
                 </head>
                 <body>
-                    <div class="header">
-                        <div class="company-name">⌚ Watch Shop</div>
-                        <div class="company-tagline">Professional Watch Services</div>
-                        <div class="invoice-title">SALE INVOICE</div>
-                    </div>
-                    
-                    <div class="invoice-info">
-                        <div>
-                            <strong>Invoice #:</strong> INV-S-${sale.id}<br>
-                            <strong>Date:</strong> ${new Date(sale.sale_date).toLocaleDateString()}<br>
-                            <strong>Time:</strong> ${new Date(sale.created_at).toLocaleTimeString()}
+                    <div class="invoice-container">
+                        <!-- Header -->
+                        <div class="invoice-header">
+                            <div class="invoice-logo">
+                                <img src="../assets/icon.png" alt="Logo">
+                            </div>
+                            <div class="invoice-title">
+                                <h1 style="font-size: 28px; color: #2c3e50; margin: 0; font-weight: bold;">SALES INVOICE</h1>
+                                <h3 style="color: #e74c3c; margin: 5px 0; font-weight: bold;">${sale.invoice_number || `INV-S-${sale.id}`}</h3>
+                            </div>
+                            <div class="shop-address">
+                                <strong>ZEDSON Watchcraft</strong><br>
+                                123 Watch Street<br>
+                                Chennai, Tamil Nadu<br>
+                                Phone: +91 98765 43210<br>
+                                Email: info@zedsonwatch.com
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="customer-info">
-                        <strong>Bill To:</strong><br>
-                        ${sale.customer_name || 'Walk-in Customer'}<br>
-                        ${sale.customer_phone ? `Phone: ${sale.customer_phone}<br>` : ''}
-                        ${sale.customer_email ? `Email: ${sale.customer_email}` : ''}
-                    </div>
-                    
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Item Code</th>
-                                <th>Description</th>
-                                <th>Qty</th>
-                                <th>Unit Price</th>
-                                <th>Discount</th>
-                                <th>Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${items.map(item => {
-                                const discountText = item.discount_type === 'none' ? '-' : 
-                                                   item.discount_type === 'percentage' ? `${item.discount_value}%` : 
-                                                   `₹${item.discount_value}`;
-                                return `
+
+                        <!-- Content -->
+                        <div style="margin-bottom: 50px;">
+                            <!-- Customer & Invoice Details -->
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                                <div style="flex: 1;">
+                                    <h4><strong>Bill To:</strong></h4>
+                                    <strong>${sale.customer_name || 'Walk-in Customer'}</strong><br>
+                                    ${sale.customer_phone ? `Phone: ${sale.customer_phone}<br>` : ''}
+                                    ${sale.customer_email ? `Email: ${sale.customer_email}<br>` : ''}
+                                </div>
+                                <div style="flex: 1; text-align: right;">
+                                    <h4><strong>Invoice Details:</strong></h4>
+                                    <strong>Date:</strong> ${new Date(sale.sale_date).toLocaleDateString()}<br>
+                                    <strong>Time:</strong> ${new Date(sale.created_at).toLocaleTimeString()}<br>
+                                </div>
+                            </div>
+
+                            <!-- Items Table -->
+                            <table>
+                                <thead>
                                     <tr>
-                                        <td>${item.item_code}</td>
-                                        <td>${item.item_name}</td>
-                                        <td>${item.quantity}</td>
-                                        <td>₹${parseFloat(item.unit_price).toFixed(2)}</td>
-                                        <td>${discountText}</td>
-                                        <td>₹${parseFloat(item.line_total).toFixed(2)}</td>
+                                        <th>Item Code</th>
+                                        <th>Description</th>
+                                        <th>Qty</th>
+                                        <th>Unit Price</th>
+                                        <th>Discount</th>
+                                        <th>Total</th>
                                     </tr>
-                                `;
-                            }).join('')}
-                        </tbody>
-                    </table>
-                    
-                    <div class="summary">
-                        <div class="summary-row">Subtotal: ₹${parseFloat(sale.subtotal).toFixed(2)}</div>
-                        <div class="summary-row">Total Discount: ₹${parseFloat(sale.total_discount).toFixed(2)}</div>
-                        <div class="summary-row total-row">Total Amount: ₹${parseFloat(sale.total_amount).toFixed(2)}</div>
-                    </div>
-                    
-                    <div class="payment-info">
-                        <strong>Payment Details:</strong><br>
-                        ${payments.map(payment => `
-                            ${payment.payment_method.toUpperCase()}: ₹${parseFloat(payment.amount).toFixed(2)}
-                            ${payment.payment_reference ? ` (Ref: ${payment.payment_reference})` : ''}<br>
-                        `).join('')}
-                    </div>
-                    
-                    ${sale.notes ? `
-                    <div class="notes">
-                        <strong>Notes:</strong><br>
-                        ${sale.notes}
-                    </div>` : ''}
-                    
-                    <div class="footer">
-                        <p>Thank you for your business!</p>
+                                </thead>
+                                <tbody>
+                                    ${items.map(item => {
+                                        const discountText = item.discount_type === 'none' ? '-' : 
+                                                           item.discount_type === 'percentage' ? `${item.discount_value}%` : 
+                                                           `₹${item.discount_value}`;
+                                        return `
+                                            <tr>
+                                                <td>${item.item_code}</td>
+                                                <td>${item.item_name}</td>
+                                                <td style="text-align: center;">${item.quantity}</td>
+                                                <td style="text-align: right;">₹${parseFloat(item.unit_price).toFixed(2)}</td>
+                                                <td style="text-align: right;">${discountText}</td>
+                                                <td style="text-align: right;">₹${parseFloat(item.line_total).toFixed(2)}</td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+
+                            <!-- Totals -->
+                            <div style="display: flex; justify-content: flex-end;">
+                                <div style="min-width: 300px;">
+                                    <div style="display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #bdc3c7;">
+                                        <strong>Subtotal:</strong>
+                                        <span>₹${parseFloat(sale.subtotal).toFixed(2)}</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #bdc3c7;">
+                                        <strong>Total Discount:</strong>
+                                        <span>₹${parseFloat(sale.total_discount).toFixed(2)}</span>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 2px solid #2c3e50; font-size: 16px; font-weight: bold;">
+                                        <strong>Total Amount:</strong>
+                                        <span>₹${parseFloat(sale.total_amount).toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Payment Information -->
+                            <div style="margin-top: 20px;">
+                                <h4><strong>Payment Details:</strong></h4>
+                                ${payments.map(payment => `
+                                    ${payment.payment_method.toUpperCase()}: ₹${parseFloat(payment.amount).toFixed(2)}
+                                    ${payment.payment_reference ? ` (Ref: ${payment.payment_reference})` : ''}<br>
+                                `).join('')}
+                            </div>
+
+                            ${sale.notes ? `
+                            <div style="margin-top: 20px;">
+                                <h4><strong>Notes:</strong></h4>
+                                <p>${sale.notes}</p>
+                            </div>` : ''}
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="invoice-footer">
+                            <p style="margin: 10px 0; font-size: 14px; color: #2c3e50;"><strong>Thank you for your purchase!</strong></p>
+                            <p style="margin: 5px 0; font-weight: bold; color: #e74c3c; font-size: 16px;">ZEDSON Watchcraft - Your Trusted Watch Partner</p>
+                            <p style="margin: 5px 0; font-size: 11px; color: #7f8c8d;">📞 +91 98765 43210 | 📧 info@zedsonwatch.com | 🌐 www.zedsonwatch.com</p>
+                            <p style="margin: 5px 0; font-size: 10px; color: #95a5a6;">Thank you for choosing ZEDSON Watchcraft. We appreciate your business!</p>
+                        </div>
                     </div>
                 </body>
                 </html>
             `);
             
             printWindow.document.close();
-            printWindow.print();
+            
+            // Wait for content to load then print
+            setTimeout(() => {
+                printWindow.print();
+            }, 500);
         } catch (error) {
             console.error('Error printing sale invoice:', error);
             showError('Error printing sale invoice');
+        }
+    }
+
+        async sendSaleWhatsApp(saleId) {
+        try {
+            const saleDetails = await ipcRenderer.invoke('get-sale-details', saleId);
+            const { sale } = saleDetails;
+            
+            if (!sale.customer_phone) {
+                showError('Customer phone number not available');
+                return;
+            }
+
+            const message = `Hello ${sale.customer_name || 'Customer'},\n\nThank you for your purchase at ZEDSON Watchcraft!\n\nInvoice: ${sale.invoice_number || `INV-S-${sale.id}`}\nDate: ${new Date(sale.sale_date).toLocaleDateString()}\nAmount: ₹${parseFloat(sale.total_amount).toFixed(2)}\n\nWe appreciate your business!\n\nZEDSON Watchcraft - Your Trusted Watch Partner\n📞 +91 98765 43210`;
+
+            // Clean phone number
+            const cleanPhone = sale.customer_phone.replace(/[^\d+]/g, '');
+            
+            // Create WhatsApp URL
+            const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+            
+            // Open WhatsApp
+            window.open(whatsappUrl, '_blank');
+            
+            showSuccess('WhatsApp opened successfully');
+            
+        } catch (error) {
+            console.error('Error sending WhatsApp:', error);
+            showError('Error opening WhatsApp');
         }
     }
 
@@ -1095,6 +1221,14 @@ window.toggleNewSaleForm = function() {
     const salesModule = window.salesModule();
     if (salesModule && salesModule.toggleNewSaleForm) {
         salesModule.toggleNewSaleForm();
+    }
+};
+
+// Add new global function for WhatsApp
+window.sendSaleWhatsApp = function(saleId) {
+    const salesModule = window.salesModule();
+    if (salesModule && salesModule.sendSaleWhatsApp) {
+        salesModule.sendSaleWhatsApp(saleId);
     }
 };
 
