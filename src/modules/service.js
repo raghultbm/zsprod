@@ -7,11 +7,9 @@ class ServiceModule {
         this.serviceItems = [];
         this.selectedServiceCustomer = null;
         this.serviceJobs = [];
-        this.filteredServiceJobs = [];
         this.currentServiceJob = null;
         this.isInitialized = false;
         this.customerSearchTimeout = null;
-        this.showNewServiceForm = false;
     }
 
     async init() {
@@ -61,66 +59,16 @@ class ServiceModule {
         if (addCommentForm) {
             addCommentForm.addEventListener('submit', (e) => this.handleAddComment(e));
         }
-
-        // Service jobs search functionality
-        const serviceJobSearch = document.getElementById('serviceJobSearch');
-        if (serviceJobSearch) {
-            serviceJobSearch.addEventListener('input', (e) => {
-                this.searchServiceJobsLive(e.target.value);
-            });
-        }
     }
 
     async loadData() {
         try {
             this.serviceJobs = await ipcRenderer.invoke('get-service-jobs');
-            this.filteredServiceJobs = [...this.serviceJobs];
             this.renderServiceJobsTable();
-            this.renderNewServiceForm();
         } catch (error) {
             console.error('Error loading service jobs:', error);
             showError('Error loading service jobs');
         }
-    }
-
-    renderNewServiceForm() {
-        const formContainer = document.getElementById('serviceFormContainer');
-        const newServiceButton = document.getElementById('newServiceButton');
-        
-        if (!formContainer) return;
-
-        if (this.showNewServiceForm) {
-            formContainer.style.display = 'block';
-            if (newServiceButton) newServiceButton.textContent = 'Cancel New Service';
-        } else {
-            formContainer.style.display = 'none';
-            if (newServiceButton) newServiceButton.textContent = 'New Service Job';
-        }
-    }
-
-    toggleNewServiceForm() {
-        this.showNewServiceForm = !this.showNewServiceForm;
-        this.renderNewServiceForm();
-        
-        if (!this.showNewServiceForm) {
-            this.clearServiceJob();
-        }
-    }
-
-    searchServiceJobsLive(searchTerm) {
-        if (!searchTerm.trim()) {
-            this.filteredServiceJobs = [...this.serviceJobs];
-        } else {
-            const term = searchTerm.toLowerCase();
-            this.filteredServiceJobs = this.serviceJobs.filter(job => 
-                (job.job_number && job.job_number.toLowerCase().includes(term)) ||
-                (job.customer_name && job.customer_name.toLowerCase().includes(term)) ||
-                (job.customer_phone && job.customer_phone.toLowerCase().includes(term)) ||
-                (job.status && job.status.toLowerCase().includes(term)) ||
-                (job.location && job.location.toLowerCase().includes(term))
-            );
-        }
-        this.renderServiceJobsTable();
     }
 
     async searchServiceCustomers(searchTerm) {
@@ -415,36 +363,31 @@ class ServiceModule {
         if (suggestions) suggestions.style.display = 'none';
     }
 
-renderServiceJobsTable() {
+    renderServiceJobsTable() {
         const tbody = document.getElementById('serviceJobsTableBody');
         if (!tbody) return;
 
         tbody.innerHTML = '';
         
-        this.filteredServiceJobs.forEach(job => {
+        this.serviceJobs.slice(0, 20).forEach(job => { // Show only last 20 jobs
             const row = document.createElement('tr');
             
             const statusClass = job.status.replace('_', '-');
             const locationCapitalized = job.location.charAt(0).toUpperCase() + job.location.slice(1);
-            const jobDate = new Date(job.created_at).toLocaleDateString();
-            const jobTime = new Date(job.created_at).toLocaleTimeString();
             
             row.innerHTML = `
-                <td><strong><span class="job-number">${job.job_number}</span></strong></td>
-                <td><strong>${jobDate}</strong></td>
-                <td><strong>${jobTime}</strong></td>
-                <td><strong>${job.customer_name || 'Walk-in'}</strong></td>
-                <td><strong>${job.items_count || 0}</strong></td>
-                <td><strong><span class="service-status ${statusClass}">${job.status.replace('_', ' ')}</span></strong></td>
-                <td><strong><span class="service-location">${locationCapitalized}</span></strong></td>
-                <td><strong>₹${parseFloat(job.estimated_cost || 0).toFixed(2)}</strong></td>
-                <td><strong>${job.created_by_name || 'Unknown'}</strong></td>
+                <td><span class="job-number">${job.job_number}</span></td>
+                <td>${job.customer_name || 'Walk-in'}</td>
+                <td>${job.items_count || 0}</td>
+                <td><span class="service-status ${statusClass}">${job.status.replace('_', ' ')}</span></td>
+                <td><span class="service-location">${locationCapitalized}</span></td>
+                <td>₹${parseFloat(job.estimated_cost || 0).toFixed(2)}</td>
                 <td>
                     <div class="service-actions">
-                        <button class="btn btn-sm btn-secondary" onclick="window.serviceModule().viewServiceJobDetails(${job.id})">View</button>
-                        <button class="btn btn-sm btn-primary" onclick="window.serviceModule().updateServiceStatus(${job.id})">Update</button>
+                        <button class="btn btn-sm btn-secondary" onclick="serviceModule().viewServiceJobDetails(${job.id})">View</button>
+                        <button class="btn btn-sm btn-primary" onclick="serviceModule().updateServiceStatus(${job.id})">Update</button>
                         ${job.status !== 'service_completed' ? 
-                            `<button class="btn btn-sm btn-success" onclick="window.serviceModule().completeService(${job.id})">Complete</button>` : ''}
+                            `<button class="btn btn-sm btn-success" onclick="serviceModule().completeService(${job.id})">Complete</button>` : ''}
                     </div>
                 </td>
             `;
@@ -458,7 +401,6 @@ renderServiceJobsTable() {
         if (searchTerm) {
             try {
                 this.serviceJobs = await ipcRenderer.invoke('search-service-jobs', searchTerm);
-                this.filteredServiceJobs = [...this.serviceJobs];
                 this.renderServiceJobsTable();
             } catch (error) {
                 console.error('Error searching service jobs:', error);
@@ -505,95 +447,95 @@ renderServiceJobsTable() {
         content.innerHTML = `
             <div class="service-job-details">
                 <div class="service-job-info">
-                    <h4><strong>Job Information</strong></h4>
+                    <h4>Job Information</h4>
                     <div class="job-detail-row">
-                        <span class="job-detail-label"><strong>Job Number:</strong></span>
-                        <span class="job-detail-value job-number"><strong>${job.job_number}</strong></span>
+                        <span class="job-detail-label">Job Number:</span>
+                        <span class="job-detail-value job-number">${job.job_number}</span>
                     </div>
                     <div class="job-detail-row">
-                        <span class="job-detail-label"><strong>Customer:</strong></span>
-                        <span class="job-detail-value"><strong>${job.customer_name || 'Walk-in Customer'}</strong></span>
+                        <span class="job-detail-label">Customer:</span>
+                        <span class="job-detail-value">${job.customer_name || 'Walk-in Customer'}</span>
                     </div>
                     ${job.customer_phone ? `
                     <div class="job-detail-row">
-                        <span class="job-detail-label"><strong>Phone:</strong></span>
-                        <span class="job-detail-value"><strong>${job.customer_phone}</strong
-                        </div>` : ''}
+                        <span class="job-detail-label">Phone:</span>
+                        <span class="job-detail-value">${job.customer_phone}</span>
+                    </div>` : ''}
                     <div class="job-detail-row">
-                        <span class="job-detail-label"><strong>Status:</strong></span>
+                        <span class="job-detail-label">Status:</span>
                         <span class="job-detail-value">
-                            <strong><span class="service-status ${job.status.replace('_', '-')}">${job.status.replace('_', ' ')}</span></strong>
+                            <span class="service-status ${job.status.replace('_', '-')}">${job.status.replace('_', ' ')}</span>
                         </span>
                     </div>
                     <div class="job-detail-row">
-                        <span class="job-detail-label"><strong>Location:</strong></span>
-                        <span class="job-detail-value service-location"><strong>${job.location.charAt(0).toUpperCase() + job.location.slice(1)}</strong></span>
+                        <span class="job-detail-label">Location:</span>
+                        <span class="job-detail-value service-location">${job.location.charAt(0).toUpperCase() + job.location.slice(1)}</span>
                     </div>
                     <div class="job-detail-row">
-                        <span class="job-detail-label"><strong>Created:</strong></span>
-                        <span class="job-detail-value"><strong>${new Date(job.created_at).toLocaleString()}</strong></span>
+                        <span class="job-detail-label">Created:</span>
+                        <span class="job-detail-value">${new Date(job.created_at).toLocaleString()}</span>
                     </div>
                     ${job.approximate_delivery_date ? `
                     <div class="job-detail-row">
-                        <span class="job-detail-label"><strong>Expected Delivery:</strong></span>
-                        <span class="job-detail-value"><strong>${new Date(job.approximate_delivery_date).toLocaleDateString()}</strong></span>
+                        <span class="job-detail-label">Expected Delivery:</span>
+                        <span class="job-detail-value">${new Date(job.approximate_delivery_date).toLocaleDateString()}</span>
                     </div>` : ''}
                     ${job.actual_delivery_date ? `
                     <div class="job-detail-row">
-                        <span class="job-detail-label"><strong>Actual Delivery:</strong></span>
-                        <span class="job-detail-value"><strong>${new Date(job.actual_delivery_date).toLocaleDateString()}</strong></span>
+                        <span class="job-detail-label">Actual Delivery:</span>
+                        <span class="job-detail-value">${new Date(job.actual_delivery_date).toLocaleDateString()}</span>
                     </div>` : ''}
                     ${job.comments ? `
                     <div class="job-detail-row">
-                        <span class="job-detail-label"><strong>Comments:</strong></span>
-                        <span class="job-detail-value"><strong>${job.comments}</strong></span>
+                        <span class="job-detail-label">Comments:</span>
+                        <span class="job-detail-value">${job.comments}</span>
                     </div>` : ''}
                     
                     <div class="cost-summary">
                         <div class="cost-row">
-                            <span class="cost-label"><strong>Estimated Cost:</strong></span>
-                            <span class="cost-value"><strong>₹${parseFloat(job.estimated_cost || 0).toFixed(2)}</strong></span>
+                            <span class="cost-label">Estimated Cost:</span>
+                            <span class="cost-value">₹${parseFloat(job.estimated_cost || 0).toFixed(2)}</span>
                         </div>
                         <div class="cost-row">
-                            <span class="cost-label"><strong>Advance Amount:</strong></span>
-                            <span class="cost-value"><strong>₹${parseFloat(job.advance_amount || 0).toFixed(2)}</strong></span>
+                            <span class="cost-label">Advance Amount:</span>
+                            <span class="cost-value">₹${parseFloat(job.advance_amount || 0).toFixed(2)}</span>
                         </div>
                         ${job.advance_payment_method ? `
                         <div class="cost-row">
-                            <span class="cost-label"><strong>Advance Method:</strong></span>
-                            <span class="cost-value"><strong>${job.advance_payment_method.toUpperCase()}</strong></span>
+                            <span class="cost-label">Advance Method:</span>
+                            <span class="cost-value">${job.advance_payment_method.toUpperCase()}</span>
                         </div>` : ''}
                         ${job.final_cost ? `
                         <div class="cost-row">
-                            <span class="cost-label"><strong>Final Cost:</strong></span>
-                            <span class="cost-value"><strong>₹${parseFloat(job.final_cost).toFixed(2)}</strong></span>
+                            <span class="cost-label">Final Cost:</span>
+                            <span class="cost-value">₹${parseFloat(job.final_cost).toFixed(2)}</span>
                         </div>
                         <div class="cost-row">
-                            <span class="cost-label"><strong>Final Payment:</strong></span>
-                            <span class="cost-value"><strong>₹${parseFloat(job.final_payment_amount || 0).toFixed(2)}</strong></span>
+                            <span class="cost-label">Final Payment:</span>
+                            <span class="cost-value">₹${parseFloat(job.final_payment_amount || 0).toFixed(2)}</span>
                         </div>
                         <div class="cost-row">
-                            <span class="cost-label"><strong>Balance Due:</strong></span>
-                            <span class="cost-value"><strong>₹${(parseFloat(job.final_cost) - parseFloat(job.advance_amount || 0) - parseFloat(job.final_payment_amount || 0)).toFixed(2)}</strong></span>
+                            <span class="cost-label">Balance Due:</span>
+                            <span class="cost-value">₹${(parseFloat(job.final_cost) - parseFloat(job.advance_amount || 0) - parseFloat(job.final_payment_amount || 0)).toFixed(2)}</span>
                         </div>` : ''}
                     </div>
                 </div>
                 
                 <div class="service-job-tracking">
-                    <h4><strong>Tracking & Comments</strong></h4>
+                    <h4>Tracking & Comments</h4>
                     
                     <div class="status-history">
-                        <h5><strong>Status History</strong></h5>
+                        <h5>Status History</h5>
                         ${statusHistory.map(history => `
                             <div class="status-history-item">
                                 <div class="status-history-header">
-                                    <span class="status-history-status"><strong>${history.status.replace('_', ' ')}</strong></span>
-                                    <span class="status-history-date"><strong>${new Date(history.changed_at).toLocaleString()}</strong></span>
+                                    <span class="status-history-status">${history.status.replace('_', ' ')}</span>
+                                    <span class="status-history-date">${new Date(history.changed_at).toLocaleString()}</span>
                                 </div>
                                 <div class="status-history-details">
-                                    <div class="status-history-location"><strong>Location: ${history.location.charAt(0).toUpperCase() + history.location.slice(1)}</strong></div>
-                                    ${history.comments ? `<div><strong>Comments: ${history.comments}</strong></div>` : ''}
-                                    <div><strong>Changed by: ${history.changed_by_name || 'System'}</strong></div>
+                                    <div class="status-history-location">Location: ${history.location.charAt(0).toUpperCase() + history.location.slice(1)}</div>
+                                    ${history.comments ? `<div>Comments: ${history.comments}</div>` : ''}
+                                    <div>Changed by: ${history.changed_by_name || 'System'}</div>
                                 </div>
                             </div>
                         `).join('')}
@@ -601,37 +543,37 @@ renderServiceJobsTable() {
                     
                     <div class="comments-section">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                            <h5><strong>Comments</strong></h5>
+                            <h5>Comments</h5>
                             <button class="btn btn-sm btn-primary" onclick="serviceModule().addComment(${job.id})">Add Comment</button>
                         </div>
                         ${comments.length > 0 ? comments.map(comment => `
                             <div class="comment-item">
                                 <div class="comment-header">
-                                    <span class="comment-author"><strong>${comment.added_by_name || 'Unknown'}</strong></span>
-                                    <span><strong>${new Date(comment.added_at).toLocaleString()}</strong></span>
+                                    <span class="comment-author">${comment.added_by_name || 'Unknown'}</span>
+                                    <span>${new Date(comment.added_at).toLocaleString()}</span>
                                 </div>
-                                <div class="comment-text"><strong>${comment.comment}</strong></div>
+                                <div class="comment-text">${comment.comment}</div>
                             </div>
-                        `).join('') : '<p><strong>No comments added yet.</strong></p>'}
+                        `).join('') : '<p>No comments added yet.</p>'}
                     </div>
                 </div>
             </div>
             
             <div class="service-items-display">
-                <h4><strong>Service Items</strong></h4>
+                <h4>Service Items</h4>
                 ${items.map((item, index) => `
                     <div class="service-item-display">
-                        <h5><strong>${item.category} ${item.brand ? `- ${item.brand}` : ''}</strong></h5>
+                        <h5>${item.category} ${item.brand ? `- ${item.brand}` : ''}</h5>
                         <div class="item-detail-grid">
-                            ${item.gender ? `<div class="item-detail"><strong>Gender:</strong> <strong>${item.gender}</strong></div>` : ''}
-                            ${item.case_material ? `<div class="item-detail"><strong>Case Material:</strong> <strong>${item.case_material.replace('_', ' ')}</strong></div>` : ''}
-                            ${item.strap_material ? `<div class="item-detail"><strong>Strap Material:</strong> <strong>${item.strap_material.replace('_', ' ')}</strong></div>` : ''}
-                            ${item.machine_change !== null ? `<div class="item-detail"><strong>Machine Change:</strong> <strong>${item.machine_change ? 'Yes' : 'No'}</strong></div>` : ''}
-                            ${item.movement_no ? `<div class="item-detail"><strong>Movement No:</strong> <strong>${item.movement_no}</strong></div>` : ''}
+                            ${item.gender ? `<div class="item-detail"><strong>Gender:</strong> ${item.gender}</div>` : ''}
+                            ${item.case_material ? `<div class="item-detail"><strong>Case Material:</strong> ${item.case_material.replace('_', ' ')}</div>` : ''}
+                            ${item.strap_material ? `<div class="item-detail"><strong>Strap Material:</strong> ${item.strap_material.replace('_', ' ')}</div>` : ''}
+                            ${item.machine_change !== null ? `<div class="item-detail"><strong>Machine Change:</strong> ${item.machine_change ? 'Yes' : 'No'}</div>` : ''}
+                            ${item.movement_no ? `<div class="item-detail"><strong>Movement No:</strong> ${item.movement_no}</div>` : ''}
                         </div>
                         <div class="item-issue-description">
                             <strong>Issue Description:</strong>
-                            <div><strong>${item.issue_description}</strong></div>
+                            <div>${item.issue_description}</div>
                         </div>
                     </div>
                 `).join('')}
@@ -814,10 +756,6 @@ renderServiceJobsTable() {
                         <span>${new Date(job.created_at).toLocaleDateString()}</span>
                     </div>
                     <div class="row">
-                        <span>Time:</span>
-                        <span>${new Date(job.created_at).toLocaleTimeString()}</span>
-                    </div>
-                    <div class="row">
                         <span>Customer:</span>
                         <span>${job.customer_name || 'Walk-in Customer'}</span>
                     </div>
@@ -941,10 +879,6 @@ renderServiceJobsTable() {
                     <div class="row">
                         <span>Service Date:</span>
                         <span>${new Date(job.created_at).toLocaleDateString()}</span>
-                    </div>
-                    <div class="row">
-                        <span>Service Time:</span>
-                        <span>${new Date(job.created_at).toLocaleTimeString()}</span>
                     </div>
                     <div class="row">
                         <span>Completion Date:</span>
@@ -1080,13 +1014,6 @@ window.printServiceInvoice = function() {
     const serviceModule = window.serviceModule();
     if (serviceModule) {
         serviceModule.printServiceInvoice();
-    }
-};
-
-window.toggleNewServiceForm = function() {
-    const serviceModule = window.serviceModule();
-    if (serviceModule && serviceModule.toggleNewServiceForm) {
-        serviceModule.toggleNewServiceForm();
     }
 };
 

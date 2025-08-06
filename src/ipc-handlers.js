@@ -2,39 +2,6 @@
 const { ipcMain } = require('electron');
 const { runQuery, getData, getRow, generateJobNumber, getDatabase } = require('./database');
 
-const { ipcMain } = require('electron');
-const { runQuery, getData, getRow, getDatabase } = require('./database');
-
-// Generate unique invoice number for sales
-function generateSalesInvoiceNumber() {
-    const now = new Date();
-    const year = now.getFullYear().toString().slice(-2);
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const day = now.getDate().toString().padStart(2, '0');
-    const random4Digit = Math.floor(1000 + Math.random() * 9000);
-    return `INVSA${year}${month}${day}${random4Digit}`;
-}
-
-// Generate unique invoice number for services
-function generateServiceInvoiceNumber() {
-    const now = new Date();
-    const year = now.getFullYear().toString().slice(-2);
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const day = now.getDate().toString().padStart(2, '0');
-    const random4Digit = Math.floor(1000 + Math.random() * 9000);
-    return `INVSR${year}${month}${day}${random4Digit}`;
-}
-
-// Generate unique job number for service jobs
-function generateJobNumber() {
-    const now = new Date();
-    const year = now.getFullYear().toString().slice(-2);
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const day = now.getDate().toString().padStart(2, '0');
-    const random4Digit = Math.floor(1000 + Math.random() * 9000);
-    return `SRV${year}${month}${day}${random4Digit}`;
-}
-
 function setupIpcHandlers() {
     // Login handler
     ipcMain.handle('login', async (event, { username, password }) => {
@@ -292,7 +259,7 @@ function setupIpcHandlers() {
         }
     });
 
-    // Updated get sales with invoice numbers
+    // Sales handlers
     ipcMain.handle('get-sales', async () => {
         try {
             return await getData(`
@@ -311,7 +278,6 @@ function setupIpcHandlers() {
         }
     });
 
- // Updated Sales handlers
     ipcMain.handle('create-sale', async (event, saleData) => {
         const db = getDatabase();
         return new Promise((resolve, reject) => {
@@ -320,14 +286,12 @@ function setupIpcHandlers() {
 
                 try {
                     const { sale, items, payments } = saleData;
-                    const invoiceNumber = generateSalesInvoiceNumber();
 
-                    // Insert main sale record with invoice number
+                    // Insert main sale record
                     db.run(`INSERT INTO sales (
-                        invoice_number, sale_date, customer_id, subtotal, total_discount, total_amount, 
+                        sale_date, customer_id, subtotal, total_discount, total_amount, 
                         notes, created_by
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, [
-                        invoiceNumber,
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)`, [
                         sale.sale_date,
                         sale.customer_id || null,
                         sale.subtotal,
@@ -415,11 +379,7 @@ function setupIpcHandlers() {
                                     if (err) {
                                         reject(err);
                                     } else {
-                                        resolve({ 
-                                            id: saleId, 
-                                            invoice_number: invoiceNumber,
-                                            success: true 
-                                        });
+                                        resolve({ id: saleId, success: true });
                                     }
                                 });
                             }
@@ -457,7 +417,7 @@ function setupIpcHandlers() {
         }
     });
 
-    // Updated get service jobs with invoice numbers
+    // Service handlers
     ipcMain.handle('get-service-jobs', async () => {
         try {
             return await getData(`
@@ -476,7 +436,6 @@ function setupIpcHandlers() {
         }
     });
 
-    // Updated Service handlers
     ipcMain.handle('create-service-job', async (event, serviceData) => {
         const db = getDatabase();
         return new Promise((resolve, reject) => {
@@ -486,15 +445,13 @@ function setupIpcHandlers() {
                 try {
                     const { job, items } = serviceData;
                     const jobNumber = generateJobNumber();
-                    const invoiceNumber = generateServiceInvoiceNumber();
 
                     // Insert main service job record
                     db.run(`INSERT INTO service_jobs (
-                        job_number, invoice_number, customer_id, estimated_cost, advance_amount, advance_payment_method,
+                        job_number, customer_id, estimated_cost, advance_amount, advance_payment_method,
                         advance_payment_reference, approximate_delivery_date, location, status, comments, created_by
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
                         jobNumber,
-                        invoiceNumber,
                         job.customer_id || null,
                         job.estimated_cost,
                         job.advance_amount,
@@ -560,12 +517,7 @@ function setupIpcHandlers() {
                                                 if (err) {
                                                     reject(err);
                                                 } else {
-                                                    resolve({ 
-                                                        id: serviceJobId, 
-                                                        job_number: jobNumber,
-                                                        invoice_number: invoiceNumber,
-                                                        success: true 
-                                                    });
+                                                    resolve({ id: serviceJobId, job_number: jobNumber, success: true });
                                                 }
                                             });
                                         }
@@ -799,7 +751,7 @@ function setupIpcHandlers() {
         }
     });
 
-   // Updated get all invoices with new numbering
+    // Invoice handlers
     ipcMain.handle('get-all-invoices', async () => {
         try {
             // Get sales invoices
@@ -813,11 +765,10 @@ function setupIpcHandlers() {
                     c.phone as customer_phone,
                     s.total_amount as amount,
                     s.created_at,
-                    s.invoice_number,
-                    s.created_by
+                    'INV-S-' || s.id as invoice_number
                 FROM sales s
                 LEFT JOIN customers c ON s.customer_id = c.id
-                WHERE s.sale_status = 'completed' OR s.sale_status IS NULL
+                WHERE s.sale_status = 'completed'
                 ORDER BY s.created_at DESC
             `);
 
@@ -832,9 +783,8 @@ function setupIpcHandlers() {
                     c.phone as customer_phone,
                     sj.final_cost as amount,
                     sj.created_at,
-                    sj.invoice_number,
-                    sj.job_number,
-                    sj.created_by
+                    'INV-SRV-' || sj.id as invoice_number,
+                    sj.job_number
                 FROM service_jobs sj
                 LEFT JOIN customers c ON sj.customer_id = c.id
                 WHERE sj.status = 'service_completed' OR sj.status = 'delivered'
@@ -855,270 +805,3 @@ function setupIpcHandlers() {
 }
 
 module.exports = { setupIpcHandlers };
-
-// Add these IPC handlers to src/ipc-handlers.js
-
-// COB (Close of Business) handlers
-ipcMain.handle('create-cob-record', async (event, cobData) => {
-    try {
-        const {
-            business_date, total_sales, total_services, total_expenses,
-            cash_sales, cash_services, cash_expenses,
-            account_sales, account_services, account_expenses,
-            opening_cash_balance, opening_account_balance,
-            closing_cash_balance, closing_account_balance,
-            notes, created_by
-        } = cobData;
-
-        const result = await runQuery(
-            `INSERT INTO cob_records (
-                business_date, total_sales, total_services, total_expenses,
-                cash_sales, cash_services, cash_expenses,
-                account_sales, account_services, account_expenses,
-                opening_cash_balance, opening_account_balance,
-                closing_cash_balance, closing_account_balance,
-                notes, created_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-                business_date, total_sales, total_services, total_expenses,
-                cash_sales, cash_services, cash_expenses,
-                account_sales, account_services, account_expenses,
-                opening_cash_balance, opening_account_balance,
-                closing_cash_balance, closing_account_balance,
-                notes, created_by
-            ]
-        );
-
-        return { id: result.id, success: true };
-    } catch (error) {
-        console.error('Create COB record error:', error);
-        throw error;
-    }
-});
-
-ipcMain.handle('get-cob-record', async (event, businessDate) => {
-    try {
-        const record = await getRow(`
-            SELECT cob.*, u.full_name as created_by_name
-            FROM cob_records cob
-            LEFT JOIN users u ON cob.created_by = u.id
-            WHERE cob.business_date = ?
-        `, [businessDate]);
-
-        return record;
-    } catch (error) {
-        console.error('Get COB record error:', error);
-        throw error;
-    }
-});
-
-ipcMain.handle('get-cob-records', async (event, options = {}) => {
-    try {
-        let query = `
-            SELECT cob.*, u.full_name as created_by_name
-            FROM cob_records cob
-            LEFT JOIN users u ON cob.created_by = u.id
-        `;
-        let params = [];
-
-        if (options.startDate && options.endDate) {
-            query += ' WHERE cob.business_date BETWEEN ? AND ?';
-            params = [options.startDate, options.endDate];
-        }
-
-        query += ' ORDER BY cob.business_date DESC';
-
-        if (options.limit) {
-            query += ' LIMIT ?';
-            params.push(options.limit);
-        }
-
-        return await getData(query, params);
-    } catch (error) {
-        console.error('Get COB records error:', error);
-        throw error;
-    }
-});
-
-ipcMain.handle('update-cob-record', async (event, cobData) => {
-    try {
-        const {
-            id, total_sales, total_services, total_expenses,
-            cash_sales, cash_services, cash_expenses,
-            account_sales, account_services, account_expenses,
-            opening_cash_balance, opening_account_balance,
-            closing_cash_balance, closing_account_balance,
-            notes
-        } = cobData;
-
-        await runQuery(
-            `UPDATE cob_records SET 
-                total_sales = ?, total_services = ?, total_expenses = ?,
-                cash_sales = ?, cash_services = ?, cash_expenses = ?,
-                account_sales = ?, account_services = ?, account_expenses = ?,
-                opening_cash_balance = ?, opening_account_balance = ?,
-                closing_cash_balance = ?, closing_account_balance = ?,
-                notes = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?`,
-            [
-                total_sales, total_services, total_expenses,
-                cash_sales, cash_services, cash_expenses,
-                account_sales, account_services, account_expenses,
-                opening_cash_balance, opening_account_balance,
-                closing_cash_balance, closing_account_balance,
-                notes, id
-            ]
-        );
-
-        return { success: true };
-    } catch (error) {
-        console.error('Update COB record error:', error);
-        throw error;
-    }
-});
-
-ipcMain.handle('delete-cob-record', async (event, id) => {
-    try {
-        await runQuery("DELETE FROM cob_records WHERE id = ?", [id]);
-        return { success: true };
-    } catch (error) {
-        console.error('Delete COB record error:', error);
-        throw error;
-    }
-});
-
-// Ledger analytics handlers
-ipcMain.handle('get-ledger-summary', async (event, options = {}) => {
-    try {
-        const { startDate, endDate } = options;
-        const today = new Date().toISOString().split('T')[0];
-        const targetDate = startDate || today;
-
-        // Get sales for the date
-        const sales = await getData(`
-            SELECT s.*, sp.payment_method, sp.amount as payment_amount
-            FROM sales s
-            LEFT JOIN sale_payments sp ON s.id = sp.sale_id
-            WHERE s.sale_date = ?
-        `, [targetDate]);
-
-        // Get services for the date
-        const services = await getData(`
-            SELECT * FROM service_jobs 
-            WHERE DATE(created_at) = ?
-        `, [targetDate]);
-
-        // Get expenses for the date
-        const expenses = await getData(`
-            SELECT * FROM expenses 
-            WHERE expense_date = ?
-        `, [targetDate]);
-
-        // Calculate totals
-        const salesTotal = sales.reduce((sum, sale) => sum + parseFloat(sale.total_amount || 0), 0);
-        const servicesTotal = services.reduce((sum, job) => sum + parseFloat(job.final_cost || job.estimated_cost || 0), 0);
-        const expensesTotal = expenses.reduce((sum, expense) => sum + parseFloat(expense.amount || 0), 0);
-
-        return {
-            date: targetDate,
-            sales: {
-                transactions: sales,
-                total: salesTotal,
-                count: sales.length
-            },
-            services: {
-                transactions: services,
-                total: servicesTotal,
-                count: services.length
-            },
-            expenses: {
-                transactions: expenses,
-                total: expensesTotal,
-                count: expenses.length
-            },
-            summary: {
-                totalIncome: salesTotal + servicesTotal,
-                totalExpenses: expensesTotal,
-                netIncome: salesTotal + servicesTotal - expensesTotal
-            }
-        };
-    } catch (error) {
-        console.error('Get ledger summary error:', error);
-        throw error;
-    }
-});
-
-ipcMain.handle('get-payment-breakdown', async (event, businessDate) => {
-    try {
-        const breakdown = {
-            cash: { sales: 0, services: 0, expenses: 0, total: 0 },
-            upi: { sales: 0, services: 0, expenses: 0, total: 0 },
-            card: { sales: 0, services: 0, expenses: 0, total: 0 }
-        };
-
-        // Get sales payments
-        const salesPayments = await getData(`
-            SELECT sp.payment_method, sp.amount
-            FROM sale_payments sp
-            JOIN sales s ON sp.sale_id = s.id
-            WHERE s.sale_date = ?
-        `, [businessDate]);
-
-        salesPayments.forEach(payment => {
-            const method = payment.payment_method.toLowerCase();
-            if (breakdown[method]) {
-                breakdown[method].sales += parseFloat(payment.amount);
-            }
-        });
-
-        // Get service payments
-        const servicePayments = await getData(`
-            SELECT advance_payment_method, advance_amount, final_payment_method, final_payment_amount
-            FROM service_jobs
-            WHERE DATE(created_at) = ?
-        `, [businessDate]);
-
-        servicePayments.forEach(job => {
-            // Advance payment
-            if (job.advance_amount && job.advance_payment_method) {
-                const method = job.advance_payment_method.toLowerCase();
-                if (breakdown[method]) {
-                    breakdown[method].services += parseFloat(job.advance_amount);
-                }
-            }
-            
-            // Final payment
-            if (job.final_payment_amount && job.final_payment_method) {
-                const method = job.final_payment_method.toLowerCase();
-                if (breakdown[method]) {
-                    breakdown[method].services += parseFloat(job.final_payment_amount);
-                }
-            }
-        });
-
-        // Get expenses
-        const expensePayments = await getData(`
-            SELECT payment_mode, amount
-            FROM expenses
-            WHERE expense_date = ?
-        `, [businessDate]);
-
-        expensePayments.forEach(expense => {
-            const method = expense.payment_mode.toLowerCase();
-            if (breakdown[method]) {
-                breakdown[method].expenses += parseFloat(expense.amount);
-            }
-        });
-
-        // Calculate totals
-        Object.keys(breakdown).forEach(method => {
-            const methodData = breakdown[method];
-            methodData.total = methodData.sales + methodData.services - methodData.expenses;
-        });
-
-        return breakdown;
-    } catch (error) {
-        console.error('Get payment breakdown error:', error);
-        throw error;
-    }
-});

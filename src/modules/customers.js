@@ -4,7 +4,6 @@ class CustomerModule {
     constructor(currentUser) {
         this.currentUser = currentUser;
         this.customers = [];
-        this.customerNetValues = new Map(); // Cache for net values
         this.isInitialized = false;
     }
 
@@ -27,46 +26,11 @@ class CustomerModule {
     async loadData() {
         try {
             this.customers = await ipcRenderer.invoke('get-customers');
-            await this.calculateNetValues(); // Calculate net values for all customers
             this.renderTable();
         } catch (error) {
             console.error('Error loading customers:', error);
             const errorMsg = 'Error loading customers';
             showError ? showError(errorMsg) : alert(errorMsg);
-        }
-    }
-
-    async calculateNetValues() {
-        try {
-            // Get all sales and service data
-            const [sales, serviceJobs] = await Promise.all([
-                ipcRenderer.invoke('get-sales'),
-                ipcRenderer.invoke('get-service-jobs')
-            ]);
-
-            // Clear existing net values
-            this.customerNetValues.clear();
-
-            // Calculate net values for each customer
-            this.customers.forEach(customer => {
-                let netValue = 0;
-
-                // Add sales total
-                sales.filter(sale => sale.customer_id === customer.id)
-                     .forEach(sale => {
-                         netValue += parseFloat(sale.total_amount || 0);
-                     });
-
-                // Add service total (final cost or estimated cost)
-                serviceJobs.filter(job => job.customer_id === customer.id)
-                          .forEach(job => {
-                              netValue += parseFloat(job.final_cost || job.estimated_cost || 0);
-                          });
-
-                this.customerNetValues.set(customer.id, netValue);
-            });
-        } catch (error) {
-            console.error('Error calculating net values:', error);
         }
     }
 
@@ -78,14 +42,11 @@ class CustomerModule {
         
         this.customers.forEach(customer => {
             const row = document.createElement('tr');
-            const netValue = this.customerNetValues.get(customer.id) || 0;
-            
             row.innerHTML = `
-                <td><strong>${customer.id}</strong></td>
-                <td><strong>${customer.name}</strong></td>
-                <td><strong>${customer.phone || '-'}</strong></td>
-                <td><strong>${customer.email || '-'}</strong></td>
-                <td><strong>₹${netValue.toFixed(2)}</strong></td>
+                <td>${customer.id}</td>
+                <td>${customer.name}</td>
+                <td>${customer.phone || '-'}</td>
+                <td>${customer.email || '-'}</td>
                 <td>
                     <button class="btn btn-sm btn-primary" onclick="window.customerModule().createSale(${customer.id})">Sale</button>
                     <button class="btn btn-sm btn-secondary" onclick="window.customerModule().createService(${customer.id})">Service</button>
@@ -263,11 +224,6 @@ class CustomerModule {
     // Get all customers
     getAllCustomers() {
         return this.customers;
-    }
-
-    // Get customer net value
-    getCustomerNetValue(customerId) {
-        return this.customerNetValues.get(customerId) || 0;
     }
 }
 

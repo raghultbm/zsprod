@@ -90,7 +90,7 @@ class InventoryModule {
             // Format warranty
             const warranty = item.warranty_months ? `${item.warranty_months} months` : '-';
             
-            // Format price - Fixed: Ensure price is properly displayed
+            // Format price - Fix: Ensure price is properly displayed
             const price = item.price ? `₹${parseFloat(item.price).toFixed(2)}` : '-';
             
             // Capitalize outlet name
@@ -107,8 +107,8 @@ class InventoryModule {
                 <td>${price}</td>
                 <td>${outlet}</td>
                 <td>
-                    <button class="btn btn-sm btn-secondary" onclick="window.inventoryModule().edit(${item.id})">Edit</button>
-                    <button class="btn btn-sm btn-danger" onclick="window.inventoryModule().delete(${item.id})">Delete</button>
+                    <button class="btn btn-sm btn-secondary" onclick="inventoryModule().edit(${item.id})">Edit</button>
+                    <button class="btn btn-sm btn-danger" onclick="inventoryModule().delete(${item.id})">Delete</button>
                 </td>
             `;
             tbody.appendChild(row);
@@ -166,7 +166,7 @@ class InventoryModule {
             itemBatteryCode: item.battery_code || '',
             itemQuantity: item.quantity,
             itemWarranty: item.warranty_months || '',
-            itemPrice: item.price || '',
+            itemPrice: item.price || '', // Fix: Ensure price is populated
             itemOutlet: item.outlet,
             itemComments: item.comments || ''
         };
@@ -234,104 +234,133 @@ class InventoryModule {
         }
     }
 
-    async handleFormSubmit(e) {
-        e.preventDefault();
-        
-        const itemData = this.collectFormData();
-        
-        // Basic required field validation
-        if (!itemData.item_code || !itemData.category || !itemData.date_added || !itemData.outlet) {
-            showError('Please fill in all required fields (Item Code, Category, Date, Outlet)');
-            return;
-        }
+    // In src/modules/inventory.js - Replace the handleFormSubmit method with this fixed version
 
-        // Fixed: Improved price validation
-        if (!itemData.price || itemData.price <= 0) {
-            const priceField = document.getElementById('itemPrice');
-            const priceFieldValue = priceField ? priceField.value : 'N/A';
-            
-            showError(`Please enter a valid price greater than 0. Current value: "${priceFieldValue}"`);
-            
-            if (priceField) {
-                priceField.focus();
-                priceField.select();
-            }
-            return;
-        }
-        
-        const itemId = document.getElementById('inventoryId').value;
-        
-        try {
-            if (itemId) {
-                itemData.id = parseInt(itemId);
-                await ipcRenderer.invoke('update-inventory-item', itemData);
-                showSuccess('Inventory item updated successfully');
-            } else {
-                await ipcRenderer.invoke('add-inventory-item', itemData);
-                showSuccess('Inventory item added successfully');
-            }
-            
-            closeModal('inventoryModal');
-            await this.loadData();
-            await loadDashboardStats();
-        } catch (error) {
-            console.error('Error saving inventory item:', error);
-            if (error.message.includes('UNIQUE constraint failed')) {
-                showError('Item code already exists. Please use a different code.');
-            } else {
-                showError('Error saving inventory item: ' + error.message);
-            }
-        }
+async handleFormSubmit(e) {
+    e.preventDefault();
+    
+    const itemData = this.collectFormData();
+    
+    // Basic required field validation
+    if (!itemData.item_code || !itemData.category || !itemData.date_added || !itemData.outlet) {
+        showError('Please fill in all required fields (Item Code, Category, Date, Outlet)');
+        return;
     }
 
-    collectFormData() {
-        // Get all form field values
-        const itemCode = document.getElementById('itemCode')?.value?.toUpperCase().trim();
-        const dateAdded = document.getElementById('dateAdded')?.value;
-        const category = document.getElementById('itemCategory')?.value;
-        const brand = document.getElementById('itemBrand')?.value || null;
-        const type = document.getElementById('itemType')?.value || null;
-        const gender = document.getElementById('itemGender')?.value || null;
-        const material = document.getElementById('itemMaterial')?.value || null;
-        const sizeValue = document.getElementById('itemSize')?.value;
-        const batteryCode = document.getElementById('itemBatteryCode')?.value || null;
-        const quantityValue = document.getElementById('itemQuantity')?.value;
-        const warrantyValue = document.getElementById('itemWarranty')?.value;
-        const priceValue = document.getElementById('itemPrice')?.value;
-        const outlet = document.getElementById('itemOutlet')?.value;
-        const comments = document.getElementById('itemComments')?.value || null;
+    // Debug: Log the price value to help with troubleshooting
+    console.log('Validating price:', itemData.price, 'Type:', typeof itemData.price);
+
+    // Fix: Improved price validation with better error messages
+    if (itemData.price === null || itemData.price === undefined || isNaN(itemData.price) || itemData.price <= 0) {
+        // Get the actual field value for better error reporting
+        const priceField = document.getElementById('itemPrice');
+        const priceFieldValue = priceField ? priceField.value : 'N/A';
         
-        // Parse numeric values with proper validation
-        const size_mm = sizeValue ? parseInt(sizeValue) : null;
-        const quantity = quantityValue ? parseInt(quantityValue) : 0;
-        const warranty_months = warrantyValue ? parseInt(warrantyValue) : null;
+        console.error('Price validation failed:', {
+            priceData: itemData.price,
+            priceFieldValue: priceFieldValue,
+            priceFieldExists: !!priceField
+        });
         
-        // Fixed: Better price parsing and validation
-        let price = null;
-        if (priceValue && priceValue.trim() !== '') {
-            const parsedPrice = parseFloat(priceValue.trim());
-            if (!isNaN(parsedPrice) && parsedPrice > 0) {
-                price = parsedPrice;
-            }
+        showError(`Please enter a valid price greater than 0. Current value: "${priceFieldValue}"`);
+        
+        // Focus on the price field to help user
+        if (priceField) {
+            priceField.focus();
+            priceField.select();
+        }
+        return;
+    }
+    
+    const itemId = document.getElementById('inventoryId').value;
+    
+    try {
+        if (itemId) {
+            itemData.id = parseInt(itemId);
+            await ipcRenderer.invoke('update-inventory-item', itemData);
+            showSuccess('Inventory item updated successfully');
+        } else {
+            await ipcRenderer.invoke('add-inventory-item', itemData);
+            showSuccess('Inventory item added successfully');
         }
         
-        return {
-            item_code: itemCode,
-            date_added: dateAdded,
-            category: category,
-            brand: brand,
-            type: type,
-            gender: gender,
-            material: material,
-            size_mm: size_mm,
-            battery_code: batteryCode,
-            quantity: quantity,
-            warranty_months: warranty_months,
-            price: price,
-            outlet: outlet,
-            comments: comments
-        };
+        closeModal('inventoryModal');
+        await this.loadData();
+        await loadDashboardStats();
+    } catch (error) {
+        console.error('Error saving inventory item:', error);
+        if (error.message.includes('UNIQUE constraint failed')) {
+            showError('Item code already exists. Please use a different code.');
+        } else {
+            showError('Error saving inventory item: ' + error.message);
+        }
     }
+}
+
+    // In src/modules/inventory.js - Replace the collectFormData method with this fixed version
+
+collectFormData() {
+    // Get all form field values
+    const itemCode = document.getElementById('itemCode')?.value?.toUpperCase().trim();
+    const dateAdded = document.getElementById('dateAdded')?.value;
+    const category = document.getElementById('itemCategory')?.value;
+    const brand = document.getElementById('itemBrand')?.value || null;
+    const type = document.getElementById('itemType')?.value || null;
+    const gender = document.getElementById('itemGender')?.value || null;
+    const material = document.getElementById('itemMaterial')?.value || null;
+    const sizeValue = document.getElementById('itemSize')?.value;
+    const batteryCode = document.getElementById('itemBatteryCode')?.value || null;
+    const quantityValue = document.getElementById('itemQuantity')?.value;
+    const warrantyValue = document.getElementById('itemWarranty')?.value;
+    const priceValue = document.getElementById('itemPrice')?.value;
+    const outlet = document.getElementById('itemOutlet')?.value;
+    const comments = document.getElementById('itemComments')?.value || null;
+    
+    // Debug logging to check values
+    console.log('Form field values:');
+    console.log('Price field exists:', !!document.getElementById('itemPrice'));
+    console.log('Price field value:', priceValue);
+    console.log('Price field type:', typeof priceValue);
+    
+    // Parse numeric values with proper validation
+    const size_mm = sizeValue ? parseInt(sizeValue) : null;
+    const quantity = quantityValue ? parseInt(quantityValue) : 0;
+    const warranty_months = warrantyValue ? parseInt(warrantyValue) : null;
+    
+    // Fix: Better price parsing and validation
+    let price = 0;
+    if (priceValue && priceValue.trim() !== '') {
+        const parsedPrice = parseFloat(priceValue);
+        if (!isNaN(parsedPrice) && parsedPrice > 0) {
+            price = parsedPrice;
+        } else {
+            console.error('Invalid price value:', priceValue);
+            price = 0; // This will trigger the validation error
+        }
+    } else {
+        console.error('Price field is empty or undefined');
+        price = 0; // This will trigger the validation error
+    }
+    
+    console.log('Final parsed price:', price);
+    
+    return {
+        item_code: itemCode,
+        date_added: dateAdded,
+        category: category,
+        brand: brand,
+        type: type,
+        gender: gender,
+        material: material,
+        size_mm: size_mm,
+        battery_code: batteryCode,
+        quantity: quantity,
+        warranty_months: warranty_months,
+        price: price,
+        outlet: outlet,
+        comments: comments
+    };
+}
 
     async searchInventory() {
         const searchTerm = document.getElementById('inventorySearch')?.value?.trim();
