@@ -2282,28 +2282,195 @@ textarea:focus {
 /* src/styles.css - Part 10: Service Module */
 
 /* Service Module Styles */
-.service-container {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 30px;
-    height: calc(100vh - 200px);
-}
-
-.service-form-container,
-.service-jobs-container {
+/* Service Module Styles - Sales-like Structure */
+.service-main-container {
     background: white;
     padding: 25px;
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    height: calc(100vh - 200px);
     overflow-y: auto;
 }
 
-/* Service Items Container */
+.service-controls {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.service-controls .search-container {
+    display: flex;
+    gap: 10px;
+    flex: 1;
+    min-width: 300px;
+}
+
+.service-controls .filter-container {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.service-controls select {
+    padding: 10px;
+    border: 2px solid #e1e1e1;
+    border-radius: 4px;
+    font-size: 14px;
+    min-width: 150px;
+}
+
+.service-controls input[type="date"] {
+    padding: 10px;
+    border: 2px solid #e1e1e1;
+    border-radius: 4px;
+    font-size: 14px;
+    min-width: 150px;
+}
+
+.service-controls input[type="date"]:focus,
+.service-controls select:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+/* Service Table Enhancements */
+.service-table {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.service-table th {
+    background: #f8f9fa;
+    font-weight: 700;
+    color: #2c3e50;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #e1e1e1;
+    padding: 12px 10px;
+}
+
+.service-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid #e1e1e1;
+    vertical-align: middle;
+}
+
+.service-table tbody tr:hover {
+    background: #f8f9fa;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+/* Job Number Styling */
+.job-number {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    color: #2c3e50;
+    background: #e3f2fd;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    border: 1px solid #bbdefb;
+    white-space: nowrap;
+    display: inline-block;
+}
+
+/* Service Status Badges - Enhanced */
+.service-status-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.service-status-badge.yet-to-start {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.service-status-badge.in-service-center {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.service-status-badge.service-completed {
+    background: #d4edda;
+    color: #155724;
+}
+
+.service-status-badge.delivered {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.service-status-badge.returned-to-customer,
+.service-status-badge.to-be-returned-to-customer {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* Location Badge Enhanced */
+.location-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: capitalize;
+    background: #e9ecef;
+    color: #495057;
+    white-space: nowrap;
+}
+
+/* Estimated Cost */
+.estimated-cost {
+    font-weight: 600;
+    color: #28a745;
+    font-size: 14px;
+    text-align: right;
+    min-width: 100px;
+}
+
+/* Payment Mode for Service */
+.service-table .payment-mode-badge.none {
+    background: #f8f9fa;
+    color: #6c757d;
+    border: 1px dashed #dee2e6;
+}
+
+/* New Service Modal Styles */
+#newServiceModal .modal-content {
+    max-width: 1200px;
+    width: 95%;
+    max-height: 95vh;
+}
+
+#newServiceModal .modal-form {
+    max-height: calc(95vh - 120px);
+    overflow-y: auto;
+}
+
+/* Service Items Container in Modal */
 .service-items-container {
     border: 1px solid #e1e1e1;
     border-radius: 6px;
     margin-bottom: 15px;
     background: #f8f9fa;
+    max-height: 300px;
+    overflow-y: auto;
 }
 
 .service-item-card {
@@ -2313,6 +2480,7 @@ textarea:focus {
     border-radius: 6px;
     border-left: 4px solid #3498db;
     position: relative;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .service-item-header {
@@ -2326,6 +2494,10 @@ textarea:focus {
     font-weight: 600;
     color: #2c3e50;
     text-transform: capitalize;
+    background: #e3f2fd;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 12px;
 }
 
 .service-item-remove {
@@ -2333,348 +2505,534 @@ textarea:focus {
     cursor: pointer;
     font-size: 18px;
     padding: 5px;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
 }
 
 .service-item-remove:hover {
     background: #f8d7da;
-    border-radius: 50%;
+    transform: scale(1.1);
 }
 
 .service-item-details {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 10px;
-    font-size: 14px;
+    font-size: 13px;
+    margin-bottom: 10px;
 }
 
 .service-item-detail {
     display: flex;
     flex-direction: column;
+    background: #f8f9fa;
+    padding: 6px 8px;
+    border-radius: 4px;
 }
 
 .service-item-detail strong {
     color: #555;
-    font-size: 12px;
+    font-size: 11px;
     text-transform: uppercase;
     margin-bottom: 2px;
+    font-weight: 600;
 }
 
 .service-item-issue {
-    grid-column: 1 / -1;
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid #e1e1e1;
+    background: #fff8e1;
+    padding: 10px;
+    border-radius: 4px;
+    border-left: 3px solid #ffc107;
 }
 
 .service-item-issue strong {
-    color: #2c3e50;
+    color: #856404;
+    font-weight: 600;
+    margin-bottom: 5px;
+    display: block;
 }
 
-/* Service Search */
-.service-search-container {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-    align-items: center;
+.no-items-message {
+    padding: 30px 20px;
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    margin: 10px;
 }
 
-.service-search-container input {
-    flex: 1;
-    padding: 10px;
-    border: 2px solid #e1e1e1;
-    border-radius: 4px;
-    font-size: 14px;
-}
-
-.service-search-container input:focus {
-    outline: none;
-    border-color: #3498db;
-}
-
-/* Service Jobs Table */
-.service-jobs-table-container {
-    max-height: calc(100vh - 400px);
+/* Service History Modal Styles */
+.service-history-container {
+    max-height: 70vh;
     overflow-y: auto;
 }
 
-/* Service Status Badges */
-.service-status {
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 500;
-    text-transform: uppercase;
-    white-space: nowrap;
-}
-
-.service-status.yet-to-start {
-    background: #fff3cd;
-    color: #856404;
-}
-
-.service-status.in-service-center {
-    background: #cce5ff;
-    color: #004085;
-}
-
-.service-status.service-completed {
-    background: #d4edda;
-    color: #155724;
-}
-
-.service-status.delivered {
-    background: #d1ecf1;
-    color: #0c5460;
-}
-
-.service-status.returned-to-customer,
-.service-status.to-be-returned-to-customer {
-    background: #f8d7da;
-    color: #721c24;
-}
-
-/* Location Badge */
-.service-location {
-    padding: 3px 6px;
-    border-radius: 10px;
-    font-size: 10px;
-    font-weight: 500;
-    text-transform: capitalize;
-    background: #e9ecef;
-    color: #495057;
-}
-
-/* Service Job Details */
-.service-job-details {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 30px;
-}
-
-.service-job-info,
-.service-job-tracking {
+.job-summary {
     background: #f8f9fa;
     padding: 20px;
-    border-radius: 6px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border-left: 4px solid #3498db;
 }
 
-.service-job-info h4,
-.service-job-tracking h4 {
+.job-summary h4 {
     color: #2c3e50;
-    margin-bottom: 15px;
-    font-size: 1.1rem;
-    border-bottom: 2px solid #3498db;
-    padding-bottom: 5px;
+    margin-bottom: 10px;
+    font-size: 1.2rem;
 }
 
-.job-detail-row {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    padding: 5px 0;
-    border-bottom: 1px solid #e1e1e1;
-}
-
-.job-detail-row:last-child {
-    border-bottom: none;
-}
-
-.job-detail-label {
-    font-weight: 500;
+.job-summary p {
+    margin-bottom: 5px;
     color: #555;
 }
 
-.job-detail-value {
-    color: #2c3e50;
+/* Timeline Styles */
+.history-timeline {
+    margin-bottom: 30px;
 }
 
-/* Service Items Display */
-.service-items-display {
-    margin: 20px 0;
+.timeline-container {
+    position: relative;
+    margin-left: 20px;
 }
 
-.service-item-display {
+.timeline-container::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e1e1e1;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+    padding-left: 40px;
+}
+
+.timeline-item.current .timeline-marker {
+    background: #28a745;
+    border-color: #28a745;
+    animation: pulse 2s infinite;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: 6px;
+    top: 5px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #3498db;
+    border: 3px solid #fff;
+    box-shadow: 0 0 0 2px #3498db;
+}
+
+.timeline-content {
     background: white;
     border: 1px solid #e1e1e1;
-    border-radius: 6px;
+    border-radius: 8px;
     padding: 15px;
-    margin-bottom: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.service-item-display h5 {
-    color: #2c3e50;
-    margin-bottom: 10px;
-    text-transform: capitalize;
-}
-
-.item-detail-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 10px;
-    font-size: 14px;
-}
-
-.item-detail {
+.timeline-header {
     display: flex;
-    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f0f0f0;
 }
 
-.item-detail strong {
-    color: #555;
-    font-size: 12px;
+.timeline-status {
+    font-weight: 600;
+    color: #2c3e50;
     text-transform: uppercase;
-}
-
-.item-issue-description {
-    grid-column: 1 / -1;
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid #e1e1e1;
-    background: #f8f9fa;
-    padding: 10px;
+    font-size: 12px;
+    background: #e3f2fd;
+    padding: 3px 8px;
     border-radius: 4px;
 }
 
-/* Status History */
-.status-history {
-    margin-top: 20px;
-}
-
-.status-history-item {
-    background: white;
-    border-left: 4px solid #3498db;
-    padding: 10px 15px;
-    margin-bottom: 10px;
-    border-radius: 0 6px 6px 0;
-}
-
-.status-history-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 5px;
-}
-
-.status-history-status {
-    font-weight: 600;
-    text-transform: uppercase;
-    font-size: 12px;
-    color: #2c3e50;
-}
-
-.status-history-date {
+.timeline-date {
     color: #666;
     font-size: 12px;
+    font-style: italic;
 }
 
-.status-history-details {
-    font-size: 14px;
+.timeline-details {
+    font-size: 13px;
     color: #555;
-}
-
-.status-history-location {
-    font-size: 12px;
-    color: #888;
-    text-transform: capitalize;
-}
-
-/* Comments Section */
-.comments-section {
-    margin-top: 20px;
-}
-
-.comment-item {
-    background: white;
-    border: 1px solid #e1e1e1;
-    border-radius: 6px;
-    padding: 10px;
-    margin-bottom: 10px;
-}
-
-.comment-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 5px;
-    font-size: 12px;
-    color: #666;
-}
-
-.comment-author {
-    font-weight: 500;
-    color: #2c3e50;
-}
-
-.comment-text {
-    font-size: 14px;
-    color: #333;
     line-height: 1.4;
 }
 
-/* Action Buttons */
-.service-actions {
-    display: flex;
-    gap: 5px;
-    flex-wrap: wrap;
+.timeline-details > div {
+    margin-bottom: 3px;
 }
 
-.service-actions .btn {
-    padding: 4px 8px;
-    font-size: 12px;
+.timeline-details strong {
+    color: #2c3e50;
 }
 
-/* Cost Summary */
-.cost-summary {
+/* Comments Timeline */
+.comments-timeline {
     background: #f8f9fa;
-    padding: 15px;
-    border-radius: 6px;
-    margin-top: 15px;
+    padding: 20px;
+    border-radius: 8px;
 }
 
-.cost-row {
+.comments-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.comment-timeline-item {
+    background: white;
+    border: 1px solid #e1e1e1;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.comment-timeline-header {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     margin-bottom: 8px;
-    font-size: 14px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #f0f0f0;
 }
 
-.cost-row:last-child {
-    margin-bottom: 0;
-    font-weight: bold;
-    font-size: 16px;
-    padding-top: 8px;
-    border-top: 1px solid #ddd;
-}
-
-.cost-label {
-    color: #555;
-}
-
-.cost-value {
+.comment-author {
+    font-weight: 600;
     color: #2c3e50;
+    font-size: 13px;
 }
 
-/* Service Job Number */
-.job-number {
-    font-family: 'Courier New', monospace;
-    font-weight: bold;
-    color: #2c3e50;
-    background: #e9ecef;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 12px;
+.comment-date {
+    color: #666;
+    font-size: 11px;
+    font-style: italic;
 }
 
-/* Invoice Number */
-.invoice-number {
-    font-family: 'Courier New', monospace;
-    font-weight: bold;
-    color: #2c3e50;
-    background: #e9ecef;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 12px;
+.comment-timeline-text {
+    color: #333;
+    line-height: 1.4;
+    font-size: 13px;
 }
+
+.no-comments {
+    text-align: center;
+    color: #888;
+    font-style: italic;
+    padding: 20px;
+}
+
+/* Pulse animation for current status */
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+    }
+}
+
+/* Action Buttons for Service Table */
+.service-table .actions {
+    text-align: center;
+    white-space: nowrap;
+    min-width: 180px;
+}
+
+.service-table .actions .btn {
+    margin: 0 1px;
+    padding: 4px 8px;
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+}
+
+.service-table .actions .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.service-table .actions .btn-info {
+    background-color: #17a2b8;
+    border-color: #17a2b8;
+    color: white;
+}
+
+.service-table .actions .btn-info:hover {
+    background-color: #138496;
+    border-color: #117a8b;
+}
+
+/* Responsive Design for Service Module */
+@media (max-width: 1200px) {
+    .service-table {
+        font-size: 13px;
+    }
+    
+    .service-table th,
+    .service-table td {
+        padding: 8px 6px;
+    }
+    
+    .customer-name {
+        max-width: 120px;
+    }
+    
+    .date-time {
+        min-width: 120px;
+        font-size: 12px;
+    }
+    
+    .service-controls .filter-container {
+        flex-wrap: wrap;
+    }
+    
+    .service-controls select,
+    .service-controls input[type="date"] {
+        min-width: 120px;
+    }
+}
+
+@media (max-width: 768px) {
+    .service-main-container .data-table-container {
+        overflow-x: auto;
+    }
+    
+    .service-table {
+        min-width: 900px;
+        font-size: 12px;
+    }
+    
+    .service-table th,
+    .service-table td {
+        padding: 6px 4px;
+    }
+    
+    .job-number {
+        font-size: 10px;
+        padding: 2px 6px;
+    }
+    
+    .service-table .actions .btn {
+        padding: 3px 6px;
+        font-size: 9px;
+        margin: 1px;
+    }
+    
+    .service-status-badge,
+    .location-badge,
+    .payment-mode-badge {
+        font-size: 9px;
+        padding: 2px 6px;
+    }
+    
+    .service-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+    
+    .service-controls .search-container {
+        min-width: auto;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .service-controls .filter-container {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .service-controls select,
+    .service-controls input[type="date"] {
+        min-width: auto;
+        width: 100%;
+    }
+    
+    #newServiceModal .modal-content {
+        width: 98%;
+        max-width: 98%;
+        margin: 1% auto;
+        max-height: 98vh;
+    }
+    
+    #newServiceModal .form-row {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    #newServiceModal .modal-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    #newServiceModal .modal-actions .btn {
+        width: 100%;
+        min-width: auto;
+    }
+    
+    .service-item-details {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    
+    .timeline-item {
+        padding-left: 30px;
+    }
+    
+    .timeline-container::before {
+        left: 10px;
+    }
+    
+    .timeline-marker {
+        left: 1px;
+        width: 16px;
+        height: 16px;
+    }
+    
+    .timeline-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+    
+    .comment-timeline-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+    }
+}
+
+/* Print Styles for Service Documents */
+@media print {
+    .service-controls,
+    .modal-header,
+    .modal-actions,
+    .btn,
+    .sidebar,
+    .header-actions {
+        display: none !important;
+    }
+    
+    .service-table,
+    .data-table {
+        font-size: 11px;
+        border-collapse: collapse;
+    }
+    
+    .service-table th,
+    .service-table td,
+    .data-table th,
+    .data-table td {
+        border: 1px solid #000 !important;
+        padding: 4px !important;
+    }
+    
+    .job-number {
+        background: white !important;
+        color: #000 !important;
+        border: 1px solid #000 !important;
+    }
+    
+    .service-status-badge,
+    .location-badge,
+    .payment-mode-badge {
+        background: white !important;
+        color: #000 !important;
+        border: 1px solid #000 !important;
+    }
+    
+    .timeline-container::before {
+        background: #000 !important;
+    }
+    
+    .timeline-marker {
+        background: #000 !important;
+        border-color: #000 !important;
+    }
+}
+
+/* Focus States for Accessibility */
+.service-table:focus-within {
+    outline: 2px solid #3498db;
+    outline-offset: -2px;
+}
+
+.service-item-card:focus-within {
+    outline: 2px solid #3498db;
+    outline-offset: -2px;
+}
+
+.timeline-item:focus-within {
+    outline: 2px solid #3498db;
+    outline-offset: -2px;
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+    .service-table th,
+    .service-table td {
+        border-width: 2px;
+    }
+    
+    .job-number,
+    .service-status-badge,
+    .location-badge {
+        border-width: 2px;
+    }
+    
+    .timeline-container::before {
+        width: 3px;
+    }
+    
+    .timeline-marker {
+        border-width: 4px;
+    }
+}
+
+/* Loading States for Service Module */
+.service-table .btn.loading {
+    opacity: 0.7;
+    cursor: not-allowed;
+    position: relative;
+    pointer-events: none;
+}
+
+.service-table .btn.loading:before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin: -6px 0 0 -6px;
+    width: 12px;
+    height: 12px;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
 /* src/styles.css - Part 11: Expenses and Invoices */
 
 /* Expenses Module Styles */

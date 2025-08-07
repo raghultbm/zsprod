@@ -1,3 +1,4 @@
+// src/modules/service.js - Updated Service Module with Sales-like structure
 const { ipcRenderer } = require('electron');
 
 class ServiceModule {
@@ -7,6 +8,7 @@ class ServiceModule {
         this.serviceItems = [];
         this.selectedServiceCustomer = null;
         this.serviceJobs = [];
+        this.filteredServiceJobs = [];
         this.currentServiceJob = null;
         this.isInitialized = false;
         this.customerSearchTimeout = null;
@@ -17,6 +19,7 @@ class ServiceModule {
         
         this.setupEventListeners();
         await this.loadData();
+        this.renderInitialView();
         this.isInitialized = true;
     }
 
@@ -37,38 +40,106 @@ class ServiceModule {
                     if (suggestions) suggestions.style.display = 'none';
                 }, 200);
             });
+
+            serviceCustomerSearch.addEventListener('focus', () => {
+                if (serviceCustomerSearch.value.trim().length >= 2) {
+                    this.searchServiceCustomers(serviceCustomerSearch.value.trim());
+                }
+            });
         }
 
         // Form submissions
-        const serviceItemForm = document.getElementById('serviceItemForm');
-        if (serviceItemForm) {
-            serviceItemForm.addEventListener('submit', (e) => this.handleServiceItemForm(e));
-        }
-
         const updateServiceStatusForm = document.getElementById('updateServiceStatusForm');
         if (updateServiceStatusForm) {
             updateServiceStatusForm.addEventListener('submit', (e) => this.handleUpdateServiceStatus(e));
         }
+    }
 
-        const completeServiceForm = document.getElementById('completeServiceForm');
-        if (completeServiceForm) {
-            completeServiceForm.addEventListener('submit', (e) => this.handleCompleteService(e));
-        }
+    renderInitialView() {
+        const contentBody = document.getElementById('service-content');
+        if (!contentBody) return;
 
-        const addCommentForm = document.getElementById('addCommentForm');
-        if (addCommentForm) {
-            addCommentForm.addEventListener('submit', (e) => this.handleAddComment(e));
-        }
+        contentBody.innerHTML = window.ServiceContent.getHTML();
+
+        // Re-setup event listeners for the new DOM elements
+        this.setupEventListeners();
+        this.renderServiceTable();
     }
 
     async loadData() {
         try {
             this.serviceJobs = await ipcRenderer.invoke('get-service-jobs');
-            this.renderServiceJobsTable();
+            this.filteredServiceJobs = [...this.serviceJobs];
+            this.renderServiceTable();
         } catch (error) {
             console.error('Error loading service jobs:', error);
             showError('Error loading service jobs');
         }
+    }
+
+    renderServiceTable() {
+        const tbody = document.getElementById('serviceTableBody');
+        if (!tbody) return;
+
+        tbody.innerHTML = '';
+        
+        this.filteredServiceJobs.forEach((job, index) => {
+            const row = document.createElement('tr');
+            const jobDateTime = new Date(job.created_at).toLocaleString();
+            const customerMobile = job.customer_phone || '-';
+            
+            // Format status
+            const statusClass = job.status ? job.status.replace(/_/g, '-') : 'unknown';
+            const statusDisplay = job.status ? job.status.replace(/_/g, ' ').toUpperCase() : 'UNKNOWN';
+            
+            // Format location
+            const locationDisplay = job.location ? 
+                job.location.charAt(0).toUpperCase() + job.location.slice(1) : '-';
+            
+            // Payment method from advance payment
+            let paymentModeDisplay = 'No Advance';
+            if (job.advance_payment_method) {
+                paymentModeDisplay = job.advance_payment_method.toUpperCase();
+            }
+            
+            row.innerHTML = `
+                <td class="serial-number">${index + 1}</td>
+                <td><span class="job-number">${job.job_number || 'N/A'}</span></td>
+                <td class="date-time">${jobDateTime}</td>
+                <td class="customer-name">${job.customer_name || 'Walk-in Customer'}</td>
+                <td class="customer-mobile">${customerMobile}</td>
+                <td class="service-status">
+                    <span class="service-status-badge ${statusClass}">${statusDisplay}</span>
+                </td>
+                <td class="service-location">
+                    <span class="location-badge">${locationDisplay}</span>
+                </td>
+                <td class="estimated-cost">₹${parseFloat(job.estimated_cost || 0).toFixed(2)}</td>
+                <td class="payment-mode">
+                    <span class="payment-mode-badge ${job.advance_payment_method || 'none'}">${paymentModeDisplay}</span>
+                </td>
+                <td class="actions">
+                    <button class="btn btn-sm btn-secondary" onclick="serviceModule().viewServiceDetails(${job.id})">View</button>
+                    <button class="btn btn-sm btn-primary" onclick="serviceModule().updateServiceStatus(${job.id})">Update</button>
+                    <button class="btn btn-sm btn-info" onclick="serviceModule().showServiceHistory(${job.id})">History</button>
+                    <button class="btn btn-sm btn-success" onclick="serviceModule().printServiceAcknowledgment(${job.id})">Print</button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    openNewServiceModal() {
+        this.clearServiceForm();
+        
+        const modal = document.getElementById('newServiceModal');
+        if (modal) modal.style.display = 'block';
+        
+        // Focus on customer search
+        setTimeout(() => {
+            const customerSearch = document.getElementById('serviceCustomerSearch');
+            if (customerSearch) customerSearch.focus();
+        }, 300);
     }
 
     async searchServiceCustomers(searchTerm) {
@@ -79,7 +150,6 @@ class ServiceModule {
         }
 
         try {
-            // Use the renamed method to avoid confusion with the main search
             const customers = await this.customerModule.searchCustomersForOtherModules(searchTerm);
             this.displayServiceCustomerSuggestions(customers);
         } catch (error) {
@@ -126,6 +196,8 @@ class ServiceModule {
         if (suggestions) {
             suggestions.style.display = 'none';
         }
+        
+        showSuccess(`Customer selected: ${name}`);
     }
 
     addServiceItem() {
@@ -216,7 +288,7 @@ class ServiceModule {
                 parseInt(document.getElementById('serviceItemMachineChange').value) : null,
             movement_no: document.getElementById('serviceItemMovementNo')?.value || null,
             issue_description: document.getElementById('serviceItemIssueDescription')?.value,
-            product_image_path: null // Handle file upload separately if needed
+            product_image_path: null
         };
 
         if (!itemData.category || !itemData.issue_description) {
@@ -227,10 +299,8 @@ class ServiceModule {
         const itemIndex = document.getElementById('serviceItemIndex')?.value;
         
         if (itemIndex !== '') {
-            // Update existing item
             this.serviceItems[parseInt(itemIndex)] = itemData;
         } else {
-            // Add new item
             this.serviceItems.push(itemData);
         }
         
@@ -283,10 +353,6 @@ class ServiceModule {
         }
     }
 
-    editServiceItem(index) {
-        this.openServiceItemModal(index);
-    }
-
     async createServiceJob() {
         if (this.serviceItems.length === 0) {
             showError('Please add at least one service item');
@@ -323,16 +389,22 @@ class ServiceModule {
             
             if (result.success) {
                 showSuccess(`Service job created successfully! Job Number: ${result.job_number}`);
-                this.clearServiceJob();
+                closeModal('newServiceModal');
+                this.clearServiceForm();
                 await this.loadData();
+                
+                // Refresh customer net value if applicable
+                if (this.selectedServiceCustomer && this.customerModule) {
+                    await this.customerModule.refreshCustomerNetValue(this.selectedServiceCustomer.id);
+                }
             }
         } catch (error) {
             console.error('Error creating service job:', error);
-            showError('Error creating service job');
+            showError('Error creating service job: ' + (error.message || 'Unknown error'));
         }
     }
 
-    clearServiceJob() {
+    clearServiceForm() {
         this.serviceItems = [];
         this.selectedServiceCustomer = null;
         
@@ -364,61 +436,7 @@ class ServiceModule {
         if (suggestions) suggestions.style.display = 'none';
     }
 
-    renderServiceJobsTable() {
-        const tbody = document.getElementById('serviceJobsTableBody');
-        if (!tbody) return;
-
-        tbody.innerHTML = '';
-        
-        this.serviceJobs.slice(0, 20).forEach(job => { // Show only last 20 jobs
-            const row = document.createElement('tr');
-            
-            const statusClass = job.status.replace('_', '-');
-            const locationCapitalized = job.location.charAt(0).toUpperCase() + job.location.slice(1);
-            
-            row.innerHTML = `
-                <td><span class="job-number">${job.job_number}</span></td>
-                <td>${job.customer_name || 'Walk-in'}</td>
-                <td>${job.items_count || 0}</td>
-                <td><span class="service-status ${statusClass}">${job.status.replace('_', ' ')}</span></td>
-                <td><span class="service-location">${locationCapitalized}</span></td>
-                <td>₹${parseFloat(job.estimated_cost || 0).toFixed(2)}</td>
-                <td>
-                    <div class="service-actions">
-                        <button class="btn btn-sm btn-secondary" onclick="serviceModule().viewServiceJobDetails(${job.id})">View</button>
-                        <button class="btn btn-sm btn-primary" onclick="serviceModule().updateServiceStatus(${job.id})">Update</button>
-                        ${job.status !== 'service_completed' ? 
-                            `<button class="btn btn-sm btn-success" onclick="serviceModule().completeService(${job.id})">Complete</button>` : ''}
-                    </div>
-                </td>
-            `;
-            tbody.appendChild(row);
-        });
-    }
-
-    async searchServiceJobs() {
-        const searchTerm = document.getElementById('serviceJobSearch')?.value?.trim();
-        
-        if (searchTerm) {
-            try {
-                this.serviceJobs = await ipcRenderer.invoke('search-service-jobs', searchTerm);
-                this.renderServiceJobsTable();
-            } catch (error) {
-                console.error('Error searching service jobs:', error);
-                showError('Error searching service jobs');
-            }
-        } else {
-            await this.loadData();
-        }
-    }
-
-    clearServiceSearch() {
-        const searchField = document.getElementById('serviceJobSearch');
-        if (searchField) searchField.value = '';
-        this.loadData();
-    }
-
-    async viewServiceJobDetails(jobId) {
+    async viewServiceDetails(jobId) {
         try {
             this.currentServiceJob = await ipcRenderer.invoke('get-service-job-details', jobId);
             this.displayServiceJobDetails(this.currentServiceJob);
@@ -434,16 +452,6 @@ class ServiceModule {
         const { job, items, statusHistory, comments } = serviceDetails;
         const content = document.getElementById('serviceJobDetailsContent');
         if (!content) return;
-        
-        // Show/hide print invoice button
-        const printInvoiceBtn = document.getElementById('printInvoiceBtn');
-        if (printInvoiceBtn) {
-            if (job.status === 'service_completed' || job.status === 'delivered') {
-                printInvoiceBtn.style.display = 'inline-block';
-            } else {
-                printInvoiceBtn.style.display = 'none';
-            }
-        }
         
         content.innerHTML = `
             <div class="service-job-details">
@@ -616,7 +624,7 @@ class ServiceModule {
             
             // Refresh details modal if open
             if (this.currentServiceJob && this.currentServiceJob.job.id === jobId) {
-                await this.viewServiceJobDetails(jobId);
+                await this.viewServiceDetails(jobId);
             }
         } catch (error) {
             console.error('Error updating service status:', error);
@@ -624,56 +632,102 @@ class ServiceModule {
         }
     }
 
-    completeService(jobId) {
-        document.getElementById('completeServiceJobId').value = jobId;
-        
-        // Set default delivery date to today
-        const today = new Date().toISOString().split('T')[0];
-        const deliveryDateField = document.getElementById('actualDeliveryDate');
-        if (deliveryDateField) deliveryDateField.value = today;
-        
-        const modal = document.getElementById('completeServiceModal');
-        if (modal) modal.style.display = 'block';
-    }
-
-    async handleCompleteService(e) {
-        e.preventDefault();
-        
-        const jobId = parseInt(document.getElementById('completeServiceJobId')?.value);
-        const finalCost = parseFloat(document.getElementById('finalCost')?.value);
-        const finalPaymentAmount = parseFloat(document.getElementById('finalPaymentAmount')?.value);
-        const finalPaymentMethod = document.getElementById('finalPaymentMethod')?.value;
-        const finalPaymentReference = document.getElementById('finalPaymentReference')?.value;
-        const actualDeliveryDate = document.getElementById('actualDeliveryDate')?.value;
-        
-        if (!finalCost || !finalPaymentAmount || !finalPaymentMethod || !actualDeliveryDate) {
-            showError('Please fill in all required fields');
-            return;
-        }
-        
+    async showServiceHistory(jobId) {
         try {
-            await ipcRenderer.invoke('complete-service', {
-                jobId,
-                finalCost,
-                finalPaymentAmount,
-                finalPaymentMethod,
-                finalPaymentReference,
-                actualDeliveryDate,
-                completedBy: this.currentUser.id
-            });
-            
-            showSuccess('Service completed successfully!');
-            closeModal('completeServiceModal');
-            await this.loadData();
-            
-            // Refresh details modal if open
-            if (this.currentServiceJob && this.currentServiceJob.job.id === jobId) {
-                await this.viewServiceJobDetails(jobId);
+            const serviceDetails = await ipcRenderer.invoke('get-service-job-details', jobId);
+            this.displayServiceHistory(serviceDetails);
+            const modal = document.getElementById('serviceHistoryModal');
+            if (modal) {
+                modal.style.display = 'block';
+            } else {
+                this.createServiceHistoryModal();
+                setTimeout(() => {
+                    this.displayServiceHistory(serviceDetails);
+                    const newModal = document.getElementById('serviceHistoryModal');
+                    if (newModal) newModal.style.display = 'block';
+                }, 100);
             }
         } catch (error) {
-            console.error('Error completing service:', error);
-            showError('Error completing service');
+            console.error('Error loading service history:', error);
+            showError('Error loading service history');
         }
+    }
+
+    createServiceHistoryModal() {
+        const modalHTML = `
+            <div id="serviceHistoryModal" class="modal">
+                <div class="modal-content large-modal responsive-modal">
+                    <div class="modal-header">
+                        <h3>Service History</h3>
+                        <span class="close-btn" onclick="closeModal('serviceHistoryModal')">&times;</span>
+                    </div>
+                    <div class="modal-body" id="serviceHistoryContent">
+                        <!-- Dynamic content -->
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" onclick="closeModal('serviceHistoryModal')" class="btn btn-secondary">Close</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+
+    displayServiceHistory(serviceDetails) {
+        const { job, statusHistory, comments } = serviceDetails;
+        const content = document.getElementById('serviceHistoryContent');
+        if (!content) return;
+        
+        content.innerHTML = `
+            <div class="service-history-container">
+                <div class="job-summary">
+                    <h4>Job: ${job.job_number}</h4>
+                    <p><strong>Customer:</strong> ${job.customer_name || 'Walk-in Customer'}</p>
+                    <p><strong>Created:</strong> ${new Date(job.created_at).toLocaleString()}</p>
+                    <p><strong>Current Status:</strong> <span class="service-status ${job.status.replace('_', '-')}">${job.status.replace('_', ' ').toUpperCase()}</span></p>
+                </div>
+
+                <div class="history-timeline">
+                    <h4>Status History</h4>
+                    <div class="timeline-container">
+                        ${statusHistory.map((history, index) => `
+                            <div class="timeline-item ${index === 0 ? 'current' : ''}">
+                                <div class="timeline-marker"></div>
+                                <div class="timeline-content">
+                                    <div class="timeline-header">
+                                        <span class="timeline-status">${history.status.replace('_', ' ').toUpperCase()}</span>
+                                        <span class="timeline-date">${new Date(history.changed_at).toLocaleString()}</span>
+                                    </div>
+                                    <div class="timeline-details">
+                                        <div><strong>Location:</strong> ${history.location.charAt(0).toUpperCase() + history.location.slice(1)}</div>
+                                        ${history.comments ? `<div><strong>Comments:</strong> ${history.comments}</div>` : ''}
+                                        <div><strong>Changed by:</strong> ${history.changed_by_name || 'System'}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <div class="comments-timeline">
+                    <h4>Comments History</h4>
+                    ${comments.length > 0 ? `
+                        <div class="comments-list">
+                            ${comments.map(comment => `
+                                <div class="comment-timeline-item">
+                                    <div class="comment-timeline-header">
+                                        <span class="comment-author">${comment.added_by_name || 'Unknown'}</span>
+                                        <span class="comment-date">${new Date(comment.added_at).toLocaleString()}</span>
+                                    </div>
+                                    <div class="comment-timeline-text">${comment.comment}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : '<p class="no-comments">No comments added yet.</p>'}
+                </div>
+            </div>
+        `;
     }
 
     addComment(jobId) {
@@ -706,7 +760,7 @@ class ServiceModule {
             
             // Refresh details modal if open
             if (this.currentServiceJob && this.currentServiceJob.job.id === jobId) {
-                await this.viewServiceJobDetails(jobId);
+                await this.viewServiceDetails(jobId);
             }
         } catch (error) {
             console.error('Error adding comment:', error);
@@ -714,254 +768,323 @@ class ServiceModule {
         }
     }
 
-    printServiceAcknowledgment() {
-        if (!this.currentServiceJob) return;
+    generateServiceInvoiceNumber() {
+        const now = new Date();
+        const year = now.getFullYear().toString().slice(-2);
+        const month = (now.getMonth() + 1).toString().padStart(2, '0');
+        const day = now.getDate().toString().padStart(2, '0');
         
-        const { job, items } = this.currentServiceJob;
+        // Generate 4 random digits
+        let randomDigits = '';
+        for (let i = 0; i < 4; i++) {
+            randomDigits += Math.floor(Math.random() * 10).toString();
+        }
         
-        const printWindow = window.open('', '_blank');
-        printWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Service Acknowledgment - ${job.job_number}</title>
-                <style>
-                    body { font-family: Arial, sans-serif; margin: 20px; }
-                    .header { text-align: center; border-bottom: 2px solid #000; margin-bottom: 20px; padding-bottom: 10px; }
-                    .title { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
-                    .subtitle { font-size: 14px; color: #666; }
-                    .section { margin-bottom: 15px; }
-                    .section h4 { border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 8px; }
-                    .row { display: flex; justify-content: space-between; margin-bottom: 3px; }
-                    .table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-                    .table th, .table td { border: 1px solid #000; padding: 8px; text-align: left; }
-                    .table th { background: #f0f0f0; font-weight: bold; }
-                    .footer { margin-top: 30px; text-align: center; border-top: 1px solid #000; padding-top: 10px; }
-                    .job-number { font-family: 'Courier New', monospace; font-weight: bold; }
-                </style>
-            </head>
-            <body>
-                <div class="header">
-                    <div class="title">⌚ Watch Shop</div>
-                    <div class="subtitle">Service Acknowledgment</div>
-                </div>
-                
-                <div class="section">
-                    <h4>Job Details</h4>
-                    <div class="row">
-                        <span>Job Number:</span>
-                        <span class="job-number">${job.job_number}</span>
-                    </div>
-                    <div class="row">
-                        <span>Date:</span>
-                        <span>${new Date(job.created_at).toLocaleDateString()}</span>
-                    </div>
-                    <div class="row">
-                        <span>Customer:</span>
-                        <span>${job.customer_name || 'Walk-in Customer'}</span>
-                    </div>
-                    ${job.customer_phone ? `
-                    <div class="row">
-                        <span>Phone:</span>
-                        <span>${job.customer_phone}</span>
-                    </div>` : ''}
-                    <div class="row">
-                        <span>Location:</span>
-                        <span>${job.location.charAt(0).toUpperCase() + job.location.slice(1)}</span>
-                    </div>
-                    <div class="row">
-                        <span>Expected Delivery:</span>
-                        <span>${new Date(job.approximate_delivery_date).toLocaleDateString()}</span>
-                    </div>
-                </div>
-                
-                <div class="section">
-                    <h4>Service Items</h4>
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Category</th>
-                                <th>Brand</th>
-                                <th>Details</th>
-                                <th>Issue Description</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${items.map(item => `
-                                <tr>
-                                    <td>${item.category}</td>
-                                    <td>${item.brand || '-'}</td>
-                                    <td>
-                                        ${item.gender ? `Gender: ${item.gender}<br>` : ''}
-                                        ${item.case_material ? `Case: ${item.case_material.replace('_', ' ')}<br>` : ''}
-                                        ${item.strap_material ? `Strap: ${item.strap_material.replace('_', ' ')}<br>` : ''}
-                                        ${item.movement_no ? `Movement: ${item.movement_no}` : ''}
-                                    </td>
-                                    <td>${item.issue_description}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-                
-                <div class="section">
-                    <h4>Cost Details</h4>
-                    <div class="row">
-                        <span>Estimated Cost:</span>
-                        <span>₹${parseFloat(job.estimated_cost || 0).toFixed(2)}</span>
-                    </div>
-                    <div class="row">
-                        <span>Advance Paid:</span>
-                        <span>₹${parseFloat(job.advance_amount || 0).toFixed(2)}</span>
-                    </div>
-                    <div class="row">
-                        <span><strong>Balance (Approx):</strong></span>
-                        <span><strong>₹${(parseFloat(job.estimated_cost || 0) - parseFloat(job.advance_amount || 0)).toFixed(2)}</strong></span>
-                    </div>
-                </div>
-                
-                ${job.comments ? `
-                <div class="section">
-                    <h4>Comments</h4>
-                    <p>${job.comments}</p>
-                </div>` : ''}
-                
-                <div class="footer">
-                    <p>Thank you for choosing Watch Shop!</p>
-                    <p>Please keep this acknowledgment for your records.</p>
-                </div>
-            </body>
-            </html>
-        `);
-        
-        printWindow.document.close();
-        printWindow.print();
+        return `INVSR${year}${month}${day}${randomDigits}`;
     }
 
-    printServiceInvoice() {
-        if (!this.currentServiceJob) return;
+    generateServiceAcknowledgmentNumber() {
+        const now = new Date();
+        const year = now.getFullYear().toString().slice(-2);
+        const month = (now.getMonth() + 1).toString().padStart(2, '0');
+        const day = now.getDate().toString().padStart(2, '0');
         
-        const { job, items } = this.currentServiceJob;
+        // Generate 4 random digits
+        let randomDigits = '';
+        for (let i = 0; i < 4; i++) {
+            randomDigits += Math.floor(Math.random() * 10).toString();
+        }
         
-        const printWindow = window.open('', '_blank');
-        printWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Service Invoice - ${job.job_number}</title>
-                <style>
-                    body { font-family: Arial, sans-serif; margin: 20px; }
-                    .header { text-align: center; border-bottom: 2px solid #000; margin-bottom: 20px; padding-bottom: 10px; }
-                    .title { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
-                    .subtitle { font-size: 14px; color: #666; }
-                    .section { margin-bottom: 15px; }
-                    .section h4 { border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 8px; }
-                    .row { display: flex; justify-content: space-between; margin-bottom: 3px; }
-                    .table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-                    .table th, .table td { border: 1px solid #000; padding: 8px; text-align: left; }
-                    .table th { background: #f0f0f0; font-weight: bold; }
-                    .footer { margin-top: 30px; text-align: center; border-top: 1px solid #000; padding-top: 10px; }
-                    .job-number { font-family: 'Courier New', monospace; font-weight: bold; }
-                    .total-row { font-weight: bold; background: #f0f0f0; }
-                </style>
-            </head>
-            <body>
-                <div class="header">
-                    <div class="title">⌚ Watch Shop</div>
-                    <div class="subtitle">Service Invoice</div>
-                </div>
-                
-                <div class="section">
-                    <h4>Invoice Details</h4>
-                    <div class="row">
-                        <span>Job Number:</span>
-                        <span class="job-number">${job.job_number}</span>
+        return `ACKSR${year}${month}${day}${randomDigits}`;
+    }
+
+    async printServiceAcknowledgment(jobId) {
+        try {
+            let serviceDetails;
+            if (this.currentServiceJob && this.currentServiceJob.job.id === jobId) {
+                serviceDetails = this.currentServiceJob;
+            } else {
+                serviceDetails = await ipcRenderer.invoke('get-service-job-details', jobId);
+            }
+            
+            const { job, items } = serviceDetails;
+            const acknowledgmentNumber = this.generateServiceAcknowledgmentNumber();
+            
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Service Acknowledgment - ${acknowledgmentNumber}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        .header { text-align: center; border-bottom: 2px solid #000; margin-bottom: 20px; padding-bottom: 10px; }
+                        .title { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
+                        .subtitle { font-size: 14px; color: #666; }
+                        .ack-number { font-size: 16px; font-weight: bold; margin: 10px 0; font-family: 'Courier New', monospace; }
+                        .section { margin-bottom: 15px; }
+                        .section h4 { border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 8px; }
+                        .row { display: flex; justify-content: space-between; margin-bottom: 3px; }
+                        .table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+                        .table th, .table td { border: 1px solid #000; padding: 8px; text-align: left; }
+                        .table th { background: #f0f0f0; font-weight: bold; }
+                        .footer { margin-top: 30px; text-align: center; border-top: 1px solid #000; padding-top: 10px; }
+                        .job-number { font-family: 'Courier New', monospace; font-weight: bold; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <div class="title">⌚ Watch Shop</div>
+                        <div class="subtitle">Service Acknowledgment</div>
+                        <div class="ack-number">ACK #: ${acknowledgmentNumber}</div>
                     </div>
-                    <div class="row">
-                        <span>Service Date:</span>
-                        <span>${new Date(job.created_at).toLocaleDateString()}</span>
+                    
+                    <div class="section">
+                        <h4>Job Details</h4>
+                        <div class="row">
+                            <span>Job Number:</span>
+                            <span class="job-number">${job.job_number}</span>
+                        </div>
+                        <div class="row">
+                            <span>Date:</span>
+                            <span>${new Date(job.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <div class="row">
+                            <span>Time:</span>
+                            <span>${new Date(job.created_at).toLocaleTimeString()}</span>
+                        </div>
+                        <div class="row">
+                            <span>Customer:</span>
+                            <span>${job.customer_name || 'Walk-in Customer'}</span>
+                        </div>
+                        ${job.customer_phone ? `
+                        <div class="row">
+                            <span>Phone:</span>
+                            <span>${job.customer_phone}</span>
+                        </div>` : ''}
+                        <div class="row">
+                            <span>Location:</span>
+                            <span>${job.location.charAt(0).toUpperCase() + job.location.slice(1)}</span>
+                        </div>
+                        <div class="row">
+                            <span>Expected Delivery:</span>
+                            <span>${new Date(job.approximate_delivery_date).toLocaleDateString()}</span>
+                        </div>
                     </div>
-                    <div class="row">
-                        <span>Completion Date:</span>
-                        <span>${job.actual_delivery_date ? new Date(job.actual_delivery_date).toLocaleDateString() : 'N/A'}</span>
-                    </div>
-                    <div class="row">
-                        <span>Customer:</span>
-                        <span>${job.customer_name || 'Walk-in Customer'}</span>
-                    </div>
-                    ${job.customer_phone ? `
-                    <div class="row">
-                        <span>Phone:</span>
-                        <span>${job.customer_phone}</span>
-                    </div>` : ''}
-                </div>
-                
-                <div class="section">
-                    <h4>Service Summary</h4>
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Category</th>
-                                <th>Brand</th>
-                                <th>Service Description</th>
-                                <th>Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${items.map(item => `
+                    
+                    <div class="section">
+                        <h4>Service Items</h4>
+                        <table class="table">
+                            <thead>
                                 <tr>
-                                    <td>${item.category}</td>
-                                    <td>${item.brand || '-'}</td>
-                                    <td>${item.issue_description}</td>
-                                    <td>₹${(parseFloat(job.final_cost || 0) / items.length).toFixed(2)}</td>
+                                    <th>S.No</th>
+                                    <th>Category</th>
+                                    <th>Brand</th>
+                                    <th>Details</th>
+                                    <th>Issue Description</th>
                                 </tr>
-                            `).join('')}
-                            <tr class="total-row">
-                                <td colspan="3"><strong>Total Service Cost</strong></td>
-                                <td><strong>₹${parseFloat(job.final_cost || 0).toFixed(2)}</strong></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                
-                <div class="section">
-                    <h4>Payment Summary</h4>
-                    <div class="row">
-                        <span>Total Service Cost:</span>
-                        <span>₹${parseFloat(job.final_cost || 0).toFixed(2)}</span>
+                            </thead>
+                            <tbody>
+                                ${items.map((item, index) => `
+                                    <tr>
+                                        <td>${index + 1}</td>
+                                        <td>${item.category}</td>
+                                        <td>${item.brand || '-'}</td>
+                                        <td>
+                                            ${item.gender ? `Gender: ${item.gender}<br>` : ''}
+                                            ${item.case_material ? `Case: ${item.case_material.replace('_', ' ')}<br>` : ''}
+                                            ${item.strap_material ? `Strap: ${item.strap_material.replace('_', ' ')}<br>` : ''}
+                                            ${item.movement_no ? `Movement: ${item.movement_no}` : ''}
+                                        </td>
+                                        <td>${item.issue_description}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
                     </div>
-                    <div class="row">
-                        <span>Advance Paid:</span>
-                        <span>₹${parseFloat(job.advance_amount || 0).toFixed(2)}</span>
+                    
+                    <div class="section">
+                        <h4>Cost Details</h4>
+                        <div class="row">
+                            <span>Estimated Cost:</span>
+                            <span>₹${parseFloat(job.estimated_cost || 0).toFixed(2)}</span>
+                        </div>
+                        <div class="row">
+                            <span>Advance Paid:</span>
+                            <span>₹${parseFloat(job.advance_amount || 0).toFixed(2)}</span>
+                        </div>
+                        <div class="row">
+                            <span><strong>Balance (Approx):</strong></span>
+                            <span><strong>₹${(parseFloat(job.estimated_cost || 0) - parseFloat(job.advance_amount || 0)).toFixed(2)}</strong></span>
+                        </div>
                     </div>
-                    <div class="row">
-                        <span>Final Payment:</span>
-                        <span>₹${parseFloat(job.final_payment_amount || 0).toFixed(2)}</span>
+                    
+                    ${job.comments ? `
+                    <div class="section">
+                        <h4>Comments</h4>
+                        <p>${job.comments}</p>
+                    </div>` : ''}
+                    
+                    <div class="footer">
+                        <p>Thank you for choosing Watch Shop!</p>
+                        <p>Please keep this acknowledgment for your records.</p>
+                        <p><strong>Important:</strong> Please bring this acknowledgment when collecting your item.</p>
                     </div>
-                    <div class="row">
-                        <span><strong>Total Paid:</strong></span>
-                        <span><strong>₹${(parseFloat(job.advance_amount || 0) + parseFloat(job.final_payment_amount || 0)).toFixed(2)}</strong></span>
-                    </div>
-                    <div class="row">
-                        <span><strong>Balance:</strong></span>
-                        <span><strong>₹${(parseFloat(job.final_cost || 0) - parseFloat(job.advance_amount || 0) - parseFloat(job.final_payment_amount || 0)).toFixed(2)}</strong></span>
-                    </div>
-                </div>
-                
-                <div class="footer">
-                    <p>Thank you for your business!</p>
-                    <p>Warranty period: As per manufacturer's warranty</p>
-                </div>
-            </body>
-            </html>
-        `);
+                </body>
+                </html>
+            `);
+            
+            printWindow.document.close();
+            printWindow.print();
+        } catch (error) {
+            console.error('Error printing service acknowledgment:', error);
+            showError('Error printing acknowledgment');
+        }
+    }
+
+    searchServices() {
+        const searchTerm = document.getElementById('serviceSearch')?.value?.trim().toLowerCase();
         
-        printWindow.document.close();
-        printWindow.print();
+        if (searchTerm) {
+            this.filteredServiceJobs = this.serviceJobs.filter(job => 
+                (job.job_number && job.job_number.toLowerCase().includes(searchTerm)) ||
+                (job.customer_name && job.customer_name.toLowerCase().includes(searchTerm)) ||
+                (job.customer_phone && job.customer_phone.includes(searchTerm))
+            );
+        } else {
+            this.filteredServiceJobs = [...this.serviceJobs];
+        }
+        
+        this.renderServiceTable();
+    }
+
+    clearServiceSearch() {
+        const searchField = document.getElementById('serviceSearch');
+        const statusFilter = document.getElementById('serviceStatusFilter');
+        const locationFilter = document.getElementById('serviceLocationFilter');
+        const dateFromField = document.getElementById('serviceDateFrom');
+        const dateToField = document.getElementById('serviceDateTo');
+        
+        if (searchField) searchField.value = '';
+        if (statusFilter) statusFilter.value = '';
+        if (locationFilter) locationFilter.value = '';
+        if (dateFromField) dateFromField.value = '';
+        if (dateToField) dateToField.value = '';
+        
+        this.filteredServiceJobs = [...this.serviceJobs];
+        this.renderServiceTable();
+    }
+
+    filterServicesByStatus() {
+        const status = document.getElementById('serviceStatusFilter')?.value;
+        
+        if (status) {
+            this.filteredServiceJobs = this.serviceJobs.filter(job => job.status === status);
+        } else {
+            this.filteredServiceJobs = [...this.serviceJobs];
+        }
+        
+        this.renderServiceTable();
+    }
+
+    filterServicesByLocation() {
+        const location = document.getElementById('serviceLocationFilter')?.value;
+        
+        if (location) {
+            this.filteredServiceJobs = this.serviceJobs.filter(job => job.location === location);
+        } else {
+            this.filteredServiceJobs = [...this.serviceJobs];
+        }
+        
+        this.renderServiceTable();
+    }
+
+    filterServices() {
+        const dateFrom = document.getElementById('serviceDateFrom')?.value;
+        const dateTo = document.getElementById('serviceDateTo')?.value;
+        
+        this.filteredServiceJobs = this.serviceJobs.filter(job => {
+            const jobDate = new Date(job.created_at);
+            let matchesDateRange = true;
+            
+            if (dateFrom) {
+                matchesDateRange = matchesDateRange && jobDate >= new Date(dateFrom);
+            }
+            
+            if (dateTo) {
+                matchesDateRange = matchesDateRange && jobDate <= new Date(dateTo + 'T23:59:59');
+            }
+            
+            return matchesDateRange;
+        });
+        
+        this.renderServiceTable();
+    }
+
+    // Method to be called when pre-selecting customer from customer module
+    selectServiceCustomer(id, name, phone) {
+        this.selectedServiceCustomer = { id, name, phone };
+        
+        const selectedCustomerField = document.getElementById('serviceSelectedCustomer');
+        const selectedCustomerIdField = document.getElementById('serviceSelectedCustomerId');
+        const customerSearchField = document.getElementById('serviceCustomerSearch');
+        const suggestions = document.getElementById('serviceCustomerSuggestions');
+        
+        if (selectedCustomerField) {
+            selectedCustomerField.value = `${name} ${phone ? `(${phone})` : ''}`;
+        }
+        if (selectedCustomerIdField) {
+            selectedCustomerIdField.value = id;
+        }
+        if (customerSearchField) {
+            customerSearchField.value = '';
+        }
+        if (suggestions) {
+            suggestions.style.display = 'none';
+        }
+    }
+
+    // Get service jobs for reporting
+    getServiceJobs() {
+        return this.serviceJobs;
+    }
+
+    // Get service jobs by status
+    getServiceJobsByStatus(status) {
+        return this.serviceJobs.filter(job => job.status === status);
+    }
+
+    // Get service jobs by date range
+    getServiceJobsByDateRange(startDate, endDate) {
+        return this.serviceJobs.filter(job => {
+            const jobDate = new Date(job.created_at);
+            return jobDate >= new Date(startDate) && jobDate <= new Date(endDate);
+        });
+    }
+
+    // Get total service revenue for a period
+    getTotalServiceRevenue(startDate = null, endDate = null) {
+        let filteredJobs = this.serviceJobs;
+        
+        if (startDate && endDate) {
+            filteredJobs = this.getServiceJobsByDateRange(startDate, endDate);
+        }
+        
+        return filteredJobs.reduce((total, job) => {
+            const revenue = parseFloat(job.final_cost || job.estimated_cost || 0);
+            return total + revenue;
+        }, 0);
     }
 }
 
 // Global functions for HTML onclick handlers
+window.openNewServiceModal = function() {
+    const serviceModule = window.serviceModule();
+    if (serviceModule) {
+        serviceModule.openNewServiceModal();
+    }
+};
+
 window.addServiceItem = function() {
     const serviceModule = window.serviceModule();
     if (serviceModule) {
@@ -976,17 +1099,17 @@ window.createServiceJob = function() {
     }
 };
 
-window.clearServiceJob = function() {
+window.clearServiceForm = function() {
     const serviceModule = window.serviceModule();
     if (serviceModule) {
-        serviceModule.clearServiceJob();
+        serviceModule.clearServiceForm();
     }
 };
 
-window.searchServiceJobs = function() {
+window.searchServices = function() {
     const serviceModule = window.serviceModule();
     if (serviceModule) {
-        serviceModule.searchServiceJobs();
+        serviceModule.searchServices();
     }
 };
 
@@ -997,24 +1120,31 @@ window.clearServiceSearch = function() {
     }
 };
 
+window.filterServicesByStatus = function() {
+    const serviceModule = window.serviceModule();
+    if (serviceModule) {
+        serviceModule.filterServicesByStatus();
+    }
+};
+
+window.filterServicesByLocation = function() {
+    const serviceModule = window.serviceModule();
+    if (serviceModule) {
+        serviceModule.filterServicesByLocation();
+    }
+};
+
+window.filterServices = function() {
+    const serviceModule = window.serviceModule();
+    if (serviceModule) {
+        serviceModule.filterServices();
+    }
+};
+
 window.toggleServiceCategoryFields = function() {
     const serviceModule = window.serviceModule();
     if (serviceModule) {
         serviceModule.toggleServiceCategoryFields();
-    }
-};
-
-window.printServiceAcknowledgment = function() {
-    const serviceModule = window.serviceModule();
-    if (serviceModule) {
-        serviceModule.printServiceAcknowledgment();
-    }
-};
-
-window.printServiceInvoice = function() {
-    const serviceModule = window.serviceModule();
-    if (serviceModule) {
-        serviceModule.printServiceInvoice();
     }
 };
 

@@ -1,4 +1,4 @@
-// src/dashboard.js - Updated with new sales module integration
+// src/dashboard.js - Updated with new service module integration
 const { ipcRenderer } = require('electron');
 
 // Import modules
@@ -101,6 +101,26 @@ function setupEventListeners() {
         sessionStorage.removeItem('currentUser');
         window.location.href = 'login.html';
     });
+
+    // Service Item Form submission
+    const serviceItemForm = document.getElementById('serviceItemForm');
+    if (serviceItemForm) {
+        serviceItemForm.addEventListener('submit', (e) => {
+            if (serviceModule && serviceModule.handleServiceItemForm) {
+                serviceModule.handleServiceItemForm(e);
+            }
+        });
+    }
+
+    // Add Comment Form submission
+    const addCommentForm = document.getElementById('addCommentForm');
+    if (addCommentForm) {
+        addCommentForm.addEventListener('submit', (e) => {
+            if (serviceModule && serviceModule.handleAddComment) {
+                serviceModule.handleAddComment(e);
+            }
+        });
+    }
 }
 
 function switchModule(module) {
@@ -156,6 +176,7 @@ function updatePageHeader(module) {
             break;
         case 'service':
             pageTitle.textContent = 'Service Management';
+            headerActions.innerHTML = '<button class="btn btn-primary" onclick="openNewServiceModal()">New Service</button>';
             break;
         case 'invoices':
             pageTitle.textContent = 'Invoices';
@@ -285,8 +306,6 @@ function showError(message) {
     }, 3000);
 }
 
-
-
 // Add CSS for notifications
 const style = document.createElement('style');
 style.textContent = `
@@ -326,6 +345,20 @@ function openInventoryModal() {
 function openUserModal() {
     if (usersModule) {
         usersModule.openModal();
+    }
+}
+
+// Sales Module Functions
+function openNewSaleModal() {
+    if (salesModule) {
+        salesModule.openNewSaleModal();
+    }
+}
+
+// Service Module Functions
+function openNewServiceModal() {
+    if (serviceModule) {
+        serviceModule.openNewServiceModal();
     }
 }
 
@@ -398,15 +431,15 @@ window.createServiceJob = function() {
     }
 };
 
-window.clearServiceJob = function() {
-    if (serviceModule && serviceModule.clearServiceJob) {
-        serviceModule.clearServiceJob();
+window.clearServiceForm = function() {
+    if (serviceModule && serviceModule.clearServiceForm) {
+        serviceModule.clearServiceForm();
     }
 };
 
-window.searchServiceJobs = function() {
-    if (serviceModule && serviceModule.searchServiceJobs) {
-        serviceModule.searchServiceJobs();
+window.searchServices = function() {
+    if (serviceModule && serviceModule.searchServices) {
+        serviceModule.searchServices();
     }
 };
 
@@ -416,21 +449,27 @@ window.clearServiceSearch = function() {
     }
 };
 
+window.filterServicesByStatus = function() {
+    if (serviceModule && serviceModule.filterServicesByStatus) {
+        serviceModule.filterServicesByStatus();
+    }
+};
+
+window.filterServicesByLocation = function() {
+    if (serviceModule && serviceModule.filterServicesByLocation) {
+        serviceModule.filterServicesByLocation();
+    }
+};
+
+window.filterServices = function() {
+    if (serviceModule && serviceModule.filterServices) {
+        serviceModule.filterServices();
+    }
+};
+
 window.toggleServiceCategoryFields = function() {
     if (serviceModule && serviceModule.toggleServiceCategoryFields) {
         serviceModule.toggleServiceCategoryFields();
-    }
-};
-
-window.printServiceAcknowledgment = function() {
-    if (serviceModule && serviceModule.printServiceAcknowledgment) {
-        serviceModule.printServiceAcknowledgment();
-    }
-};
-
-window.printServiceInvoice = function() {
-    if (serviceModule && serviceModule.printServiceInvoice) {
-        serviceModule.printServiceInvoice();
     }
 };
 
@@ -478,13 +517,7 @@ window.printCurrentInvoice = function() {
     }
 };
 
-window.openNewSaleModal = function() {
-    const salesModule = window.salesModule();
-    if (salesModule) {
-        salesModule.openNewSaleModal();
-    }
-};
-
+// Sales Module Global Functions
 window.addItemToSale = function() {
     const salesModule = window.salesModule();
     if (salesModule) {
@@ -538,6 +571,8 @@ window.filterSales = function() {
 window.openCustomerModal = openCustomerModal;
 window.openInventoryModal = openInventoryModal;
 window.openUserModal = openUserModal;
+window.openNewSaleModal = openNewSaleModal;
+window.openNewServiceModal = openNewServiceModal;
 window.inventoryEdit = inventoryEdit;
 window.inventoryDelete = inventoryDelete;
 window.searchInventory = searchInventory;
