@@ -1,4 +1,4 @@
-// src/modules/sales.js - Completely Revamped Sales Module
+// src/modules/sales.js - FIXED VERSION
 const { ipcRenderer } = require('electron');
 
 class SalesModule {
@@ -28,12 +28,6 @@ class SalesModule {
     }
 
     setupEventListeners() {
-        // Sale form submission
-        const saleForm = document.getElementById('saleForm');
-        if (saleForm) {
-            saleForm.addEventListener('submit', (e) => this.handleSaleFormSubmit(e));
-        }
-
         // Customer search
         const customerSearch = document.getElementById('saleCustomerSearch');
         if (customerSearch) {
@@ -49,6 +43,12 @@ class SalesModule {
                     const suggestions = document.getElementById('saleCustomerSuggestions');
                     if (suggestions) suggestions.style.display = 'none';
                 }, 200);
+            });
+
+            customerSearch.addEventListener('focus', () => {
+                if (customerSearch.value.trim().length >= 2) {
+                    this.searchCustomers(customerSearch.value.trim());
+                }
             });
         }
 
@@ -68,6 +68,12 @@ class SalesModule {
                     if (suggestions) suggestions.style.display = 'none';
                 }, 200);
             });
+
+            itemCodeSearch.addEventListener('focus', () => {
+                if (itemCodeSearch.value.trim().length >= 2) {
+                    this.searchItems(itemCodeSearch.value.trim());
+                }
+            });
         }
 
         // Discount type change
@@ -80,34 +86,6 @@ class SalesModule {
         const paymentMethod = document.getElementById('salePaymentMethod');
         if (paymentMethod) {
             paymentMethod.addEventListener('change', () => this.toggleMultiplePayments());
-        }
-
-        // Search functionality
-        const salesSearch = document.getElementById('salesSearch');
-        if (salesSearch) {
-            salesSearch.addEventListener('keyup', (e) => {
-                if (e.key === 'Enter') {
-                    this.searchSales();
-                }
-            });
-
-            salesSearch.addEventListener('input', (e) => {
-                if (e.target.value.trim() === '') {
-                    this.clearSalesSearch();
-                }
-            });
-        }
-
-        // Filter functionality
-        const dateFromFilter = document.getElementById('salesDateFrom');
-        const dateToFilter = document.getElementById('salesDateTo');
-        
-        if (dateFromFilter) {
-            dateFromFilter.addEventListener('change', () => this.filterSales());
-        }
-        
-        if (dateToFilter) {
-            dateToFilter.addEventListener('change', () => this.filterSales());
         }
     }
 
@@ -131,14 +109,16 @@ class SalesModule {
                 </div>
                 
                 <div class="data-table-container">
-                    <table class="data-table" id="salesTable">
+                    <table class="data-table sales-table" id="salesTable">
                         <thead>
                             <tr>
+                                <th>S.No</th>
                                 <th>Invoice #</th>
                                 <th>Date & Time</th>
                                 <th>Customer</th>
                                 <th>Mobile</th>
                                 <th>Items</th>
+                                <th>Payment Mode</th>
                                 <th>Total Amount</th>
                                 <th>Actions</th>
                             </tr>
@@ -171,7 +151,7 @@ class SalesModule {
                                 </div>
                                 <div class="form-group">
                                     <label for="saleSelectedCustomer">Selected Customer</label>
-                                    <input type="text" id="saleSelectedCustomer" readonly placeholder="No customer selected">
+                                    <input type="text" id="saleSelectedCustomer" readonly placeholder="No customer selected (Walk-in Customer)">
                                     <input type="hidden" id="saleSelectedCustomerId">
                                 </div>
                             </div>
@@ -302,7 +282,7 @@ class SalesModule {
                         <div class="modal-actions">
                             <button type="button" onclick="closeModal('newSaleModal')" class="btn btn-secondary">Cancel</button>
                             <button type="button" onclick="clearSaleForm()" class="btn btn-secondary">Clear</button>
-                            <button type="submit" class="btn btn-primary" id="completeSaleBtn">Complete Sale</button>
+                            <button type="button" onclick="completeSale()" class="btn btn-primary" id="completeSaleBtn">Complete Sale</button>
                         </div>
                     </form>
                 </div>
@@ -331,19 +311,33 @@ class SalesModule {
 
         tbody.innerHTML = '';
         
-        this.filteredSales.forEach(sale => {
+        this.filteredSales.forEach((sale, index) => {
             const row = document.createElement('tr');
             const saleDateTime = new Date(sale.created_at).toLocaleString();
             const customerMobile = sale.customer_phone || '-';
             
+            // Format items list
+            let itemsDisplay = '-';
+            if (sale.items && sale.items > 0) {
+                itemsDisplay = `${sale.items} item(s)`;
+            }
+            
+            // Get payment methods from sale payments
+            let paymentModeDisplay = 'Cash'; // Default
+            if (sale.payment_methods) {
+                paymentModeDisplay = sale.payment_methods;
+            }
+            
             row.innerHTML = `
-                <td><span class="invoice-number">${sale.invoice_number}</span></td>
-                <td>${saleDateTime}</td>
-                <td>${sale.customer_name || 'Walk-in Customer'}</td>
-                <td>${customerMobile}</td>
-                <td>${sale.items || '-'}</td>
-                <td>₹${parseFloat(sale.total_amount).toFixed(2)}</td>
-                <td>
+                <td class="serial-number">${index + 1}</td>
+                <td><span class="invoice-number">${sale.invoice_number || 'N/A'}</span></td>
+                <td class="date-time">${saleDateTime}</td>
+                <td class="customer-name">${sale.customer_name || 'Walk-in Customer'}</td>
+                <td class="customer-mobile">${customerMobile}</td>
+                <td class="items-count">${itemsDisplay}</td>
+                <td class="payment-mode"><span class="payment-mode-badge ${paymentModeDisplay.toLowerCase().replace(' ', '-')}">${paymentModeDisplay}</span></td>
+                <td class="total-amount">₹${parseFloat(sale.total_amount).toFixed(2)}</td>
+                <td class="actions">
                     <button class="btn btn-sm btn-secondary" onclick="salesModule().viewSaleDetails(${sale.id})">View</button>
                     <button class="btn btn-sm btn-primary" onclick="salesModule().printSaleInvoice(${sale.id})">Print</button>
                 </td>
@@ -356,11 +350,14 @@ class SalesModule {
         this.isCreatingNewSale = true;
         this.clearSaleForm();
         
-        // Set today's date for payment reference
-        const today = new Date().toISOString().split('T')[0];
-        
         const modal = document.getElementById('newSaleModal');
         if (modal) modal.style.display = 'block';
+        
+        // Focus on customer search
+        setTimeout(() => {
+            const customerSearch = document.getElementById('saleCustomerSearch');
+            if (customerSearch) customerSearch.focus();
+        }, 300);
     }
 
     async searchCustomers(searchTerm) {
@@ -417,6 +414,8 @@ class SalesModule {
         if (suggestions) {
             suggestions.style.display = 'none';
         }
+        
+        showSuccess(`Customer selected: ${name}`);
     }
 
     async searchItems(searchTerm) {
@@ -492,6 +491,8 @@ class SalesModule {
         if (item.quantity === 0) {
             showError('This item is out of stock');
             this.clearItemSelection();
+        } else {
+            showSuccess(`Item selected: ${item.item_code}`);
         }
     }
 
@@ -812,9 +813,7 @@ class SalesModule {
         }
     }
 
-    async handleSaleFormSubmit(e) {
-        e.preventDefault();
-        
+    async completeSale() {
         if (this.saleItems.length === 0) {
             showError('Please add at least one item to the sale');
             return;
@@ -875,7 +874,7 @@ class SalesModule {
             const totalAmount = parseFloat(totalAmountEl.textContent.replace('₹', ''));
             const notes = notesEl ? notesEl.value : '';
 
-            // Generate invoice number
+            // Generate invoice number with random digits
             const invoiceNumber = this.generateInvoiceNumber();
 
             const saleData = {
@@ -919,14 +918,13 @@ class SalesModule {
         const month = (now.getMonth() + 1).toString().padStart(2, '0');
         const day = now.getDate().toString().padStart(2, '0');
         
-        // Generate 4 random alphanumeric characters
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        let randomChars = '';
+        // Generate 4 random digits instead of characters
+        let randomDigits = '';
         for (let i = 0; i < 4; i++) {
-            randomChars += chars.charAt(Math.floor(Math.random() * chars.length));
+            randomDigits += Math.floor(Math.random() * 10).toString();
         }
         
-        return `INVSA${year}${month}${day}${randomChars}`;
+        return `INVSA${year}${month}${day}${randomDigits}`;
     }
 
     clearSaleForm() {
@@ -1025,23 +1023,26 @@ class SalesModule {
             const saleDetails = await ipcRenderer.invoke('get-sale-details', saleId);
             this.displaySaleDetails(saleDetails);
             const modal = document.getElementById('saleDetailsModal');
-            if (modal) modal.style.display = 'block';
+            if (modal) {
+                modal.style.display = 'block';
+            } else {
+                // Create modal if it doesn't exist
+                this.createSaleDetailsModal();
+                setTimeout(() => {
+                    this.displaySaleDetails(saleDetails);
+                    const newModal = document.getElementById('saleDetailsModal');
+                    if (newModal) newModal.style.display = 'block';
+                }, 100);
+            }
         } catch (error) {
             console.error('Error loading sale details:', error);
             showError('Error loading sale details');
         }
     }
 
-    displaySaleDetails(saleDetails) {
-        const { sale, items, payments } = saleDetails;
-        
-        // Create modal if it doesn't exist
-        let modal = document.getElementById('saleDetailsModal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'saleDetailsModal';
-            modal.className = 'modal';
-            modal.innerHTML = `
+    createSaleDetailsModal() {
+        const modalHTML = `
+            <div id="saleDetailsModal" class="modal">
                 <div class="modal-content large-modal responsive-modal">
                     <div class="modal-header">
                         <h3>Sale Details</h3>
@@ -1052,15 +1053,22 @@ class SalesModule {
                     </div>
                     <div class="modal-actions">
                         <button type="button" onclick="closeModal('saleDetailsModal')" class="btn btn-secondary">Close</button>
-                        <button type="button" onclick="salesModule().printSaleInvoice(${sale.id})" class="btn btn-primary">Print Invoice</button>
+                        <button type="button" onclick="salesModule().printCurrentSale()" class="btn btn-primary" id="printSaleBtn">Print Invoice</button>
                     </div>
                 </div>
-            `;
-            document.body.appendChild(modal);
-        }
+            </div>
+        `;
         
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+
+    displaySaleDetails(saleDetails) {
+        const { sale, items, payments } = saleDetails;
         const content = document.getElementById('saleDetailsContent');
         if (!content) return;
+        
+        // Store current sale for printing
+        this.currentSaleDetails = saleDetails;
         
         content.innerHTML = `
             <div class="sale-detail-section">
@@ -1074,10 +1082,11 @@ class SalesModule {
             </div>
 
             <div class="sale-detail-section">
-                <h4>Items</h4>
+                <h4>Items Sold</h4>
                 <table class="data-table">
                     <thead>
                         <tr>
+                            <th>S.No</th>
                             <th>Code</th>
                             <th>Item</th>
                             <th>Qty</th>
@@ -1087,12 +1096,13 @@ class SalesModule {
                         </tr>
                     </thead>
                     <tbody>
-                        ${items.map(item => {
+                        ${items.map((item, index) => {
                             const discountText = item.discount_type === 'none' ? '-' : 
                                                item.discount_type === 'percentage' ? `${item.discount_value}%` : 
                                                `₹${item.discount_value}`;
                             return `
                                 <tr>
+                                    <td>${index + 1}</td>
                                     <td>${item.item_code}</td>
                                     <td>${item.item_name}</td>
                                     <td>${item.quantity}</td>
@@ -1108,9 +1118,9 @@ class SalesModule {
 
             <div class="sale-detail-section">
                 <h4>Payment Details</h4>
-                ${payments.map(payment => `
+                ${payments.map((payment, index) => `
                     <div class="payment-detail-row">
-                        <span><strong>${payment.payment_method.toUpperCase()}:</strong> ₹${parseFloat(payment.amount).toFixed(2)}</span>
+                        <span><strong>Payment ${index + 1} - ${payment.payment_method.toUpperCase()}:</strong> ₹${parseFloat(payment.amount).toFixed(2)}</span>
                         ${payment.payment_reference ? `<br><small>Reference: ${payment.payment_reference}</small>` : ''}
                     </div>
                 `).join('')}
@@ -1136,9 +1146,21 @@ class SalesModule {
         `;
     }
 
+    printCurrentSale() {
+        if (this.currentSaleDetails) {
+            this.printSaleInvoice(this.currentSaleDetails.sale.id);
+        }
+    }
+
     async printSaleInvoice(saleId) {
         try {
-            const saleDetails = await ipcRenderer.invoke('get-sale-details', saleId);
+            let saleDetails;
+            if (this.currentSaleDetails && this.currentSaleDetails.sale.id === saleId) {
+                saleDetails = this.currentSaleDetails;
+            } else {
+                saleDetails = await ipcRenderer.invoke('get-sale-details', saleId);
+            }
+            
             const { sale, items, payments } = saleDetails;
             
             const printWindow = window.open('', '_blank');
@@ -1153,7 +1175,7 @@ class SalesModule {
                         .company-name { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
                         .company-tagline { font-size: 14px; color: #666; }
                         .invoice-title { font-size: 18px; font-weight: bold; margin: 15px 0; }
-                        .invoice-info { display: flex; justify-content: space-between; margin-bottom: 20px; }
+                        .invoice-info { margin-bottom: 20px; }
                         .customer-info { margin-bottom: 20px; }
                         .table { width: 100%; border-collapse: collapse; margin: 10px 0; }
                         .table th, .table td { border: 1px solid #000; padding: 8px; text-align: left; }
@@ -1172,11 +1194,9 @@ class SalesModule {
                     </div>
                     
                     <div class="invoice-info">
-                        <div>
-                            <strong>Invoice #:</strong> ${sale.invoice_number}<br>
-                            <strong>Date:</strong> ${new Date(sale.sale_date).toLocaleDateString()}<br>
-                            <strong>Time:</strong> ${new Date(sale.created_at).toLocaleString()}
-                        </div>
+                        <strong>Invoice #:</strong> ${sale.invoice_number}<br>
+                        <strong>Date:</strong> ${new Date(sale.sale_date).toLocaleDateString()}<br>
+                        <strong>Time:</strong> ${new Date(sale.created_at).toLocaleString()}
                     </div>
                     
                     <div class="customer-info">
@@ -1189,6 +1209,7 @@ class SalesModule {
                     <table class="table">
                         <thead>
                             <tr>
+                                <th>S.No</th>
                                 <th>Item Code</th>
                                 <th>Description</th>
                                 <th>Qty</th>
@@ -1198,12 +1219,13 @@ class SalesModule {
                             </tr>
                         </thead>
                         <tbody>
-                            ${items.map(item => {
+                            ${items.map((item, index) => {
                                 const discountText = item.discount_type === 'none' ? '-' : 
                                                    item.discount_type === 'percentage' ? `${item.discount_value}%` : 
                                                    `₹${item.discount_value}`;
                                 return `
                                     <tr>
+                                        <td>${index + 1}</td>
                                         <td>${item.item_code}</td>
                                         <td>${item.item_name}</td>
                                         <td>${item.quantity}</td>
@@ -1224,8 +1246,8 @@ class SalesModule {
                     
                     <div class="payment-info">
                         <strong>Payment Details:</strong><br>
-                        ${payments.map(payment => `
-                            ${payment.payment_method.toUpperCase()}: ₹${parseFloat(payment.amount).toFixed(2)}
+                        ${payments.map((payment, index) => `
+                            Payment ${index + 1} - ${payment.payment_method.toUpperCase()}: ₹${parseFloat(payment.amount).toFixed(2)}
                             ${payment.payment_reference ? ` (Ref: ${payment.payment_reference})` : ''}<br>
                         `).join('')}
                     </div>
@@ -1318,6 +1340,13 @@ window.clearSaleForm = function() {
     const salesModule = window.salesModule();
     if (salesModule) {
         salesModule.clearSaleForm();
+    }
+};
+
+window.completeSale = function() {
+    const salesModule = window.salesModule();
+    if (salesModule) {
+        salesModule.completeSale();
     }
 };
 

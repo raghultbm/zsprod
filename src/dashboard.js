@@ -285,6 +285,8 @@ function showError(message) {
     }, 3000);
 }
 
+
+
 // Add CSS for notifications
 const style = document.createElement('style');
 style.textContent = `
@@ -473,6 +475,62 @@ window.filterInvoicesByType = function() {
 window.printCurrentInvoice = function() {
     if (invoicesModule && invoicesModule.printCurrentInvoice) {
         invoicesModule.printCurrentInvoice();
+    }
+};
+
+window.openNewSaleModal = function() {
+    const salesModule = window.salesModule();
+    if (salesModule) {
+        salesModule.openNewSaleModal();
+    }
+};
+
+window.addItemToSale = function() {
+    const salesModule = window.salesModule();
+    if (salesModule) {
+        salesModule.addItemToSale();
+    }
+};
+
+window.clearSaleForm = function() {
+    const salesModule = window.salesModule();
+    if (salesModule) {
+        salesModule.clearSaleForm();
+    }
+};
+
+window.completeSale = function() {
+    const salesModule = window.salesModule();
+    if (salesModule) {
+        salesModule.completeSale();
+    }
+};
+
+window.addPaymentMethod = function() {
+    const salesModule = window.salesModule();
+    if (salesModule) {
+        salesModule.addPaymentMethod();
+    }
+};
+
+window.searchSales = function() {
+    const salesModule = window.salesModule();
+    if (salesModule) {
+        salesModule.searchSales();
+    }
+};
+
+window.clearSalesSearch = function() {
+    const salesModule = window.salesModule();
+    if (salesModule) {
+        salesModule.clearSalesSearch();
+    }
+};
+
+window.filterSales = function() {
+    const salesModule = window.salesModule();
+    if (salesModule) {
+        salesModule.filterSales();
     }
 };
 

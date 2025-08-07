@@ -262,17 +262,28 @@ function setupIpcHandlers() {
     // Sales handlers - Updated with new invoice number format and mobile field
     ipcMain.handle('get-sales', async () => {
         try {
-            return await getData(`
+            const sales = await getData(`
                 SELECT s.*, c.name as customer_name, c.phone as customer_phone, u.full_name as created_by_name,
                        COUNT(si.id) as items,
-                       s.invoice_number
+                       s.invoice_number,
+                       GROUP_CONCAT(DISTINCT sp.payment_method) as payment_methods
                 FROM sales s
                 LEFT JOIN customers c ON s.customer_id = c.id
                 LEFT JOIN users u ON s.created_by = u.id
                 LEFT JOIN sale_items si ON s.id = si.sale_id
+                LEFT JOIN sale_payments sp ON s.id = sp.sale_id
                 GROUP BY s.id
                 ORDER BY s.created_at DESC
             `);
+            
+            // Process payment methods for display
+            return sales.map(sale => ({
+                ...sale,
+                payment_methods: sale.payment_methods ? 
+                    sale.payment_methods.split(',').map(method => 
+                        method.charAt(0).toUpperCase() + method.slice(1)
+                    ).join(', ') : 'Cash'
+            }));
         } catch (error) {
             console.error('Get sales error:', error);
             throw error;

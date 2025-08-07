@@ -1710,6 +1710,575 @@ textarea:focus {
     background: #a1a1a1;
 }
 
+/*Newly Added */
+/* Enhanced Sales Module CSS - Add to your existing styles.css */
+
+/* Sales Table Enhancements */
+.sales-table {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.sales-table th {
+    background: #f8f9fa;
+    font-weight: 700;
+    color: #2c3e50;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #e1e1e1;
+    padding: 12px 10px;
+}
+
+.sales-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid #e1e1e1;
+    vertical-align: middle;
+}
+
+.sales-table tbody tr:hover {
+    background: #f8f9fa;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+/* Serial Number Column */
+.serial-number {
+    font-weight: 600;
+    color: #6c757d;
+    text-align: center;
+    width: 60px;
+    background: #f8f9fa;
+}
+
+/* Invoice Number Styling */
+.invoice-number {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    color: #2c3e50;
+    background: #e3f2fd;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    border: 1px solid #bbdefb;
+    white-space: nowrap;
+    display: inline-block;
+}
+
+/* Date Time Column */
+.date-time {
+    font-size: 13px;
+    color: #495057;
+    white-space: nowrap;
+    min-width: 140px;
+}
+
+/* Customer Name and Mobile */
+.customer-name {
+    font-weight: 600;
+    color: #2c3e50;
+    max-width: 150px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.customer-mobile {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: #6c757d;
+    min-width: 120px;
+}
+
+/* Items Count */
+.items-count {
+    text-align: center;
+    font-weight: 500;
+    color: #28a745;
+    background: #d4edda;
+    border-radius: 12px;
+    padding: 4px 8px;
+    font-size: 12px;
+    min-width: 80px;
+}
+
+/* Payment Mode Badge */
+.payment-mode {
+    text-align: center;
+}
+
+.payment-mode-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.payment-mode-badge.cash {
+    background: #d4edda;
+    color: #155724;
+}
+
+.payment-mode-badge.upi {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.payment-mode-badge.card {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.payment-mode-badge.cash-upi,
+.payment-mode-badge.multiple {
+    background: #e2e3e5;
+    color: #383d41;
+}
+
+/* Total Amount */
+.total-amount {
+    font-weight: 700;
+    color: #28a745;
+    font-size: 15px;
+    text-align: right;
+    min-width: 100px;
+}
+
+/* Action Buttons */
+.actions {
+    text-align: center;
+    white-space: nowrap;
+    min-width: 120px;
+}
+
+.actions .btn {
+    margin: 0 2px;
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.actions .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Sales Controls Enhanced */
+.sales-controls {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border: 1px solid #e1e1e1;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.sales-controls .search-input {
+    border: 2px solid #e1e1e1;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.sales-controls .search-input:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+/* Sales Main Container */
+.sales-main-container {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+/* Data Table Container for Sales */
+.sales-main-container .data-table-container {
+    border-radius: 0 0 8px 8px;
+    max-height: calc(100vh - 300px);
+    overflow-y: auto;
+}
+
+/* Modal Enhancements for Sales */
+#newSaleModal .modal-content {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border: 1px solid #e1e1e1;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+}
+
+#newSaleModal .form-section {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+#newSaleModal .form-section h4 {
+    color: #2c3e50;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #3498db;
+    display: flex;
+    align-items: center;
+}
+
+#newSaleModal .form-section h4:before {
+    content: "●";
+    color: #3498db;
+    margin-right: 8px;
+    font-size: 0.8rem;
+}
+
+/* Suggestions Dropdown Enhanced */
+.suggestions-dropdown {
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background: white;
+    z-index: 1050;
+}
+
+.suggestion-item {
+    padding: 12px 15px;
+    border-bottom: 1px solid #f1f3f4;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.suggestion-item:hover {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    transform: translateX(2px);
+    border-left: 3px solid #3498db;
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+    border-radius: 0 0 6px 6px;
+}
+
+.suggestion-item strong {
+    color: #2c3e50;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 3px;
+}
+
+.suggestion-item small {
+    color: #6c757d;
+    font-size: 12px;
+    font-style: italic;
+}
+
+/* Sale Items Table in Modal */
+.sale-items-table {
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.sale-items-table th {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+}
+
+.sale-items-table td {
+    padding: 10px;
+    font-size: 13px;
+}
+
+.sale-items-table tbody tr:hover {
+    background: #f8f9fa;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Sale Summary Enhanced */
+.sale-summary {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #e9ecef;
+    font-size: 14px;
+}
+
+.summary-row:last-child {
+    border-bottom: none;
+}
+
+.total-row {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    color: white;
+    padding: 15px 20px;
+    margin: 10px -20px -20px -20px;
+    border-radius: 0 0 8px 8px;
+    font-weight: 700;
+    font-size: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* No Items Message */
+.no-items-message {
+    padding: 30px 20px;
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    margin: 10px;
+}
+
+/* Multiple Payments Section */
+.multiple-payments {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border: 1px solid #e1e1e1;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 15px;
+}
+
+.payment-method-row {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+}
+
+.payment-method-row:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive Adjustments for Sales Table */
+@media (max-width: 1200px) {
+    .sales-table {
+        font-size: 13px;
+    }
+    
+    .sales-table th,
+    .sales-table td {
+        padding: 8px 6px;
+    }
+    
+    .customer-name {
+        max-width: 120px;
+    }
+    
+    .date-time {
+        min-width: 120px;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 768px) {
+    .sales-main-container .data-table-container {
+        overflow-x: auto;
+    }
+    
+    .sales-table {
+        min-width: 800px;
+        font-size: 12px;
+    }
+    
+    .sales-table th,
+    .sales-table td {
+        padding: 6px 4px;
+    }
+    
+    .invoice-number {
+        font-size: 10px;
+        padding: 2px 6px;
+    }
+    
+    .actions .btn {
+        padding: 4px 8px;
+        font-size: 10px;
+        margin: 1px;
+    }
+    
+    .serial-number {
+        width: 40px;
+    }
+    
+    .items-count,
+    .payment-mode-badge {
+        font-size: 10px;
+        padding: 2px 6px;
+    }
+}
+
+/* Sale Details Modal */
+#saleDetailsModal .modal-content {
+    max-width: 900px;
+}
+
+.sale-detail-section {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.sale-detail-section h4 {
+    color: #2c3e50;
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #3498db;
+}
+
+.sale-detail-section p {
+    margin-bottom: 8px;
+    color: #555;
+    line-height: 1.6;
+}
+
+.sale-detail-section strong {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+/* Payment Detail Rows */
+.payment-detail-row {
+    background: #f8f9fa;
+    padding: 12px 15px;
+    margin: 8px 0;
+    border-radius: 6px;
+    border-left: 4px solid #3498db;
+}
+
+.payment-detail-row span {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.payment-detail-row small {
+    color: #6c757d;
+    font-size: 12px;
+    font-style: italic;
+}
+
+/* Print Styles Enhancement */
+@media print {
+    .sales-controls,
+    .modal-header,
+    .modal-actions,
+    .btn,
+    .sidebar,
+    .header-actions {
+        display: none !important;
+    }
+    
+    .sales-table,
+    .data-table {
+        font-size: 11px;
+        border-collapse: collapse;
+    }
+    
+    .sales-table th,
+    .sales-table td,
+    .data-table th,
+    .data-table td {
+        border: 1px solid #000 !important;
+        padding: 4px !important;
+    }
+    
+    .invoice-number {
+        background: white !important;
+        color: #000 !important;
+        border: 1px solid #000 !important;
+    }
+    
+    .payment-mode-badge {
+        background: white !important;
+        color: #000 !important;
+        border: 1px solid #000 !important;
+    }
+}
+
+/* Loading States for Sales */
+.btn.loading {
+    opacity: 0.7;
+    cursor: not-allowed;
+    position: relative;
+    pointer-events: none;
+}
+
+.btn.loading:before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin: -8px 0 0 -8px;
+    width: 16px;
+    height: 16px;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Focus States for Accessibility */
+.sales-table:focus-within {
+    outline: 2px solid #3498db;
+    outline-offset: -2px;
+}
+
+.suggestion-item:focus {
+    outline: 2px solid #3498db;
+    outline-offset: -2px;
+    background: #e3f2fd;
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+    .sales-table th,
+    .sales-table td {
+        border-width: 2px;
+    }
+    
+    .invoice-number,
+    .payment-mode-badge {
+        border-width: 2px;
+    }
+    
+    .suggestion-item:hover {
+        border-left-width: 5px;
+    }
+}
+/*Newly Added */
+
 /* src/styles.css - Part 10: Service Module */
 
 /* Service Module Styles */
