@@ -1,4 +1,4 @@
-// src/ipc-handlers.js - IPC handlers for Electron
+// src/ipc-handlers.js - Updated IPC handlers with new invoice format
 const { ipcMain } = require('electron');
 const { runQuery, getData, getRow, generateJobNumber, getDatabase } = require('./database');
 
@@ -259,12 +259,13 @@ function setupIpcHandlers() {
         }
     });
 
-    // Sales handlers
+    // Sales handlers - Updated with new invoice number format and mobile field
     ipcMain.handle('get-sales', async () => {
         try {
             return await getData(`
-                SELECT s.*, c.name as customer_name, u.full_name as created_by_name,
-                       COUNT(si.id) as items
+                SELECT s.*, c.name as customer_name, c.phone as customer_phone, u.full_name as created_by_name,
+                       COUNT(si.id) as items,
+                       s.invoice_number
                 FROM sales s
                 LEFT JOIN customers c ON s.customer_id = c.id
                 LEFT JOIN users u ON s.created_by = u.id
@@ -287,16 +288,17 @@ function setupIpcHandlers() {
                 try {
                     const { sale, items, payments } = saleData;
 
-                    // Insert main sale record
+                    // Insert main sale record with invoice number
                     db.run(`INSERT INTO sales (
                         sale_date, customer_id, subtotal, total_discount, total_amount, 
-                        notes, created_by
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?)`, [
+                        invoice_number, notes, created_by
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, [
                         sale.sale_date,
                         sale.customer_id || null,
                         sale.subtotal,
                         sale.total_discount,
                         sale.total_amount,
+                        sale.invoice_number,
                         sale.notes || null,
                         sale.created_by
                     ], function(err) {
@@ -379,7 +381,7 @@ function setupIpcHandlers() {
                                     if (err) {
                                         reject(err);
                                     } else {
-                                        resolve({ id: saleId, success: true });
+                                        resolve({ id: saleId, success: true, invoice_number: sale.invoice_number });
                                     }
                                 });
                             }
@@ -396,7 +398,7 @@ function setupIpcHandlers() {
     ipcMain.handle('get-sale-details', async (event, saleId) => {
         try {
             const sale = await getRow(`
-                SELECT s.*, c.name as customer_name, c.phone as customer_phone
+                SELECT s.*, c.name as customer_name, c.phone as customer_phone, c.email as customer_email
                 FROM sales s
                 LEFT JOIN customers c ON s.customer_id = c.id
                 WHERE s.id = ?
@@ -751,10 +753,10 @@ function setupIpcHandlers() {
         }
     });
 
-    // Invoice handlers
+    // Invoice handlers - Updated with new sale invoice format
     ipcMain.handle('get-all-invoices', async () => {
         try {
-            // Get sales invoices
+            // Get sales invoices with new format
             const salesInvoices = await getData(`
                 SELECT 
                     'sale' as type,
@@ -765,10 +767,10 @@ function setupIpcHandlers() {
                     c.phone as customer_phone,
                     s.total_amount as amount,
                     s.created_at,
-                    'INV-S-' || s.id as invoice_number
+                    s.invoice_number as invoice_number
                 FROM sales s
                 LEFT JOIN customers c ON s.customer_id = c.id
-                WHERE s.sale_status = 'completed'
+                WHERE s.sale_status = 'completed' OR s.sale_status IS NULL
                 ORDER BY s.created_at DESC
             `);
 
@@ -803,12 +805,12 @@ function setupIpcHandlers() {
         }
     });
 
-  // Customer net value handlers - ADD THESE TO YOUR EXISTING FILE
+    // Customer net value handlers - ADD THESE TO YOUR EXISTING FILE
     ipcMain.handle('get-customer-sales', async (event, customerId) => {
         try {
             return await getData(`
                 SELECT * FROM sales 
-                WHERE customer_id = ? AND sale_status = 'completed'
+                WHERE customer_id = ? AND (sale_status = 'completed' OR sale_status IS NULL)
                 ORDER BY sale_date DESC
             `, [customerId]);
         } catch (error) {

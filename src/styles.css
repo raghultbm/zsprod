@@ -1151,31 +1151,69 @@ textarea:focus {
 }
 /* src/styles.css - Part 9: Sales Module */
 
-/* Sales Module Styles */
-.sales-container {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 30px;
+/* Additional CSS for Sales Module - Add to styles.css */
+
+/* Sales Module Styles - Updated Structure */
+.sales-main-container {
+    background: white;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     height: calc(100vh - 200px);
-}
-
-.sales-form-container {
-    background: white;
-    padding: 25px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     overflow-y: auto;
 }
 
-.sales-history-container {
-    background: white;
-    padding: 25px;
+.sales-controls {
+    background: #f8f9fa;
+    padding: 20px;
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.sales-controls .search-container {
+    display: flex;
+    gap: 10px;
+    flex: 1;
+    min-width: 300px;
+}
+
+.sales-controls .filter-container {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.sales-controls input[type="date"] {
+    padding: 10px;
+    border: 2px solid #e1e1e1;
+    border-radius: 4px;
+    font-size: 14px;
+    min-width: 150px;
+}
+
+.sales-controls input[type="date"]:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+/* Sale Form Modal Styles */
+#newSaleModal .modal-content {
+    max-width: 1200px;
+    width: 95%;
+    max-height: 95vh;
+}
+
+#newSaleModal .modal-form {
+    max-height: calc(95vh - 120px);
     overflow-y: auto;
 }
 
-/* Form Sections */
+/* Form Section Styles */
 .form-section {
     margin-bottom: 25px;
     padding-bottom: 20px;
@@ -1192,27 +1230,24 @@ textarea:focus {
     margin-bottom: 15px;
     font-size: 1.1rem;
     font-weight: 600;
+    border-left: 4px solid #3498db;
+    padding-left: 10px;
 }
 
-.form-section h5 {
-    color: #34495e;
-    margin-bottom: 10px;
-    font-size: 1rem;
-    font-weight: 500;
-}
-
-/* Sale Items Table */
+/* Sale Items Table in Modal */
 .sale-items-container {
     max-height: 300px;
     overflow-y: auto;
     border: 1px solid #e1e1e1;
     border-radius: 4px;
+    background: #f8f9fa;
 }
 
 .sale-items-table {
     width: 100%;
     border-collapse: collapse;
     margin: 0;
+    background: white;
 }
 
 .sale-items-table th,
@@ -1232,18 +1267,23 @@ textarea:focus {
     z-index: 10;
 }
 
+.sale-items-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
 .no-items-message {
     padding: 20px;
     text-align: center;
     color: #666;
     font-style: italic;
+    background: white;
 }
 
-/* Sale Summary */
+/* Sale Summary in Modal */
 .sale-summary {
     background: #f8f9fa;
     padding: 15px;
-    border-radius: 4px;
+    border-radius: 6px;
     border-left: 4px solid #3498db;
 }
 
@@ -1262,122 +1302,414 @@ textarea:focus {
     font-weight: bold;
     font-size: 16px;
     padding-top: 8px;
-    border-top: 1px solid #ddd;
+    border-top: 2px solid #2c3e50;
     margin-top: 8px;
 }
 
-/* Payment Methods */
+/* Multiple Payment Methods */
 .multiple-payments {
     background: #f8f9fa;
     padding: 15px;
-    border-radius: 4px;
+    border-radius: 6px;
     margin-top: 15px;
+    border: 1px solid #e1e1e1;
+}
+
+.multiple-payments h5 {
+    color: #2c3e50;
+    margin-bottom: 15px;
+    font-size: 1rem;
+    font-weight: 600;
 }
 
 .payment-method-row {
-    margin-bottom: 10px;
-    padding: 10px;
+    margin-bottom: 15px;
+    padding: 15px;
     background: white;
-    border-radius: 4px;
+    border-radius: 6px;
     border: 1px solid #e1e1e1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .payment-method-row:last-child {
     margin-bottom: 0;
 }
 
-/* Sales History */
-.sales-history-table-container {
-    max-height: calc(100vh - 350px);
-    overflow-y: auto;
-}
-
-/* Confirmation Modal Styles */
-.confirmation-section {
-    margin-bottom: 20px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid #e1e1e1;
-}
-
-.confirmation-section:last-child {
-    border-bottom: none;
+.payment-method-row .form-row {
     margin-bottom: 0;
 }
 
-.confirmation-section h4 {
+/* Invoice Number Display */
+.invoice-number {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
     color: #2c3e50;
-    margin-bottom: 10px;
-    font-size: 1rem;
-    font-weight: 600;
-}
-
-.confirmation-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 10px;
-}
-
-.confirmation-table th,
-.confirmation-table td {
-    padding: 8px;
-    text-align: left;
-    border-bottom: 1px solid #e1e1e1;
-    font-size: 13px;
-}
-
-.confirmation-table th {
-    background: #f8f9fa;
-    font-weight: 600;
-    color: #555;
-}
-
-.confirmation-summary {
-    background: #f8f9fa;
-    padding: 12px;
+    background: #e3f2fd;
+    padding: 3px 8px;
     border-radius: 4px;
+    font-size: 12px;
+    border: 1px solid #bbdefb;
 }
 
-.confirmation-summary .summary-row {
-    margin-bottom: 6px;
+/* Sales Table Improvements */
+.data-table .invoice-number {
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.data-table td:nth-child(1) {
+    min-width: 140px;
+}
+
+.data-table td:nth-child(2) {
+    min-width: 150px;
     font-size: 13px;
 }
 
-.confirmation-summary .total-row {
-    font-size: 14px;
+.data-table td:nth-child(4) {
+    min-width: 120px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
 }
 
+/* Search Input Container Improvements */
+.search-input-container {
+    position: relative;
+    width: 100%;
+}
+
+.suggestions-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.suggestion-item {
+    padding: 12px;
+    border-bottom: 1px solid #f5f5f5;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.suggestion-item:hover {
+    background-color: #f8f9fa;
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.suggestion-item strong {
+    color: #2c3e50;
+    display: block;
+    margin-bottom: 2px;
+}
+
+.suggestion-item small {
+    color: #666;
+    font-size: 12px;
+}
+
+/* Modal Actions Improvements */
+#newSaleModal .modal-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 2px solid #e1e1e1;
+    flex-shrink: 0;
+}
+
+#newSaleModal .modal-actions .btn {
+    min-width: 120px;
+    padding: 12px 20px;
+    font-weight: 600;
+}
+
+/* Sale Details Modal */
+.sale-detail-section {
+    margin-bottom: 25px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #3498db;
+}
+
+.sale-detail-section:last-child {
+    margin-bottom: 0;
+}
+
+.sale-detail-section h4 {
+    color: #2c3e50;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 5px;
+}
+
+.sale-detail-section p {
+    margin-bottom: 8px;
+    color: #555;
+    line-height: 1.5;
+}
+
+.sale-detail-section strong {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+/* Payment Detail Rows */
 .payment-detail-row {
-    padding: 8px 0;
-    border-bottom: 1px solid #f0f0f0;
+    padding: 10px 0;
+    border-bottom: 1px solid #e1e1e1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .payment-detail-row:last-child {
     border-bottom: none;
 }
 
-/* Sale Details Modal */
-.sale-detail-section {
-    margin-bottom: 20px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid #e1e1e1;
+.payment-detail-row span {
+    font-weight: 500;
 }
 
-.sale-detail-section:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
+.payment-detail-row small {
+    color: #666;
+    font-size: 12px;
+    font-style: italic;
 }
 
-.sale-detail-section h4 {
-    color: #2c3e50;
-    margin-bottom: 10px;
-    font-size: 1rem;
-    font-weight: 600;
+/* Loading States */
+.btn.loading {
+    opacity: 0.7;
+    cursor: not-allowed;
+    position: relative;
+    pointer-events: none;
 }
 
-.sale-detail-section p {
-    margin-bottom: 5px;
-    color: #555;
+.btn.loading:before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin: -8px 0 0 -8px;
+    width: 16px;
+    height: 16px;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
 }
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Success States */
+.form-section.success {
+    border-left-color: #27ae60;
+    background: #f8fff8;
+}
+
+.form-section.error {
+    border-left-color: #e74c3c;
+    background: #fff8f8;
+}
+
+/* Mobile Responsiveness for Sales Module */
+@media (max-width: 768px) {
+    .sales-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+
+    .sales-controls .search-container {
+        min-width: auto;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .sales-controls .filter-container {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .sales-controls input[type="date"] {
+        min-width: auto;
+        width: 100%;
+    }
+
+    #newSaleModal .modal-content {
+        width: 98%;
+        max-width: 98%;
+        margin: 1% auto;
+        max-height: 98vh;
+    }
+
+    #newSaleModal .form-row {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    #newSaleModal .modal-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    #newSaleModal .modal-actions .btn {
+        width: 100%;
+        min-width: auto;
+    }
+
+    .sale-items-table,
+    .data-table {
+        font-size: 12px;
+    }
+
+    .sale-items-table th,
+    .sale-items-table td,
+    .data-table th,
+    .data-table td {
+        padding: 6px 4px;
+    }
+
+    .invoice-number {
+        font-size: 11px;
+        padding: 2px 6px;
+    }
+
+    .payment-method-row .form-row {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .suggestions-dropdown {
+        max-height: 150px;
+    }
+
+    .suggestion-item {
+        padding: 8px;
+    }
+}
+
+/* Print Styles for Sale Invoices */
+@media print {
+    .sales-controls,
+    .modal-header,
+    .modal-actions,
+    .btn {
+        display: none !important;
+    }
+
+    .sale-detail-section {
+        page-break-inside: avoid;
+        background: white !important;
+        border: 1px solid #000 !important;
+        margin-bottom: 10px !important;
+    }
+
+    .data-table {
+        font-size: 12px;
+    }
+
+    .data-table th,
+    .data-table td {
+        border: 1px solid #000;
+        padding: 6px;
+    }
+
+    .invoice-number {
+        background: white !important;
+        border: 1px solid #000 !important;
+        color: #000 !important;
+    }
+}
+
+/* Enhanced Form Validation */
+.form-group input.valid {
+    border-color: #27ae60;
+    background-color: #f8fff8;
+}
+
+.form-group input.invalid {
+    border-color: #e74c3c;
+    background-color: #fff8f8;
+}
+
+.form-group select.valid {
+    border-color: #27ae60;
+}
+
+.form-group select.invalid {
+    border-color: #e74c3c;
+}
+
+/* Notification Enhancements */
+.notification.sale-success {
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+    border-left: 4px solid #1e8449;
+}
+
+.notification.sale-error {
+    background: linear-gradient(135deg, #e74c3c, #ec7063);
+    border-left: 4px solid #c0392b;
+}
+
+/* Tooltip for disabled complete sale button */
+.btn:disabled[title] {
+    position: relative;
+    cursor: not-allowed;
+}
+
+/* Enhanced hover effects for action buttons */
+.data-table .btn-sm:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Focus management for accessibility */
+.modal-form input:focus,
+.modal-form select:focus,
+.modal-form textarea:focus {
+    outline: 2px solid #3498db;
+    outline-offset: 2px;
+}
+
+/* Custom scrollbar for modal form */
+#newSaleModal .modal-form::-webkit-scrollbar {
+    width: 6px;
+}
+
+#newSaleModal .modal-form::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+#newSaleModal .modal-form::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+#newSaleModal .modal-form::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}
+
 /* src/styles.css - Part 10: Service Module */
 
 /* Service Module Styles */

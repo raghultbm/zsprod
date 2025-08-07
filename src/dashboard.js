@@ -1,4 +1,4 @@
-// src/dashboard.js - Complete fixed version
+// src/dashboard.js - Updated with new sales module integration
 const { ipcRenderer } = require('electron');
 
 // Import modules
@@ -152,6 +152,7 @@ function updatePageHeader(module) {
             break;
         case 'sales':
             pageTitle.textContent = 'Sales Management';
+            headerActions.innerHTML = '<button class="btn btn-primary" onclick="openNewSaleModal()">New Sale</button>';
             break;
         case 'service':
             pageTitle.textContent = 'Service Management';
@@ -381,49 +382,6 @@ function clearCustomerSearch() {
         customerModule.clearCustomerSearch();
     }
 }
-
-// Global functions for Sales Module
-window.addItemToSale = function() {
-    if (salesModule && salesModule.addItemToSale) {
-        salesModule.addItemToSale();
-    }
-};
-
-window.previewSale = function() {
-    if (salesModule && salesModule.previewSale) {
-        salesModule.previewSale();
-    }
-};
-
-window.confirmSale = function() {
-    if (salesModule && salesModule.confirmSale) {
-        salesModule.confirmSale();
-    }
-};
-
-window.clearSale = function() {
-    if (salesModule && salesModule.clearSale) {
-        salesModule.clearSale();
-    }
-};
-
-window.toggleMultiplePayments = function() {
-    if (salesModule && salesModule.toggleMultiplePayments) {
-        salesModule.toggleMultiplePayments();
-    }
-};
-
-window.addPaymentMethod = function() {
-    if (salesModule && salesModule.addPaymentMethod) {
-        salesModule.addPaymentMethod();
-    }
-};
-
-window.printSaleReceipt = function() {
-    if (salesModule && salesModule.printSaleReceipt) {
-        salesModule.printSaleReceipt();
-    }
-};
 
 // Global functions for Service Module
 window.addServiceItem = function() {
