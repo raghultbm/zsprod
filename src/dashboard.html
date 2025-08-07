@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Watch Shop - Dashboard</title>
+    <title>PULSEWARE - Outlet Management System</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="app-container">
         <!-- Sidebar -->
-       <!-- Updated Sidebar Header Section for dashboard.html -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <div class="sidebar-logo-container">
@@ -21,7 +20,6 @@
                 </div>
             </div>
             
-            <!-- Rest of sidebar remains the same -->
         <nav class="sidebar-nav">
             <a href="#" class="nav-item active" data-module="dashboard">
                 <span>📊</span> Dashboard
@@ -93,6 +91,13 @@
 
                 <!-- Customers Module -->
                 <div id="customers-content" class="module-content">
+                    <div class="customers-controls">
+                        <div class="search-container">
+                            <input type="text" id="customerSearch" placeholder="Search by name, phone, or email..." class="search-input">
+                            <button onclick="searchCustomers()" class="btn btn-secondary">Search</button>
+                            <button onclick="clearCustomerSearch()" class="btn btn-secondary">Clear</button>
+                        </div>
+                    </div>
                     <div class="data-table-container">
                         <table class="data-table" id="customersTable">
                             <thead>
@@ -101,6 +106,7 @@
                                     <th>Name</th>
                                     <th>Phone</th>
                                     <th>Email</th>
+                                    <th>Net Value</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -606,7 +612,6 @@
         </div>
     </footer>
 
-    <!-- All the existing modals from your original dashboard.html (lines 585-1148) -->
     <!-- Customer Modal -->
     <div id="customerModal" class="modal">
         <div class="modal-content responsive-modal">
@@ -636,10 +641,223 @@
         </div>
     </div>
 
-    <!-- Add all other modals here from your original file... -->
-    <!-- For brevity, I'm showing just the customer modal, but you need to copy ALL modals from lines 585-1148 of your original dashboard.html -->
+    <!-- User Modal -->
+    <div id="userModal" class="modal">
+        <div class="modal-content responsive-modal">
+            <div class="modal-header">
+                <h3 id="userModalTitle">Add User</h3>
+                <span class="close-btn" onclick="closeModal('userModal')">&times;</span>
+            </div>
+            <form id="userForm" class="modal-form">
+                <input type="hidden" id="userId">
+                <div class="form-group">
+                    <label for="userUsername">Username *</label>
+                    <input type="text" id="userUsername" required>
+                </div>
+                <div class="form-group" id="passwordGroup">
+                    <label for="userPassword">Password *</label>
+                    <input type="password" id="userPassword" required>
+                </div>
+                <div class="form-group">
+                    <label for="userFullName">Full Name *</label>
+                    <input type="text" id="userFullName" required>
+                </div>
+                <div class="form-group">
+                    <label for="userRole">Role *</label>
+                    <select id="userRole" required>
+                        <option value="">Select Role</option>
+                        <option value="admin">Admin</option>
+                        <option value="manager">Manager</option>
+                        <option value="staff">Staff</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="userEmail">Email</label>
+                    <input type="email" id="userEmail">
+                </div>
+                <div class="form-group">
+                    <label for="userPhone">Phone</label>
+                    <input type="tel" id="userPhone">
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="userActive" checked>
+                        Active User
+                    </label>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" onclick="closeModal('userModal')" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Inventory Modal -->
+    <div id="inventoryModal" class="modal">
+        <div class="modal-content large-modal responsive-modal">
+            <div class="modal-header">
+                <h3 id="inventoryModalTitle">Add Inventory Item</h3>
+                <span class="close-btn" onclick="closeModal('inventoryModal')">&times;</span>
+            </div>
+            <form id="inventoryForm" class="modal-form">
+                <input type="hidden" id="inventoryId">
+                
+                <!-- Basic Information -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="itemCode">Item Code *</label>
+                        <input type="text" id="itemCode" required placeholder="e.g., WTH001, CLK001">
+                    </div>
+                    <div class="form-group">
+                        <label for="dateAdded">Date *</label>
+                        <input type="date" id="dateAdded" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="itemCategory">Category *</label>
+                        <select id="itemCategory" required onchange="toggleCategoryFields()">
+                            <option value="">Select Category</option>
+                            <option value="watch">Watch</option>
+                            <option value="clock">Clock</option>
+                            <option value="timepiece">Timepiece</option>
+                            <option value="strap">Strap</option>
+                            <option value="battery">Battery</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="itemBrand">Brand</label>
+                        <input type="text" id="itemBrand">
+                    </div>
+                </div>
+
+                <!-- Watch and Clock/Timepiece Fields -->
+                <div id="watchClockFields" class="category-fields" style="display: none;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="itemType">Type</label>
+                            <select id="itemType">
+                                <option value="">Select Type</option>
+                                <option value="analog">Analog</option>
+                                <option value="digital">Digital</option>
+                            </select>
+                        </div>
+                        <!-- Gender field - only for watches -->
+                        <div class="form-group" id="genderField" style="display: none;">
+                            <label for="itemGender">Gender</label>
+                            <select id="itemGender">
+                                <option value="">Select Gender</option>
+                                <option value="gents">Gents</option>
+                                <option value="ladies">Ladies</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Strap Fields -->
+                <div id="strapFields" class="category-fields" style="display: none;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="itemMaterial">Material</label>
+                            <select id="itemMaterial">
+                                <option value="">Select Material</option>
+                                <option value="leather">Leather</option>
+                                <option value="fiber">Fiber</option>
+                                <option value="chain">Chain</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="itemSize">Size (mm)</label>
+                            <input type="number" id="itemSize" min="1" placeholder="e.g., 20, 22, 24">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Battery Fields -->
+                <div id="batteryFields" class="category-fields" style="display: none;">
+                    <div class="form-group">
+                        <label for="itemBatteryCode">Battery Code</label>
+                        <input type="text" id="itemBatteryCode" placeholder="e.g., SR626SW, LR44">
+                    </div>
+                </div>
+
+                <!-- Common Fields -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="itemQuantity">Quantity *</label>
+                        <input type="number" id="itemQuantity" required min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="itemWarranty">Warranty Period (Months)</label>
+                        <input type="number" id="itemWarranty" min="0" placeholder="e.g., 12, 24">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="itemPrice">Price *</label>
+                        <input type="number" id="itemPrice" name="itemPrice" required step="0.01" min="0" placeholder="Enter price">
+                    </div>
+                    <div class="form-group">
+                        <label for="itemOutlet">Outlet *</label>
+                        <select id="itemOutlet" required>
+                            <option value="">Select Outlet</option>
+                            <option value="semmanchery">Semmanchery</option>
+                            <option value="navalur">Navalur</option>
+                            <option value="padur">Padur</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="itemComments">Comments</label>
+                    <textarea id="itemComments" rows="3" placeholder="Additional notes or description"></textarea>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" onclick="closeModal('inventoryModal')" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add other modals as needed... -->
 
     <!-- Load all module scripts -->
     <script src="dashboard.js"></script>
+
+    <script>
+        // Global customer functions for the action buttons
+        function customerEdit(id) {
+            if (window.customerModule) {
+                const module = window.customerModule();
+                if (module) module.edit(id);
+            }
+        }
+
+        function customerDelete(id) {
+            if (window.customerModule) {
+                const module = window.customerModule();
+                if (module) module.delete(id);
+            }
+        }
+
+        function customerCreateSale(id) {
+            if (window.customerModule) {
+                const module = window.customerModule();
+                if (module) module.createSale(id);
+            }
+        }
+
+        function customerCreateService(id) {
+            if (window.customerModule) {
+                const module = window.customerModule();
+                if (module) module.createService(id);
+            }
+        }
+    </script>
 </body>
 </html>

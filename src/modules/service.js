@@ -79,7 +79,8 @@ class ServiceModule {
         }
 
         try {
-            const customers = await this.customerModule.searchCustomers(searchTerm);
+            // Use the renamed method to avoid confusion with the main search
+            const customers = await this.customerModule.searchCustomersForOtherModules(searchTerm);
             this.displayServiceCustomerSuggestions(customers);
         } catch (error) {
             console.error('Error searching customers:', error);

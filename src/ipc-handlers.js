@@ -802,6 +802,33 @@ function setupIpcHandlers() {
             throw error;
         }
     });
+
+  // Customer net value handlers - ADD THESE TO YOUR EXISTING FILE
+    ipcMain.handle('get-customer-sales', async (event, customerId) => {
+        try {
+            return await getData(`
+                SELECT * FROM sales 
+                WHERE customer_id = ? AND sale_status = 'completed'
+                ORDER BY sale_date DESC
+            `, [customerId]);
+        } catch (error) {
+            console.error('Get customer sales error:', error);
+            throw error;
+        }
+    });
+
+    ipcMain.handle('get-customer-services', async (event, customerId) => {
+        try {
+            return await getData(`
+                SELECT * FROM service_jobs 
+                WHERE customer_id = ? AND (status = 'service_completed' OR status = 'delivered')
+                ORDER BY created_at DESC
+            `, [customerId]);
+        } catch (error) {
+            console.error('Get customer services error:', error);
+            throw error;
+        }
+    });
 }
 
 module.exports = { setupIpcHandlers };

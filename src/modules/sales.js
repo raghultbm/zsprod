@@ -83,7 +83,7 @@ class SalesModule {
         }
     }
 
-    async searchCustomers(searchTerm) {
+     async searchCustomers(searchTerm) {
         if (searchTerm.length < 2) {
             const suggestions = document.getElementById('customerSuggestions');
             if (suggestions) suggestions.style.display = 'none';
@@ -91,7 +91,8 @@ class SalesModule {
         }
 
         try {
-            const customers = await this.customerModule.searchCustomers(searchTerm);
+            // Use the renamed method to avoid confusion with the main search
+            const customers = await this.customerModule.searchCustomersForOtherModules(searchTerm);
             this.displayCustomerSuggestions(customers);
         } catch (error) {
             console.error('Error searching customers:', error);
