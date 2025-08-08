@@ -174,6 +174,21 @@ function createTables() {
                 FOREIGN KEY (created_by) REFERENCES users(id)
             )`);
 
+            // Ledger table for daily records
+            db.run(`CREATE TABLE IF NOT EXISTS cob_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date DATE NOT NULL UNIQUE,
+                cash_balance DECIMAL(12,2) NOT NULL DEFAULT 0,
+                account_balance DECIMAL(12,2) NOT NULL DEFAULT 0,
+                total_sales_count INTEGER DEFAULT 0,
+                total_services_count INTEGER DEFAULT 0,
+                total_expenses_count INTEGER DEFAULT 0,
+                next_day_notes TEXT,
+                completed_by INTEGER,
+                completed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (completed_by) REFERENCES users(id)
+            )`);
+
             // Check and migrate existing tables
             checkAndMigrateTables(resolve, reject);
         });

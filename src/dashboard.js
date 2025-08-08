@@ -8,6 +8,7 @@ const SalesModule = require('./modules/sales');
 const ServiceModule = require('./modules/service');
 const ExpensesModule = require('./modules/expenses');
 const InvoicesModule = require('./modules/invoices');
+const LedgerModule = require('./modules/ledger');
 const UsersModule = require('./modules/users');
 
 // Global state
@@ -15,7 +16,7 @@ let currentUser = null;
 let activeModule = null;
 
 // Module instances
-let customerModule, inventoryModule, salesModule, serviceModule, expensesModule, invoicesModule, usersModule;
+let customerModule, inventoryModule, salesModule, serviceModule, expensesModule, invoicesModule, usersModule, ledgerModule;
 
 // Initialize dashboard
 document.addEventListener('DOMContentLoaded', async () => {
@@ -49,6 +50,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function initializeModules() {
     try {
+        console.log('Starting module initialization...');
+        
         // Initialize module instances
         customerModule = new CustomerModule(currentUser);
         inventoryModule = new InventoryModule(currentUser);
@@ -59,16 +62,68 @@ async function initializeModules() {
         if (currentUser.role === 'admin') {
             usersModule = new UsersModule(currentUser);
         }
+        ledgerModule = new LedgerModule(currentUser);
 
-        // Initialize each module
-        await customerModule.init();
-        await inventoryModule.init();
-        await salesModule.init();
-        await serviceModule.init();
-        await expensesModule.init();
-        await invoicesModule.init();
+        console.log('Module instances created, starting initialization...');
+
+        // Initialize each module with proper error handling
+        try {
+            await customerModule.init();
+            console.log('✅ Customer module initialized');
+        } catch (error) {
+            console.error('❌ Customer module failed:', error);
+        }
+
+        try {
+            await inventoryModule.init();
+            console.log('✅ Inventory module initialized');
+        } catch (error) {
+            console.error('❌ Inventory module failed:', error);
+        }
+
+        try {
+            await salesModule.init();
+            console.log('✅ Sales module initialized');
+        } catch (error) {
+            console.error('❌ Sales module failed:', error);
+        }
+
+        try {
+            await serviceModule.init();
+            console.log('✅ Service module initialized');
+        } catch (error) {
+            console.error('❌ Service module failed:', error);
+            alert('Error initializing Service Module: ' + error.message);
+        }
+
+        try {
+            await expensesModule.init();
+            console.log('✅ Expenses module initialized');
+        } catch (error) {
+            console.error('❌ Expenses module failed:', error);
+        }
+
+        try {
+            await invoicesModule.init();
+            console.log('✅ Invoices module initialized');
+        } catch (error) {
+            console.error('❌ Invoices module failed:', error);
+        }
+
         if (usersModule) {
-            await usersModule.init();
+            try {
+                await usersModule.init();
+                console.log('✅ Users module initialized');
+            } catch (error) {
+                console.error('❌ Users module failed:', error);
+            }
+        }
+
+        try {
+            await ledgerModule.init();
+            console.log('✅ Ledger module initialized');
+        } catch (error) {
+            console.error('❌ Ledger module failed:', error);
         }
 
         // Make modules globally accessible
@@ -80,9 +135,11 @@ async function initializeModules() {
         window.invoicesModule = () => invoicesModule;
         window.usersModule = () => usersModule;
         
+        console.log('All modules initialized successfully');
+        
     } catch (error) {
-        console.error('Error initializing modules:', error);
-        alert('Error initializing application modules');
+        console.error('Critical error initializing modules:', error);
+        alert('Error initializing application modules: ' + error.message);
     }
 }
 
@@ -92,6 +149,7 @@ function setupEventListeners() {
         item.addEventListener('click', (e) => {
             e.preventDefault();
             const module = item.dataset.module;
+            console.log('Navigation clicked:', module);
             switchModule(module);
         });
     });
@@ -102,28 +160,53 @@ function setupEventListeners() {
         window.location.href = 'login.html';
     });
 
-    // Service Item Form submission
-    const serviceItemForm = document.getElementById('serviceItemForm');
-    if (serviceItemForm) {
-        serviceItemForm.addEventListener('submit', (e) => {
-            if (serviceModule && serviceModule.handleServiceItemForm) {
-                serviceModule.handleServiceItemForm(e);
-            }
-        });
-    }
+    // Service-specific event listeners
+    setTimeout(() => {
+        // Service Item Form submission
+        const serviceItemForm = document.getElementById('serviceItemForm');
+        if (serviceItemForm) {
+            serviceItemForm.addEventListener('submit', (e) => {
+                if (serviceModule && serviceModule.handleServiceItemForm) {
+                    serviceModule.handleServiceItemForm(e);
+                }
+            });
+        }
 
-    // Add Comment Form submission
-    const addCommentForm = document.getElementById('addCommentForm');
-    if (addCommentForm) {
-        addCommentForm.addEventListener('submit', (e) => {
-            if (serviceModule && serviceModule.handleAddComment) {
-                serviceModule.handleAddComment(e);
-            }
-        });
-    }
+        // Add Comment Form submission
+        const addCommentForm = document.getElementById('addCommentForm');
+        if (addCommentForm) {
+            addCommentForm.addEventListener('submit', (e) => {
+                if (serviceModule && serviceModule.handleAddComment) {
+                    serviceModule.handleAddComment(e);
+                }
+            });
+        }
+
+        // Service Job Form submission
+        const serviceJobForm = document.getElementById('serviceJobForm');
+        if (serviceJobForm) {
+            serviceJobForm.addEventListener('submit', (e) => {
+                if (serviceModule && serviceModule.handleServiceJobSubmit) {
+                    serviceModule.handleServiceJobSubmit(e);
+                }
+            });
+        }
+
+        // Update Service Status Form submission
+        const updateServiceStatusForm = document.getElementById('updateServiceStatusForm');
+        if (updateServiceStatusForm) {
+            updateServiceStatusForm.addEventListener('submit', (e) => {
+                if (serviceModule && serviceModule.handleUpdateServiceStatus) {
+                    serviceModule.handleUpdateServiceStatus(e);
+                }
+            });
+        }
+    }, 1000); // Delay to ensure DOM is ready
 }
 
 function switchModule(module) {
+    console.log('Switching to module:', module);
+    
     // Update navigation
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
@@ -140,6 +223,9 @@ function switchModule(module) {
     const moduleContent = document.getElementById(`${module}-content`);
     if (moduleContent) {
         moduleContent.classList.add('active');
+        console.log('✅ Switched to', module, 'content');
+    } else {
+        console.error('❌ Module content not found for:', module);
     }
     
     // Update page header and actions
@@ -147,7 +233,24 @@ function switchModule(module) {
     
     // Set active module and load data
     activeModule = module;
-    loadModuleData(module);
+    
+    // Special handling for service module
+    if (module === 'service' && serviceModule) {
+        console.log('Loading service module data...');
+        loadModuleData(module);
+        
+        // Ensure service module content is properly rendered
+        setTimeout(() => {
+            if (serviceModule && !serviceModule.isInitialized) {
+                console.log('Re-initializing service module...');
+                serviceModule.init().catch(error => {
+                    console.error('Failed to re-initialize service module:', error);
+                });
+            }
+        }, 100);
+    } else {
+        loadModuleData(module);
+    }
 }
 
 function updatePageHeader(module) {
@@ -190,6 +293,11 @@ function updatePageHeader(module) {
                 headerActions.innerHTML = '<button class="btn btn-primary" onclick="openUserModal()">Add User</button>';
             }
             break;
+        case 'ledger':
+            pageTitle.textContent = 'Daily Ledger';
+            headerActions.innerHTML = '<button class="btn btn-primary" onclick="ledgerModule().openCOBModal()">Close of Business</button>';
+            break;
+
         default:
             pageTitle.textContent = module.charAt(0).toUpperCase() + module.slice(1);
     }
@@ -197,6 +305,8 @@ function updatePageHeader(module) {
 
 async function loadModuleData(module) {
     try {
+        console.log('Loading data for module:', module);
+        
         switch (module) {
             case 'customers':
                 if (customerModule) await customerModule.loadData();
@@ -208,7 +318,18 @@ async function loadModuleData(module) {
                 if (salesModule) await salesModule.loadData();
                 break;
             case 'service':
-                if (serviceModule) await serviceModule.loadData();
+                if (serviceModule) {
+                    try {
+                        await serviceModule.loadData();
+                        console.log('✅ Service data loaded successfully');
+                    } catch (error) {
+                        console.error('❌ Failed to load service data:', error);
+                        // Try to re-render the service view
+                        if (serviceModule.renderInitialView) {
+                            serviceModule.renderInitialView();
+                        }
+                    }
+                }
                 break;
             case 'invoices':
                 if (invoicesModule) await invoicesModule.loadData();
@@ -219,9 +340,15 @@ async function loadModuleData(module) {
             case 'users':
                 if (usersModule) await usersModule.loadData();
                 break;
+            case 'ledger':
+                if (ledgerModule) await ledgerModule.loadTodayData();
+                break;
+            default:
+                console.log('No data loading required for:', module);
         }
     } catch (error) {
         console.error(`Error loading ${module} data:`, error);
+        alert(`Error loading ${module} data: ${error.message}`);
     }
 }
 
