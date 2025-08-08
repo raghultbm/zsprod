@@ -239,178 +239,567 @@ function setupIpcHandlers() {
     // ================================
     // SALES HANDLERS
     // ================================
-    ipcMain.handle('get-sales', async () => {
-        try {
-            return await getData(`
-                SELECT s.*, c.name as customer_name, c.phone as customer_phone, u.full_name as created_by_name
-                FROM sales s
-                LEFT JOIN customers c ON s.customer_id = c.id
-                LEFT JOIN users u ON s.created_by = u.id
-                ORDER BY s.created_at DESC
-            `);
-        } catch (error) {
-            console.error('Get sales error:', error);
-            throw error;
-        }
-    });
 
-    ipcMain.handle('create-sale', async (event, saleData) => {
-        const db = getDatabase();
-        return new Promise((resolve, reject) => {
-            db.serialize(() => {
-                db.run('BEGIN TRANSACTION');
+// Enhanced get sales with items
+ipcMain.handle('get-sales-with-items', async () => {
+    try {
+        const sales = await getData(`
+            SELECT s.*, c.name as customer_name, c.phone as customer_phone, u.full_name as created_by_name,
+                   COUNT(si.id) as items_count
+            FROM sales s
+            LEFT JOIN customers c ON s.customer_id = c.id
+            LEFT JOIN users u ON s.created_by = u.id
+            LEFT JOIN sale_items si ON s.id = si.sale_id
+            GROUP BY s.id
+            ORDER BY s.created_at DESC
+        `);
 
-                try {
-                    const { sale, items, payments } = saleData;
-                    
-                    // Generate invoice number with new format: INVSR<YYMMDD><4 RANDOM DIGITS>
-                    const now = new Date();
-                    const year = now.getFullYear().toString().slice(-2);
-                    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-                    const day = now.getDate().toString().padStart(2, '0');
-                    let randomDigits = '';
-                    for (let i = 0; i < 4; i++) {
-                        randomDigits += Math.floor(Math.random() * 10).toString();
-                    }
-                    const invoiceNumber = `INVSR${year}${month}${day}${randomDigits}`;
-
-                    // Insert main sale record with timestamp
-                    db.run(`INSERT INTO sales (
-                        customer_id, sale_date, total_amount, sale_status, comments, created_by, invoice_number, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, [
-                        sale.customer_id || null,
-                        sale.sale_date,
-                        sale.total_amount,
-                        'completed',
-                        sale.comments || null,
-                        sale.created_by,
-                        invoiceNumber
-                    ], function(err) {
-                        if (err) {
-                            db.run('ROLLBACK');
-                            reject(err);
-                            return;
-                        }
-
-                        const saleId = this.lastID;
-                        let itemsProcessed = 0;
-                        let paymentsProcessed = 0;
-                        const totalItems = items.length;
-                        const totalPayments = payments.length;
-
-                        // Insert sale items with timestamps
-                        items.forEach((item, index) => {
-                            db.run(`INSERT INTO sale_items (
-                                sale_id, inventory_id, item_code, quantity, unit_price, total_price, created_at
-                            ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`, [
-                                saleId,
-                                item.inventory_id || null,
-                                item.item_code,
-                                item.quantity,
-                                item.unit_price,
-                                item.total_price
-                            ], (err) => {
-                                if (err) {
-                                    db.run('ROLLBACK');
-                                    reject(err);
-                                    return;
-                                }
-
-                                itemsProcessed++;
-                                
-                                if (itemsProcessed === totalItems && paymentsProcessed === totalPayments) {
-                                    db.run('COMMIT', (err) => {
-                                        if (err) {
-                                            reject(err);
-                                        } else {
-                                            resolve({ id: saleId, invoice_number: invoiceNumber, success: true });
-                                        }
-                                    });
-                                }
-                            });
-                        });
-
-                        // Insert payment records with timestamps
-                        payments.forEach((payment, index) => {
-                            db.run(`INSERT INTO sale_payments (
-                                sale_id, payment_method, amount, reference_number, created_at
-                            ) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`, [
-                                saleId,
-                                payment.payment_method,
-                                payment.amount,
-                                payment.reference_number || null
-                            ], (err) => {
-                                if (err) {
-                                    db.run('ROLLBACK');
-                                    reject(err);
-                                    return;
-                                }
-
-                                paymentsProcessed++;
-                                
-                                if (itemsProcessed === totalItems && paymentsProcessed === totalPayments) {
-                                    db.run('COMMIT', (err) => {
-                                        if (err) {
-                                            reject(err);
-                                        } else {
-                                            resolve({ id: saleId, invoice_number: invoiceNumber, success: true });
-                                        }
-                                    });
-                                }
-                            });
-                        });
-                    });
-                } catch (error) {
-                    db.run('ROLLBACK');
-                    reject(error);
-                }
-            });
-        });
-    });
-
-    ipcMain.handle('get-sale-details', async (event, saleId) => {
-        try {
-            const sale = await getRow(`
-                SELECT s.*, c.name as customer_name, c.phone as customer_phone, c.email as customer_email
-                FROM sales s
-                LEFT JOIN customers c ON s.customer_id = c.id
-                WHERE s.id = ?
-            `, [saleId]);
-
+        for (let sale of sales) {
             const items = await getData(`
                 SELECT si.*, i.brand, i.type, i.category
                 FROM sale_items si
                 LEFT JOIN inventory i ON si.inventory_id = i.id
                 WHERE si.sale_id = ?
                 ORDER BY si.id
-            `, [saleId]);
+            `, [sale.id]);
+            
+            sale.items_sold = items;
 
             const payments = await getData(`
-                SELECT * FROM sale_payments WHERE sale_id = ? ORDER BY id
-            `, [saleId]);
-
-            return { sale, items, payments };
-        } catch (error) {
-            console.error('Get sale details error:', error);
-            throw error;
+                SELECT payment_method, amount, payment_reference
+                FROM sale_payments 
+                WHERE sale_id = ?
+                ORDER BY id
+            `, [sale.id]);
+            
+            sale.payment_methods = payments;
         }
+
+        return sales;
+    } catch (error) {
+        console.error('Get sales with items error:', error);
+        throw error;
+    }
+});
+
+// Get sales by date range
+ipcMain.handle('get-sales-by-date-range', async (event, { startDate, endDate }) => {
+    try {
+        const sales = await getData(`
+            SELECT s.*, c.name as customer_name, c.phone as customer_phone, u.full_name as created_by_name,
+                   COUNT(si.id) as items_count
+            FROM sales s
+            LEFT JOIN customers c ON s.customer_id = c.id
+            LEFT JOIN users u ON s.created_by = u.id
+            LEFT JOIN sale_items si ON s.id = si.sale_id
+            WHERE DATE(s.created_at) BETWEEN ? AND ?
+            GROUP BY s.id
+            ORDER BY s.created_at DESC
+        `, [startDate, endDate]);
+
+        // Get items and payments for each sale
+        for (let sale of sales) {
+            const items = await getData(`
+                SELECT si.*, i.brand, i.type, i.category
+                FROM sale_items si
+                LEFT JOIN inventory i ON si.inventory_id = i.id
+                WHERE si.sale_id = ?
+                ORDER BY si.id
+            `, [sale.id]);
+            
+            sale.items_sold = items;
+
+            const payments = await getData(`
+                SELECT payment_method, amount, payment_reference
+                FROM sale_payments 
+                WHERE sale_id = ?
+                ORDER BY id
+            `, [sale.id]);
+            
+            sale.payment_methods = payments;
+        }
+
+        return sales;
+    } catch (error) {
+        console.error('Get sales by date range error:', error);
+        throw error;
+    }
+});
+
+// Enhanced inventory search for sales (with better item details)
+ipcMain.handle('search-inventory-for-sale', async (event, searchTerm) => {
+    try {
+        const term = `%${searchTerm}%`;
+        return await getData(`
+            SELECT item_code, brand, type, category, price, quantity
+            FROM inventory 
+            WHERE quantity > 0 AND (
+                item_code LIKE ? OR 
+                brand LIKE ? OR 
+                type LIKE ? OR
+                category LIKE ?
+            )
+            ORDER BY brand, type
+            LIMIT 20
+        `, [term, term, term, term]);
+    } catch (error) {
+        console.error('Search inventory for sale error:', error);
+        throw error;
+    }
+});
+
+// Get inventory item by code for sales
+ipcMain.handle('get-inventory-by-code', async (event, itemCode) => {
+    try {
+        return await getRow(`
+            SELECT * FROM inventory WHERE item_code = ? AND quantity > 0
+        `, [itemCode]);
+    } catch (error) {
+        console.error('Get inventory by code error:', error);
+        throw error;
+    }
+});
+
+// Sales statistics for dashboard
+ipcMain.handle('get-sales-statistics', async () => {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const thisMonth = new Date().toISOString().slice(0, 7) + '-01';
+        
+        const stats = await getRow(`
+            SELECT 
+                COUNT(*) as total_sales,
+                SUM(total_amount) as total_revenue,
+                AVG(total_amount) as average_sale,
+                COUNT(CASE WHEN DATE(created_at) = ? THEN 1 END) as today_sales,
+                SUM(CASE WHEN DATE(created_at) = ? THEN total_amount ELSE 0 END) as today_revenue,
+                COUNT(CASE WHEN DATE(created_at) >= ? THEN 1 END) as month_sales,
+                SUM(CASE WHEN DATE(created_at) >= ? THEN total_amount ELSE 0 END) as month_revenue
+            FROM sales
+            WHERE sale_status = 'completed' OR sale_status IS NULL
+        `, [today, today, thisMonth, thisMonth]);
+
+        // Get top selling categories
+        const topCategories = await getData(`
+            SELECT i.category, COUNT(si.id) as sales_count, SUM(si.quantity) as total_quantity
+            FROM sale_items si
+            INNER JOIN inventory i ON si.inventory_id = i.id
+            INNER JOIN sales s ON si.sale_id = s.id
+            WHERE DATE(s.created_at) >= ?
+            GROUP BY i.category
+            ORDER BY sales_count DESC
+            LIMIT 5
+        `, [thisMonth]);
+
+        return { ...stats, topCategories };
+    } catch (error) {
+        console.error('Get sales statistics error:', error);
+        throw error;
+    }
+});
+
+// Get best selling items
+ipcMain.handle('get-best-selling-items', async (event, limit = 10) => {
+    try {
+        return await getData(`
+            SELECT 
+                i.item_code,
+                i.brand,
+                i.type,
+                i.category,
+                SUM(si.quantity) as total_sold,
+                COUNT(si.id) as times_sold,
+                SUM(si.line_total) as total_revenue,
+                AVG(si.unit_price) as avg_price
+            FROM sale_items si
+            INNER JOIN inventory i ON si.inventory_id = i.id
+            INNER JOIN sales s ON si.sale_id = s.id
+            WHERE s.sale_status = 'completed' OR s.sale_status IS NULL
+            GROUP BY i.id
+            ORDER BY total_sold DESC, total_revenue DESC
+            LIMIT ?
+        `, [limit]);
+    } catch (error) {
+        console.error('Get best selling items error:', error);
+        throw error;
+    }
+});
+
+// Additional helper: Get sales for specific customer
+ipcMain.handle('get-customer-sales', async (event, customerId) => {
+    try {
+        const sales = await getData(`
+            SELECT s.*, 
+                   COUNT(si.id) as items_count,
+                   GROUP_CONCAT(si.item_name, ', ') as items_list
+            FROM sales s
+            LEFT JOIN sale_items si ON s.id = si.sale_id
+            WHERE s.customer_id = ?
+            GROUP BY s.id
+            ORDER BY s.created_at DESC
+        `, [customerId]);
+
+        return sales;
+    } catch (error) {
+        console.error('Get customer sales error:', error);
+        throw error;
+    }
+});
+
+// Sales report by date range and category
+ipcMain.handle('get-sales-report', async (event, { startDate, endDate, category = null }) => {
+    try {
+        let query = `
+            SELECT 
+                DATE(s.created_at) as sale_date,
+                COUNT(s.id) as daily_sales,
+                SUM(s.total_amount) as daily_revenue,
+                SUM(s.total_discount) as daily_discounts,
+                COUNT(DISTINCT s.customer_id) as unique_customers
+            FROM sales s
+        `;
+        
+        const params = [startDate, endDate];
+        
+        if (category) {
+            query += `
+                INNER JOIN sale_items si ON s.id = si.sale_id
+                INNER JOIN inventory i ON si.inventory_id = i.id
+                WHERE DATE(s.created_at) BETWEEN ? AND ? AND i.category = ?
+            `;
+            params.push(category);
+        } else {
+            query += `
+                WHERE DATE(s.created_at) BETWEEN ? AND ?
+            `;
+        }
+        
+        query += `
+            GROUP BY DATE(s.created_at)
+            ORDER BY sale_date DESC
+        `;
+
+        return await getData(query, params);
+    } catch (error) {
+        console.error('Get sales report error:', error);
+        throw error;
+    }
+});
+
+// Get all sales (original handler for backward compatibility)
+ipcMain.handle('get-sales', async () => {
+    try {
+        return await getData(`
+            SELECT s.*, c.name as customer_name, c.phone as customer_phone, u.full_name as created_by_name
+            FROM sales s
+            LEFT JOIN customers c ON s.customer_id = c.id
+            LEFT JOIN users u ON s.created_by = u.id
+            ORDER BY s.created_at DESC
+        `);
+    } catch (error) {
+        console.error('Get sales error:', error);
+        throw error;
+    }
+});
+
+// Enhanced create sale handler
+ipcMain.handle('create-sale', async (event, saleData) => {
+    const db = getDatabase();
+    return new Promise((resolve, reject) => {
+        db.serialize(() => {
+            db.run('BEGIN TRANSACTION');
+
+            try {
+                const { sale, items, payments } = saleData;
+                
+                // Generate invoice number with new format: INVSR<YYMMDD><4 RANDOM DIGITS>
+                const now = new Date();
+                const year = now.getFullYear().toString().slice(-2);
+                const month = (now.getMonth() + 1).toString().padStart(2, '0');
+                const day = now.getDate().toString().padStart(2, '0');
+                let randomDigits = '';
+                for (let i = 0; i < 4; i++) {
+                    randomDigits += Math.floor(Math.random() * 10).toString();
+                }
+                const invoiceNumber = `INVSR${year}${month}${day}${randomDigits}`;
+
+                // Insert main sale record
+                db.run(`INSERT INTO sales (
+                    sale_date, customer_id, subtotal, total_discount, total_amount, 
+                    invoice_number, notes, created_by, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, [
+                    now.toISOString().split('T')[0], // sale_date
+                    sale.customer_id || null,
+                    sale.subtotal,
+                    sale.total_discount,
+                    sale.total_amount,
+                    invoiceNumber,
+                    sale.notes || null,
+                    sale.created_by
+                ], function(err) {
+                    if (err) {
+                        db.run('ROLLBACK');
+                        reject(err);
+                        return;
+                    }
+
+                    const saleId = this.lastID;
+                    let itemsProcessed = 0;
+                    let paymentsProcessed = 0;
+                    const totalItems = items.length;
+                    const totalPayments = payments.length;
+
+                    // Process sale items
+                    items.forEach((item) => {
+                        // Get inventory ID by item code
+                        db.get(`SELECT id, quantity FROM inventory WHERE item_code = ?`, [item.item_code], (err, inventoryItem) => {
+                            if (err) {
+                                db.run('ROLLBACK');
+                                reject(err);
+                                return;
+                            }
+
+                            if (!inventoryItem) {
+                                db.run('ROLLBACK');
+                                reject(new Error(`Item ${item.item_code} not found in inventory`));
+                                return;
+                            }
+
+                            // Check stock availability
+                            if (inventoryItem.quantity < item.quantity) {
+                                db.run('ROLLBACK');
+                                reject(new Error(`Insufficient stock for item ${item.item_code}. Available: ${inventoryItem.quantity}, Required: ${item.quantity}`));
+                                return;
+                            }
+
+                            // Insert sale item
+                            db.run(`INSERT INTO sale_items (
+                                sale_id, inventory_id, item_code, item_name, quantity, 
+                                unit_price, discount_type, discount_value, line_total, created_at
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`, [
+                                saleId,
+                                inventoryItem.id,
+                                item.item_code,
+                                item.item_name,
+                                item.quantity,
+                                item.unit_price,
+                                item.discount_type,
+                                item.discount_value,
+                                item.line_total
+                            ], (err) => {
+                                if (err) {
+                                    db.run('ROLLBACK');
+                                    reject(err);
+                                    return;
+                                }
+
+                                // Update inventory quantity
+                                db.run(`UPDATE inventory SET 
+                                    quantity = quantity - ?, 
+                                    updated_at = CURRENT_TIMESTAMP 
+                                    WHERE id = ?`, [item.quantity, inventoryItem.id], (err) => {
+                                    if (err) {
+                                        db.run('ROLLBACK');
+                                        reject(err);
+                                        return;
+                                    }
+
+                                    itemsProcessed++;
+                                    
+                                    // Check if all items and payments are processed
+                                    if (itemsProcessed === totalItems && paymentsProcessed === totalPayments) {
+                                        db.run('COMMIT', (err) => {
+                                            if (err) {
+                                                reject(err);
+                                            } else {
+                                                resolve({ id: saleId, invoice_number: invoiceNumber, success: true });
+                                            }
+                                        });
+                                    }
+                                });
+                            });
+                        });
+                    });
+
+                    // Process payments
+                    payments.forEach((payment) => {
+                        db.run(`INSERT INTO sale_payments (
+                            sale_id, payment_method, amount, payment_reference, created_at
+                        ) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`, [
+                            saleId,
+                            payment.payment_method,
+                            payment.amount,
+                            payment.payment_reference || null
+                        ], (err) => {
+                            if (err) {
+                                db.run('ROLLBACK');
+                                reject(err);
+                                return;
+                            }
+
+                            paymentsProcessed++;
+                            
+                            // Check if all items and payments are processed
+                            if (itemsProcessed === totalItems && paymentsProcessed === totalPayments) {
+                                db.run('COMMIT', (err) => {
+                                    if (err) {
+                                        reject(err);
+                                    } else {
+                                        resolve({ id: saleId, invoice_number: invoiceNumber, success: true });
+                                    }
+                                });
+                            }
+                        });
+                    });
+                });
+            } catch (error) {
+                db.run('ROLLBACK');
+                reject(error);
+            }
+        });
     });
+});
 
-    ipcMain.handle('search-sales', async (event, searchTerm) => {
-        try {
-            const term = `%${searchTerm}%`;
-            return await getData(`
-                SELECT s.*, c.name as customer_name, c.phone as customer_phone, u.full_name as created_by_name
-                FROM sales s
-                LEFT JOIN customers c ON s.customer_id = c.id
-                LEFT JOIN users u ON s.created_by = u.id
-                WHERE s.invoice_number LIKE ? OR c.name LIKE ? OR c.phone LIKE ?
-                ORDER BY s.created_at DESC
-            `, [term, term, term]);
-        } catch (error) {
-            console.error('Search sales error:', error);
-            throw error;
+// Enhanced get sale details with items and category information
+ipcMain.handle('get-sale-details', async (event, saleId) => {
+    try {
+        const sale = await getRow(`
+            SELECT s.*, c.name as customer_name, c.phone as customer_phone, c.email as customer_email
+            FROM sales s
+            LEFT JOIN customers c ON s.customer_id = c.id
+            WHERE s.id = ?
+        `, [saleId]);
+
+        const items = await getData(`
+            SELECT si.*, i.brand, i.type, i.category
+            FROM sale_items si
+            LEFT JOIN inventory i ON si.inventory_id = i.id
+            WHERE si.sale_id = ?
+            ORDER BY si.id
+        `, [saleId]);
+
+        const payments = await getData(`
+            SELECT * FROM sale_payments WHERE sale_id = ? ORDER BY id
+        `, [saleId]);
+
+        return { sale, items, payments };
+    } catch (error) {
+        console.error('Get sale details error:', error);
+        throw error;
+    }
+});
+
+// Enhanced search sales with category filtering
+ipcMain.handle('search-sales', async (event, searchTerm) => {
+    try {
+        const term = `%${searchTerm}%`;
+        const sales = await getData(`
+            SELECT s.*, c.name as customer_name, c.phone as customer_phone, u.full_name as created_by_name
+            FROM sales s
+            LEFT JOIN customers c ON s.customer_id = c.id
+            LEFT JOIN users u ON s.created_by = u.id
+            WHERE s.invoice_number LIKE ? OR c.name LIKE ? OR c.phone LIKE ?
+            ORDER BY s.created_at DESC
+        `, [term, term, term]);
+        
+        // Get items for each sale to enable category filtering
+        for (let sale of sales) {
+            const items = await getData(`
+                SELECT si.*, i.category
+                FROM sale_items si
+                LEFT JOIN inventory i ON si.inventory_id = i.id
+                WHERE si.sale_id = ?
+            `, [sale.id]);
+            
+            sale.items_sold = items;
         }
+        
+        return sales;
+    } catch (error) {
+        console.error('Search sales error:', error);
+        throw error;
+    }
+});
+
+// New handler: Filter sales by category and date range
+ipcMain.handle('filter-sales', async (event, filters) => {
+    try {
+        const { category, dateFrom, dateTo, searchTerm } = filters;
+        let query = `
+            SELECT DISTINCT s.*, c.name as customer_name, c.phone as customer_phone, u.full_name as created_by_name
+            FROM sales s
+            LEFT JOIN customers c ON s.customer_id = c.id
+            LEFT JOIN users u ON s.created_by = u.id
+        `;
+        
+        const params = [];
+        const whereConditions = [];
+
+        // Add category filter by joining with sale_items and inventory
+        if (category) {
+            query += `
+                INNER JOIN sale_items si ON s.id = si.sale_id
+                INNER JOIN inventory i ON si.inventory_id = i.id
+            `;
+            whereConditions.push(`i.category = ?`);
+            params.push(category);
+        }
+
+        // Add date filters
+        if (dateFrom) {
+            whereConditions.push(`DATE(s.created_at) >= ?`);
+            params.push(dateFrom);
+        }
+
+        if (dateTo) {
+            whereConditions.push(`DATE(s.created_at) <= ?`);
+            params.push(dateTo);
+        }
+
+        // Add search term filter
+        if (searchTerm) {
+            const term = `%${searchTerm}%`;
+            whereConditions.push(`(s.invoice_number LIKE ? OR c.name LIKE ? OR c.phone LIKE ?)`);
+            params.push(term, term, term);
+        }
+
+        // Add WHERE clause if we have conditions
+        if (whereConditions.length > 0) {
+            query += ` WHERE ` + whereConditions.join(' AND ');
+        }
+
+        query += ` ORDER BY s.created_at DESC`;
+
+        const sales = await getData(query, params);
+        
+        // Get items for each sale
+        for (let sale of sales) {
+            const items = await getData(`
+                SELECT si.*, i.brand, i.type, i.category
+                FROM sale_items si
+                LEFT JOIN inventory i ON si.inventory_id = i.id
+                WHERE si.sale_id = ?
+                ORDER BY si.id
+            `, [sale.id]);
+            
+            sale.items_sold = items;
+
+            // Get payment methods
+            const payments = await getData(`
+                SELECT payment_method, amount, payment_reference
+                FROM sale_payments 
+                WHERE sale_id = ?
+                ORDER BY id
+            `, [sale.id]);
+            
+            sale.payment_methods = payments;
+        }
+
+        return sales;
+    } catch (error) {
+        console.error('Filter sales error:', error);
+        throw error;
+    }
     });
 
     // ================================
@@ -1444,6 +1833,5 @@ function setupIpcHandlers() {
             throw error;
         }
     });
-}
-
+} // <-- Add this closing brace for the setupIpcHandlers function
 module.exports = { setupIpcHandlers };

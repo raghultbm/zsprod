@@ -8,8 +8,8 @@ const SalesModule = require('./modules/sales');
 const ServiceModule = require('./modules/service');
 const ExpensesModule = require('./modules/expenses');
 const InvoicesModule = require('./modules/invoices');
-const LedgerModule = require('./modules/ledger');
 const UsersModule = require('./modules/users');
+const LedgerModule = require('./modules/ledger');
 
 // Global state
 let currentUser = null;
@@ -55,7 +55,13 @@ async function initializeModules() {
         // Initialize module instances
         customerModule = new CustomerModule(currentUser);
         inventoryModule = new InventoryModule(currentUser);
-        salesModule = new SalesModule(currentUser, customerModule, inventoryModule);
+        if (typeof SalesModule !== 'undefined') {
+            salesModule = new SalesModule(currentUser);
+            // Set references to other modules after all modules are created
+            salesModule.customerModule = customerModule;
+            salesModule.inventoryModule = inventoryModule;
+            window.salesModule = () => salesModule; // Make it a function for global access
+        }
         serviceModule = new ServiceModule(currentUser, customerModule);
         expensesModule = new ExpensesModule(currentUser);
         invoicesModule = new InvoicesModule(currentUser);
@@ -234,22 +240,45 @@ function switchModule(module) {
     // Set active module and load data
     activeModule = module;
     
-    // Special handling for service module
-    if (module === 'service' && serviceModule) {
-        console.log('Loading service module data...');
-        loadModuleData(module);
-        
-        // Ensure service module content is properly rendered
-        setTimeout(() => {
-            if (serviceModule && !serviceModule.isInitialized) {
-                console.log('Re-initializing service module...');
-                serviceModule.init().catch(error => {
-                    console.error('Failed to re-initialize service module:', error);
-                });
+    // Special handling for different modules
+    switch (module) {
+        case 'sales':
+            if (salesModule) {
+                console.log('Loading sales module data...');
+                loadModuleData(module);
+                
+                // Ensure sales module content is properly rendered
+                setTimeout(() => {
+                    if (salesModule && !salesModule.isInitialized) {
+                        console.log('Re-initializing sales module...');
+                        salesModule.init().catch(error => {
+                            console.error('Failed to re-initialize sales module:', error);
+                        });
+                    }
+                }, 100);
             }
-        }, 100);
-    } else {
-        loadModuleData(module);
+            break;
+            
+        case 'service':
+            if (serviceModule) {
+                console.log('Loading service module data...');
+                loadModuleData(module);
+                
+                // Ensure service module content is properly rendered
+                setTimeout(() => {
+                    if (serviceModule && !serviceModule.isInitialized) {
+                        console.log('Re-initializing service module...');
+                        serviceModule.init().catch(error => {
+                            console.error('Failed to re-initialize service module:', error);
+                        });
+                    }
+                }, 100);
+            }
+            break;
+            
+        default:
+            loadModuleData(module);
+            break;
     }
 }
 
@@ -286,6 +315,7 @@ function updatePageHeader(module) {
             break;
         case 'expenses':
             pageTitle.textContent = 'Expenses Management';
+            headerActions.innerHTML = '<button class="btn btn-primary" onclick="openExpenseModal()">Add Expense</button>';
             break;
         case 'users':
             pageTitle.textContent = 'User Management';
@@ -297,7 +327,6 @@ function updatePageHeader(module) {
             pageTitle.textContent = 'Daily Ledger';
             headerActions.innerHTML = '<button class="btn btn-primary" onclick="ledgerModule().openCOBModal()">Close of Business</button>';
             break;
-
         default:
             pageTitle.textContent = module.charAt(0).toUpperCase() + module.slice(1);
     }
@@ -315,7 +344,18 @@ async function loadModuleData(module) {
                 if (inventoryModule) await inventoryModule.loadData();
                 break;
             case 'sales':
-                if (salesModule) await salesModule.loadData();
+                if (salesModule) {
+                    try {
+                        await salesModule.loadData(); // This now uses get-sales-with-items
+                        console.log('✅ Sales data loaded successfully');
+                    } catch (error) {
+                        console.error('❌ Failed to load sales data:', error);
+                        // Try to re-render the sales view
+                        if (salesModule.renderInitialView) {
+                            salesModule.renderInitialView();
+                        }
+                    }
+                }
                 break;
             case 'service':
                 if (serviceModule) {
@@ -324,7 +364,6 @@ async function loadModuleData(module) {
                         console.log('✅ Service data loaded successfully');
                     } catch (error) {
                         console.error('❌ Failed to load service data:', error);
-                        // Try to re-render the service view
                         if (serviceModule.renderInitialView) {
                             serviceModule.renderInitialView();
                         }
@@ -341,41 +380,65 @@ async function loadModuleData(module) {
                 if (usersModule) await usersModule.loadData();
                 break;
             case 'ledger':
-                if (ledgerModule) await ledgerModule.loadTodayData();
+                if (ledgerModule) await ledgerModule.loadData();
                 break;
             default:
-                console.log('No data loading required for:', module);
+                console.log('No specific data loading required for:', module);
         }
     } catch (error) {
-        console.error(`Error loading ${module} data:`, error);
-        alert(`Error loading ${module} data: ${error.message}`);
+        console.error('Error loading module data:', error);
+        alert('Error loading module data: ' + error.message);
     }
 }
 
-async function loadDashboardStats() {
-    try {
-        const [customersData, usersData, inventoryData] = await Promise.all([
-            ipcRenderer.invoke('get-customers'),
-            ipcRenderer.invoke('get-users'),
-            ipcRenderer.invoke('get-inventory')
-        ]);
-        
-        const totalCustomersEl = document.getElementById('totalCustomers');
-        const totalUsersEl = document.getElementById('totalUsers');
-        const totalItemsEl = document.getElementById('totalItems');
-        const lowStockItemsEl = document.getElementById('lowStockItems');
-        
-        if (totalCustomersEl) totalCustomersEl.textContent = customersData.length;
-        if (totalUsersEl) totalUsersEl.textContent = usersData.length;
-        if (totalItemsEl) totalItemsEl.textContent = inventoryData.length;
-        
-        // Count low stock items (items with quantity <= 5)
-        const lowStockCount = inventoryData.filter(item => item.quantity <= 5).length;
-        if (lowStockItemsEl) lowStockItemsEl.textContent = lowStockCount;
-    } catch (error) {
-        console.error('Error loading dashboard stats:', error);
+// Add enhanced error handling for module operations
+function handleModuleError(moduleName, operation, error) {
+    console.error(`Error in ${moduleName} module during ${operation}:`, error);
+    
+    const errorMessage = `Error in ${moduleName.charAt(0).toUpperCase() + moduleName.slice(1)} module: ${error.message || 'Unknown error'}`;
+    
+    if (window.showError) {
+        window.showError(errorMessage);
+    } else {
+        alert(errorMessage);
     }
 }
+
+function updateDashboardCard(elementId, value, label) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        // Format currency values
+        const formattedValue = typeof value === 'number' && label.includes('Sales') || label.includes('Revenue') 
+            ? `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}` 
+            : value.toLocaleString('en-IN');
+        
+        element.textContent = formattedValue;
+    }
+}
+
+// Enhanced dashboard stats loading with sales integration
+async function loadDashboardStats() {
+    try {
+        const stats = await ipcRenderer.invoke('get-dashboard-stats');
+        
+        // Update dashboard cards
+        updateDashboardCard('totalSales', stats.sales.total_sales_value || 0, 'Total Sales');
+        updateDashboardCard('totalServices', stats.services.total_service_revenue || 0, 'Service Revenue');
+        updateDashboardCard('totalCustomers', stats.customers.total_customers || 0, 'Total Customers');
+        updateDashboardCard('lowStockItems', stats.inventory.low_stock_items || 0, 'Low Stock Items');
+        
+        // Update today's performance
+        updateDashboardCard('todaySales', stats.sales.today_sales_value || 0, 'Today\'s Sales');
+        updateDashboardCard('todayServices', stats.services.today_services || 0, 'Today\'s Services');
+        updateDashboardCard('monthSales', stats.sales.month_sales_value || 0, 'This Month Sales');
+        
+        console.log('✅ Dashboard stats loaded successfully');
+    } catch (error) {
+        console.error('❌ Error loading dashboard stats:', error);
+        handleModuleError('dashboard', 'loading stats', error);
+    }
+}
+
 
 // Global utility functions
 function closeModal(modalId) {
@@ -452,6 +515,12 @@ window.addEventListener('click', (e) => {
 
 // Make functions globally available
 window.closeModal = closeModal;
+window.closeModal = function(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+    }
+};
 window.showSuccess = showSuccess;
 window.showError = showError;
 window.loadDashboardStats = loadDashboardStats;
@@ -646,59 +715,68 @@ window.printCurrentInvoice = function() {
 
 // Sales Module Global Functions
 window.addItemToSale = function() {
-    const salesModule = window.salesModule();
-    if (salesModule) {
-        salesModule.addItemToSale();
+    const salesMod = window.salesModule();
+    if (salesMod && salesMod.addItemToSale) {
+        salesMod.addItemToSale();
     }
 };
 
 window.clearSaleForm = function() {
-    const salesModule = window.salesModule();
-    if (salesModule) {
-        salesModule.clearSaleForm();
+    const salesMod = window.salesModule();
+    if (salesMod && salesMod.clearSaleForm) {
+        salesMod.clearSaleForm();
     }
 };
 
 window.completeSale = function() {
-    const salesModule = window.salesModule();
-    if (salesModule) {
-        salesModule.completeSale();
+    const salesMod = window.salesModule();
+    if (salesMod && salesMod.completeSale) {
+        salesMod.completeSale();
     }
 };
 
 window.addPaymentMethod = function() {
-    const salesModule = window.salesModule();
-    if (salesModule) {
-        salesModule.addPaymentMethod();
+    const salesMod = window.salesModule();
+    if (salesMod && salesMod.addPaymentMethod) {
+        salesMod.addPaymentMethod();
     }
 };
 
 window.searchSales = function() {
-    const salesModule = window.salesModule();
-    if (salesModule) {
-        salesModule.searchSales();
+    const salesMod = window.salesModule();
+    if (salesMod && salesMod.searchSales) {
+        salesMod.searchSales();
     }
 };
 
 window.clearSalesSearch = function() {
-    const salesModule = window.salesModule();
-    if (salesModule) {
-        salesModule.clearSalesSearch();
+    const salesMod = window.salesModule();
+    if (salesMod && salesMod.clearSalesSearch) {
+        salesMod.clearSalesSearch();
     }
 };
 
 window.filterSales = function() {
-    const salesModule = window.salesModule();
-    if (salesModule) {
-        salesModule.filterSales();
+    const salesMod = window.salesModule();
+    if (salesMod && salesMod.filterSales) {
+        salesMod.filterSales();
     }
 };
+
 
 // Make all header functions globally available
 window.openCustomerModal = openCustomerModal;
 window.openInventoryModal = openInventoryModal;
 window.openUserModal = openUserModal;
-window.openNewSaleModal = openNewSaleModal;
+// Enhanced global function for Sales Module
+window.openNewSaleModal = function() {
+    const salesMod = window.salesModule();
+    if (salesMod && salesMod.openNewSaleModal) {
+        salesMod.openNewSaleModal();
+    } else {
+        console.error('Sales module not available or method not found');
+    }
+};
 window.openNewServiceModal = openNewServiceModal;
 window.inventoryEdit = inventoryEdit;
 window.inventoryDelete = inventoryDelete;
