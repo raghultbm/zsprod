@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZEDSON Watchcraft - Management System</title>
+    <link rel="stylesheet" href="styles/styles.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <div class="logo">ZEDSON Watchcraft</div>
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Initializing system...</div>
+        </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-screen hidden">
+        <div class="login-container">
+            <div class="login-header">
+                <h1>ZEDSON Watchcraft</h1>
+                <p>Management System</p>
+            </div>
+            <form id="login-form" class="login-form">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required autofocus>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Login</button>
+                <div id="login-error" class="error-message hidden"></div>
+            </form>
+            <div class="login-footer">
+                <p>Default credentials: admin / admin123</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="main-app" class="main-app hidden">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="logo">ZEDSON Watchcraft</div>
+                <div class="location">Semmancheri</div>
+            </div>
+            <div class="header-right">
+                <div class="user-info">
+                    <span id="current-user">Admin</span>
+                    <div class="user-dropdown">
+                        <button class="dropdown-btn">⚙️</button>
+                        <div class="dropdown-content">
+                            <a href="#" onclick="app.changePassword()">Change Password</a>
+                            <a href="#" onclick="app.logout()">Logout</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="current-time" id="current-time"></div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="app-nav">
+            <div class="nav-item active" data-module="dashboard">
+                <span class="nav-icon">📊</span>
+                <span class="nav-text">Dashboard</span>
+            </div>
+            <div class="nav-item" data-module="customers">
+                <span class="nav-icon">👥</span>
+                <span class="nav-text">Customers</span>
+            </div>
+            <div class="nav-item" data-module="inventory">
+                <span class="nav-icon">📦</span>
+                <span class="nav-text">Inventory</span>
+            </div>
+            <div class="nav-item" data-module="sales">
+                <span class="nav-icon">💰</span>
+                <span class="nav-text">Sales</span>
+            </div>
+            <div class="nav-item" data-module="service">
+                <span class="nav-icon">🔧</span>
+                <span class="nav-text">Service</span>
+            </div>
+            <div class="nav-item" data-module="invoices">
+                <span class="nav-icon">📄</span>
+                <span class="nav-text">Invoices</span>
+            </div>
+            <div class="nav-item" data-module="expense">
+                <span class="nav-icon">💸</span>
+                <span class="nav-text">Expense</span>
+            </div>
+            <div class="nav-item" data-module="ledger">
+                <span class="nav-icon">📈</span>
+                <span class="nav-text">Ledger</span>
+            </div>
+            <div class="nav-item" data-module="users">
+                <span class="nav-icon">👤</span>
+                <span class="nav-text">Users</span>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="app-main">
+            <div class="content-header">
+                <h1 id="page-title">Dashboard</h1>
+                <div class="content-actions" id="content-actions">
+                    <!-- Dynamic action buttons will be added here -->
+                </div>
+            </div>
+            <div class="content-body" id="content-body">
+                <!-- Module content will be loaded here -->
+                <div class="loading-content">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">Loading module...</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Container -->
+    <div id="modal-container"></div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="core/database.js"></script>
+    <script src="core/auth.js"></script>
+    <script src="core/audit.js"></script>
+    <script src="core/utils.js"></script>
+    <script src="app.js"></script>
+
+    <script>
+        // Initialize the application when DOM is loaded
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await window.app.init();
+            } catch (error) {
+                console.error('Failed to initialize application:', error);
+                document.getElementById('loading-screen').innerHTML = `
+                    <div class="loading-content">
+                        <div class="error-message">
+                            <h3>Initialization Failed</h3>
+                            <p>${error.message}</p>
+                            <button onclick="location.reload()">Retry</button>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+
+        // Update time every second
+        setInterval(() => {
+            const timeElement = document.getElementById('current-time');
+            if (timeElement) {
+                const now = new Date();
+                timeElement.textContent = now.toLocaleString('en-IN', {
+                    weekday: 'short',
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
