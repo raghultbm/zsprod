@@ -3,6 +3,7 @@ const path = require('path');
 const { initDatabase } = require('./core/database');
 
 let mainWindow;
+let databaseReady = false;
 
 function createWindow() {
     mainWindow = new BrowserWindow({
@@ -23,6 +24,10 @@ function createWindow() {
     
     mainWindow.once('ready-to-show', () => {
         mainWindow.show();
+        
+        // Send database ready status to renderer
+        mainWindow.webContents.send('database-status', databaseReady);
+        
         if (process.env.NODE_ENV === 'development') {
             mainWindow.webContents.openDevTools();
         }
@@ -70,14 +75,35 @@ function createMenu() {
     Menu.setApplicationMenu(menu);
 }
 
+// IPC handler for database ready check
+ipcMain.handle('is-database-ready', () => {
+    return databaseReady;
+});
+
 app.whenReady().then(async () => {
     try {
+        console.log('Initializing database...');
         await initDatabase();
+        databaseReady = true;
         console.log('Database initialized successfully');
+        
         createWindow();
+        
+        // Notify renderer if window already exists
+        if (mainWindow) {
+            mainWindow.webContents.send('database-status', true);
+        }
+        
     } catch (error) {
         console.error('Failed to initialize database:', error);
-        app.quit();
+        databaseReady = false;
+        
+        // Still create window to show error
+        createWindow();
+        
+        if (mainWindow) {
+            mainWindow.webContents.send('database-error', error.message);
+        }
     }
 });
 

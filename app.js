@@ -45,10 +45,10 @@ class WatchShopApp {
                 // Database not ready yet
             }
             
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, 200));
             attempts++;
         }
-        
+
         if (attempts >= maxAttempts) {
             throw new Error('Database initialization timeout');
         }

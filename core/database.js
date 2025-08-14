@@ -4,12 +4,10 @@ const fs = require('fs');
 const { app } = require('electron');
 
 let db = null;
-
 const DB_PATH = path.join(app ? app.getPath('userData') : __dirname, 'zedson_watchcraft.db');
 
 function initDatabase() {
     return new Promise((resolve, reject) => {
-        // Ensure directory exists
         const dbDir = path.dirname(DB_PATH);
         if (!fs.existsSync(dbDir)) {
             fs.mkdirSync(dbDir, { recursive: true });
@@ -17,21 +15,23 @@ function initDatabase() {
 
         db = new sqlite3.Database(DB_PATH, (err) => {
             if (err) {
-                console.error('Error opening database:', err);
+                console.error('Database error:', err);
                 return reject(err);
             }
             
             console.log('Connected to SQLite database at:', DB_PATH);
             
-            // Enable foreign keys
             db.run('PRAGMA foreign_keys = ON', (err) => {
                 if (err) {
-                    console.error('Error enabling foreign keys:', err);
+                    console.error('PRAGMA error:', err);
                     return reject(err);
                 }
                 
                 createTables()
-                    .then(() => resolve(db))
+                    .then(() => {
+                        console.log('All tables created successfully');
+                        resolve(db);
+                    })
                     .catch(reject);
             });
         });
@@ -41,7 +41,6 @@ function initDatabase() {
 function createTables() {
     return new Promise((resolve, reject) => {
         const tables = [
-            // Users table
             `CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
@@ -55,7 +54,6 @@ function createTables() {
                 updated_by TEXT
             )`,
             
-            // Customers table
             `CREATE TABLE IF NOT EXISTS customers (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 customer_id TEXT UNIQUE NOT NULL,
@@ -63,12 +61,12 @@ function createTables() {
                 mobile_number TEXT NOT NULL,
                 creation_date DATETIME DEFAULT CURRENT_TIMESTAMP,
                 net_value REAL DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 created_by TEXT,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_by TEXT
             )`,
             
-            // Inventory table
             `CREATE TABLE IF NOT EXISTS inventory (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 code TEXT NOT NULL,
@@ -92,7 +90,6 @@ function createTables() {
                 updated_by TEXT
             )`,
             
-            // Sales table
             `CREATE TABLE IF NOT EXISTS sales (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 customer_id TEXT NOT NULL,
@@ -111,7 +108,6 @@ function createTables() {
                 FOREIGN KEY (customer_id) REFERENCES customers (customer_id)
             )`,
             
-            // Sale Items table
             `CREATE TABLE IF NOT EXISTS sale_items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 sale_id INTEGER NOT NULL,
@@ -123,7 +119,6 @@ function createTables() {
                 FOREIGN KEY (inventory_id) REFERENCES inventory (id)
             )`,
             
-            // Services table
             `CREATE TABLE IF NOT EXISTS services (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 customer_id TEXT NOT NULL,
@@ -158,7 +153,6 @@ function createTables() {
                 FOREIGN KEY (customer_id) REFERENCES customers (customer_id)
             )`,
             
-            // Expenses table
             `CREATE TABLE IF NOT EXISTS expenses (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 date DATETIME NOT NULL,
@@ -169,7 +163,6 @@ function createTables() {
                 created_by TEXT
             )`,
             
-            // Audit Log table
             `CREATE TABLE IF NOT EXISTS audit_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 module TEXT NOT NULL,
@@ -181,7 +174,6 @@ function createTables() {
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
             )`,
             
-            // History table for tracking changes
             `CREATE TABLE IF NOT EXISTS history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 module TEXT NOT NULL,
@@ -196,17 +188,18 @@ function createTables() {
         ];
 
         let completed = 0;
-        const total = tables.length;
+        let hasError = false;
 
         tables.forEach((sql, index) => {
             db.run(sql, (err) => {
-                if (err) {
+                if (err && !hasError) {
+                    hasError = true;
                     console.error(`Error creating table ${index}:`, err);
                     return reject(err);
                 }
                 
                 completed++;
-                if (completed === total) {
+                if (completed === tables.length && !hasError) {
                     createDefaultUser()
                         .then(() => resolve())
                         .catch(reject);
@@ -218,16 +211,12 @@ function createTables() {
 
 function createDefaultUser() {
     return new Promise((resolve, reject) => {
-        // Create default admin user if not exists
         const checkUser = `SELECT COUNT(*) as count FROM users WHERE username = ?`;
         db.get(checkUser, ['admin'], (err, row) => {
             if (err) return reject(err);
             
             if (row.count === 0) {
-                const insertAdmin = `INSERT INTO users (username, password_hash, user_type, permissions) 
-                                   VALUES (?, ?, ?, ?)`;
-                
-                // Simple password hash (in production, use proper hashing like bcrypt)
+                const insertAdmin = `INSERT INTO users (username, password_hash, user_type, permissions) VALUES (?, ?, ?, ?)`;
                 const adminHash = Buffer.from('admin123').toString('base64');
                 const permissions = JSON.stringify({
                     dashboard: true, customers: true, inventory: true, sales: true,
@@ -249,29 +238,14 @@ function createDefaultUser() {
 
 function getDatabase() {
     if (!db) {
-        throw new Error('Database not initialized. Call initDatabase() first.');
+        throw new Error('Database not initialized');
     }
     return db;
 }
 
-function closeDatabase() {
-    return new Promise((resolve) => {
-        if (db) {
-            db.close((err) => {
-                if (err) console.error('Error closing database:', err);
-                else console.log('Database connection closed');
-                db = null;
-                resolve();
-            });
-        } else {
-            resolve();
-        }
-    });
-}
-
-// Helper function to run queries with promises
 function runQuery(sql, params = []) {
     return new Promise((resolve, reject) => {
+        if (!db) return reject(new Error('Database not initialized'));
         db.run(sql, params, function(err) {
             if (err) reject(err);
             else resolve({ id: this.lastID, changes: this.changes });
@@ -281,6 +255,7 @@ function runQuery(sql, params = []) {
 
 function getQuery(sql, params = []) {
     return new Promise((resolve, reject) => {
+        if (!db) return reject(new Error('Database not initialized'));
         db.get(sql, params, (err, row) => {
             if (err) reject(err);
             else resolve(row);
@@ -290,10 +265,25 @@ function getQuery(sql, params = []) {
 
 function allQuery(sql, params = []) {
     return new Promise((resolve, reject) => {
+        if (!db) return reject(new Error('Database not initialized'));
         db.all(sql, params, (err, rows) => {
             if (err) reject(err);
             else resolve(rows);
         });
+    });
+}
+
+function closeDatabase() {
+    return new Promise((resolve) => {
+        if (db) {
+            db.close((err) => {
+                if (err) console.error('Error closing database:', err);
+                db = null;
+                resolve();
+            });
+        } else {
+            resolve();
+        }
     });
 }
 
