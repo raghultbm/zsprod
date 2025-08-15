@@ -1,40 +1,37 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
-const { app } = require('electron');
+
+// Database path - will be in app data directory
+const DB_PATH = path.join(process.env.APPDATA || process.env.HOME, 'WatchShop', 'watchshop.db');
 
 let db = null;
-const DB_PATH = path.join(app ? app.getPath('userData') : __dirname, 'zedson_watchcraft.db');
 
-function initDatabase() {
+async function initDatabase() {
     return new Promise((resolve, reject) => {
-        const dbDir = path.dirname(DB_PATH);
-        if (!fs.existsSync(dbDir)) {
-            fs.mkdirSync(dbDir, { recursive: true });
-        }
-
-        db = new sqlite3.Database(DB_PATH, (err) => {
-            if (err) {
-                console.error('Database error:', err);
-                return reject(err);
+        try {
+            // Ensure directory exists
+            const dbDir = path.dirname(DB_PATH);
+            if (!fs.existsSync(dbDir)) {
+                fs.mkdirSync(dbDir, { recursive: true });
             }
-            
-            console.log('Connected to SQLite database at:', DB_PATH);
-            
-            db.run('PRAGMA foreign_keys = ON', (err) => {
+
+            // Initialize database
+            db = new sqlite3.Database(DB_PATH, (err) => {
                 if (err) {
-                    console.error('PRAGMA error:', err);
+                    console.error('Error opening database:', err);
                     return reject(err);
                 }
-                
+                console.log('Connected to SQLite database');
                 createTables()
-                    .then(() => {
-                        console.log('All tables created successfully');
-                        resolve(db);
-                    })
+                    .then(() => resolve())
                     .catch(reject);
             });
-        });
+
+        } catch (error) {
+            console.error('Database initialization error:', error);
+            reject(error);
+        }
     });
 }
 
@@ -46,10 +43,9 @@ function createTables() {
                 username TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
                 user_type TEXT NOT NULL DEFAULT 'manager',
-                permissions TEXT DEFAULT '{}',
+                permissions TEXT,
                 is_active INTEGER DEFAULT 1,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                created_by TEXT,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_by TEXT
             )`,
@@ -60,7 +56,7 @@ function createTables() {
                 name TEXT NOT NULL,
                 mobile_number TEXT NOT NULL,
                 creation_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-                net_value REAL DEFAULT 0,
+                is_active INTEGER DEFAULT 1,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 created_by TEXT,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -112,7 +108,7 @@ function createTables() {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 sale_id INTEGER NOT NULL,
                 inventory_id INTEGER NOT NULL,
-                quantity INTEGER DEFAULT 1,
+                quantity INTEGER NOT NULL DEFAULT 1,
                 unit_price REAL NOT NULL,
                 total_price REAL NOT NULL,
                 FOREIGN KEY (sale_id) REFERENCES sales (id),
@@ -121,31 +117,21 @@ function createTables() {
             
             `CREATE TABLE IF NOT EXISTS services (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                service_id TEXT UNIQUE NOT NULL,
                 customer_id TEXT NOT NULL,
-                service_type TEXT NOT NULL,
                 service_date DATETIME NOT NULL,
-                delivery_date DATETIME,
-                acknowledgement_number TEXT UNIQUE,
-                invoice_number TEXT UNIQUE,
-                category TEXT,
+                category TEXT NOT NULL,
                 brand TEXT,
-                dial_colour TEXT,
-                gender TEXT,
-                movement_no TEXT,
-                case_material TEXT,
-                strap TEXT,
-                particulars TEXT,
-                issue_type TEXT,
-                advance_amount REAL DEFAULT 0,
-                balance_amount REAL DEFAULT 0,
-                total_amount REAL NOT NULL,
-                payment_mode TEXT,
-                warranty_period INTEGER DEFAULT 0,
-                warranty_expiry_date DATETIME,
-                image_path TEXT,
+                issue_description TEXT,
+                estimated_cost REAL DEFAULT 0,
+                actual_cost REAL DEFAULT 0,
                 status TEXT DEFAULT 'Yet to Start',
                 location TEXT DEFAULT 'Semmancheri',
-                inventory_used TEXT,
+                case_material TEXT,
+                strap_material TEXT,
+                delivery_date DATETIME,
+                comments TEXT,
+                is_instant INTEGER DEFAULT 0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 created_by TEXT,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -153,12 +139,42 @@ function createTables() {
                 FOREIGN KEY (customer_id) REFERENCES customers (customer_id)
             )`,
             
+            `CREATE TABLE IF NOT EXISTS invoices (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                invoice_number TEXT UNIQUE NOT NULL,
+                customer_id TEXT NOT NULL,
+                invoice_date DATETIME NOT NULL,
+                total_amount REAL NOT NULL,
+                cgst_rate REAL DEFAULT 0,
+                sgst_rate REAL DEFAULT 0,
+                cgst_amount REAL DEFAULT 0,
+                sgst_amount REAL DEFAULT 0,
+                grand_total REAL NOT NULL,
+                payment_status TEXT DEFAULT 'pending',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                created_by TEXT,
+                FOREIGN KEY (customer_id) REFERENCES customers (customer_id)
+            )`,
+            
+            `CREATE TABLE IF NOT EXISTS invoice_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                invoice_id INTEGER NOT NULL,
+                description TEXT NOT NULL,
+                quantity INTEGER NOT NULL DEFAULT 1,
+                unit_price REAL NOT NULL,
+                total_price REAL NOT NULL,
+                FOREIGN KEY (invoice_id) REFERENCES invoices (id)
+            )`,
+            
             `CREATE TABLE IF NOT EXISTS expenses (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                date DATETIME NOT NULL,
+                expense_date DATETIME NOT NULL,
+                category TEXT NOT NULL,
                 description TEXT NOT NULL,
                 amount REAL NOT NULL,
-                payment_mode TEXT NOT NULL,
+                payment_mode TEXT,
+                receipt_number TEXT,
+                comments TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 created_by TEXT
             )`,

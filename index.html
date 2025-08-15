@@ -3,16 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZEDSON Watchcraft - Management System</title>
-    <link rel="stylesheet" href="styles/styles.css">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
+    <title>WatchShop Management System</title>
+    <link rel="stylesheet" href="assets/css/main.css">
 </head>
 <body>
     <!-- Loading Screen -->
     <div id="loading-screen" class="loading-screen">
         <div class="loading-content">
-            <div class="logo">ZEDSON Watchcraft</div>
             <div class="loading-spinner"></div>
-            <div class="loading-text">Initializing system...</div>
+            <h2>WatchShop Management</h2>
+            <p class="loading-text">Initializing application...</p>
         </div>
     </div>
 
@@ -20,24 +21,20 @@
     <div id="login-screen" class="login-screen hidden">
         <div class="login-container">
             <div class="login-header">
-                <h1>ZEDSON Watchcraft</h1>
-                <p>Management System</p>
+                <h1>WatchShop Management</h1>
+                <p>Please sign in to continue</p>
             </div>
             <form id="login-form" class="login-form">
                 <div class="form-group">
                     <label for="username">Username</label>
-                    <input type="text" id="username" name="username" required autofocus>
+                    <input type="text" id="username" name="username" required autocomplete="username">
                 </div>
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <input type="password" id="password" name="password" required>
+                    <input type="password" id="password" name="password" required autocomplete="current-password">
                 </div>
-                <button type="submit" class="btn btn-primary btn-block">Login</button>
-                <div id="login-error" class="error-message hidden"></div>
+                <button type="submit" class="btn btn-primary btn-login">Sign In</button>
             </form>
-            <div class="login-footer">
-                <p>Default credentials: admin / admin123</p>
-            </div>
         </div>
     </div>
 
@@ -46,21 +43,21 @@
         <!-- Header -->
         <header class="app-header">
             <div class="header-left">
-                <div class="logo">ZEDSON Watchcraft</div>
-                <div class="location">Semmancheri</div>
+                <h1 class="app-title">WatchShop Management</h1>
+            </div>
+            <div class="header-center">
+                <div class="search-container">
+                    <input type="text" id="global-search" placeholder="Search customers, products..." class="search-input">
+                    <button class="search-btn">🔍</button>
+                </div>
             </div>
             <div class="header-right">
                 <div class="user-info">
-                    <span id="current-user">Admin</span>
-                    <div class="user-dropdown">
-                        <button class="dropdown-btn">⚙️</button>
-                        <div class="dropdown-content">
-                            <a href="#" onclick="app.changePassword()">Change Password</a>
-                            <a href="#" onclick="app.logout()">Logout</a>
-                        </div>
-                    </div>
+                    <span id="current-time"></span>
+                    <span id="current-user">User</span>
+                    <button id="settings-btn" class="btn btn-icon">⚙️</button>
+                    <button id="logout-btn" class="btn btn-secondary">Logout</button>
                 </div>
-                <div class="current-time" id="current-time"></div>
             </div>
         </header>
 
@@ -92,7 +89,7 @@
             </div>
             <div class="nav-item" data-module="expense">
                 <span class="nav-icon">💸</span>
-                <span class="nav-text">Expense</span>
+                <span class="nav-text">Expenses</span>
             </div>
             <div class="nav-item" data-module="ledger">
                 <span class="nav-icon">📈</span>
@@ -104,26 +101,13 @@
             </div>
         </nav>
 
-        <!-- Main Content Area -->
-        <main class="app-main">
-            <div class="content-header">
-                <h1 id="page-title">Dashboard</h1>
-                <div class="content-actions" id="content-actions">
-                    <!-- Dynamic action buttons will be added here -->
-                </div>
-            </div>
-            <div class="content-body" id="content-body">
-                <!-- Module content will be loaded here -->
-                <div class="loading-content">
-                    <div class="loading-spinner"></div>
-                    <div class="loading-text">Loading module...</div>
-                </div>
+        <!-- Content Area -->
+        <main class="app-content">
+            <div id="content-area" class="content-area">
+                <!-- Dynamic content will be loaded here -->
             </div>
         </main>
     </div>
-
-    <!-- Modal Container -->
-    <div id="modal-container"></div>
 
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
@@ -142,12 +126,13 @@
                 await window.app.init();
             } catch (error) {
                 console.error('Failed to initialize application:', error);
-                document.getElementById('loading-screen').innerHTML = `
+                const loadingScreen = document.getElementById('loading-screen');
+                loadingScreen.innerHTML = `
                     <div class="loading-content">
                         <div class="error-message">
                             <h3>Initialization Failed</h3>
                             <p>${error.message}</p>
-                            <button onclick="location.reload()">Retry</button>
+                            <button onclick="location.reload()" class="btn btn-primary">Retry</button>
                         </div>
                     </div>
                 `;

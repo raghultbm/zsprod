@@ -20,7 +20,7 @@
     "test": "echo \"No tests specified\" && exit 0"
   },
   "devDependencies": {
-    "electron": "^25.0.0",
+    "electron": "^25.9.8",
     "electron-builder": "^24.6.4",
     "electron-rebuild": "^3.2.9"
   },

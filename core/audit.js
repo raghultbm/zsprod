@@ -1,82 +1,55 @@
-const { runQuery } = require('./database');
-const authManager = require('./auth');
-
 class AuditLogger {
     constructor() {
         this.pendingLogs = [];
+        this.processingLogs = false;
         this.batchSize = 10;
-        this.batchTimeout = 5000; // 5 seconds
-        this.batchTimer = null;
+        this.flushInterval = 5000; // 5 seconds
+        
+        // Start periodic flush
+        if (typeof window !== 'undefined') {
+            setInterval(() => this.processPendingLogs(), this.flushInterval);
+        }
     }
 
     async logAction(module, action, recordId = null, oldData = null, newData = null) {
         try {
-            const currentUser = authManager.getCurrentUser();
-            if (!currentUser) {
-                console.warn('Audit log attempted without authenticated user');
-                return;
-            }
+            const currentUser = typeof authManager !== 'undefined' ? authManager.getCurrentUser() : null;
+            const userName = currentUser ? currentUser.username : 'system';
 
             const logEntry = {
-                module: module,
-                action: action,
+                module: module.toUpperCase(),
+                action: action.toUpperCase(),
                 record_id: recordId ? recordId.toString() : null,
                 old_data: oldData ? JSON.stringify(oldData) : null,
                 new_data: newData ? JSON.stringify(newData) : null,
-                user_name: currentUser.username,
+                user_name: userName,
                 timestamp: new Date().toISOString()
             };
 
             // Add to pending logs for batch processing
             this.pendingLogs.push(logEntry);
 
-            // Process immediately for critical actions
-            if (this.isCriticalAction(action)) {
+            // Process immediately if batch is full
+            if (this.pendingLogs.length >= this.batchSize) {
                 await this.processPendingLogs();
-            } else {
-                this.scheduleBatchProcess();
             }
 
         } catch (error) {
-            console.error('Audit logging error:', error);
-        }
-    }
-
-    isCriticalAction(action) {
-        const criticalActions = [
-            'DELETE', 'LOGIN', 'LOGOUT', 'PASSWORD_CHANGE',
-            'USER_CREATE', 'USER_DELETE', 'PERMISSION_CHANGE'
-        ];
-        return criticalActions.includes(action.toUpperCase());
-    }
-
-    scheduleBatchProcess() {
-        if (this.batchTimer) return;
-
-        this.batchTimer = setTimeout(async () => {
-            await this.processPendingLogs();
-        }, this.batchTimeout);
-
-        // Process if batch size reached
-        if (this.pendingLogs.length >= this.batchSize) {
-            clearTimeout(this.batchTimer);
-            this.batchTimer = null;
-            await this.processPendingLogs();
+            console.error('Failed to log audit entry:', error);
         }
     }
 
     async processPendingLogs() {
-        if (this.pendingLogs.length === 0) return;
-
-        if (this.batchTimer) {
-            clearTimeout(this.batchTimer);
-            this.batchTimer = null;
+        if (this.processingLogs || this.pendingLogs.length === 0) {
+            return;
         }
 
-        const logsToProcess = [...this.pendingLogs];
-        this.pendingLogs = [];
+        this.processingLogs = true;
 
         try {
+            const { runQuery } = require('./database');
+            const logsToProcess = this.pendingLogs.splice(0, this.batchSize);
+
             const sql = `INSERT INTO audit_log 
                         (module, action, record_id, old_data, new_data, user_name, timestamp) 
                         VALUES (?, ?, ?, ?, ?, ?, ?)`;
@@ -99,6 +72,8 @@ class AuditLogger {
             if (this.pendingLogs.length < 100) {
                 this.pendingLogs.unshift(...logsToProcess);
             }
+        } finally {
+            this.processingLogs = false;
         }
     }
 
@@ -147,8 +122,10 @@ class AuditLogger {
     // History tracking for inventory and services
     async logHistory(module, recordId, fieldName, oldValue, newValue, comments = null) {
         try {
-            const currentUser = authManager.getCurrentUser();
+            const currentUser = typeof authManager !== 'undefined' ? authManager.getCurrentUser() : null;
             if (!currentUser) return;
+
+            const { runQuery } = require('./database');
 
             const sql = `INSERT INTO history 
                         (module, record_id, field_name, old_value, new_value, comments, changed_by) 
@@ -165,96 +142,125 @@ class AuditLogger {
             ]);
 
         } catch (error) {
-            console.error('History logging error:', error);
+            console.error('Failed to log history entry:', error);
         }
     }
 
-    // Method to get audit trail for a specific record
-    async getAuditTrail(module, recordId = null, limit = 50) {
+    // Get audit logs with filtering
+    async getAuditLogs(filters = {}) {
         try {
-            let sql = `SELECT * FROM audit_log WHERE module = ?`;
-            let params = [module];
+            const { allQuery } = require('./database');
+            
+            let sql = `SELECT * FROM audit_log WHERE 1=1`;
+            const params = [];
 
-            if (recordId) {
-                sql += ` AND record_id = ?`;
-                params.push(recordId.toString());
+            if (filters.module) {
+                sql += ` AND module = ?`;
+                params.push(filters.module.toUpperCase());
             }
 
-            sql += ` ORDER BY timestamp DESC LIMIT ?`;
-            params.push(limit);
+            if (filters.action) {
+                sql += ` AND action = ?`;
+                params.push(filters.action.toUpperCase());
+            }
 
-            const { allQuery } = require('./database');
+            if (filters.user_name) {
+                sql += ` AND user_name = ?`;
+                params.push(filters.user_name);
+            }
+
+            if (filters.startDate) {
+                sql += ` AND timestamp >= ?`;
+                params.push(filters.startDate);
+            }
+
+            if (filters.endDate) {
+                sql += ` AND timestamp <= ?`;
+                params.push(filters.endDate);
+            }
+
+            sql += ` ORDER BY timestamp DESC`;
+
+            if (filters.limit) {
+                sql += ` LIMIT ?`;
+                params.push(filters.limit);
+            }
+
             return await allQuery(sql, params);
 
         } catch (error) {
-            console.error('Error getting audit trail:', error);
+            console.error('Failed to get audit logs:', error);
             return [];
         }
     }
 
-    // Method to get history for a specific record
-    async getHistory(module, recordId, limit = 20) {
+    // Get history for a specific record
+    async getRecordHistory(module, recordId) {
         try {
+            const { allQuery } = require('./database');
+            
             const sql = `SELECT * FROM history 
                         WHERE module = ? AND record_id = ? 
-                        ORDER BY changed_at DESC LIMIT ?`;
+                        ORDER BY changed_at DESC`;
 
-            const { allQuery } = require('./database');
-            return await allQuery(sql, [module, recordId, limit]);
+            return await allQuery(sql, [module, recordId]);
 
         } catch (error) {
-            console.error('Error getting history:', error);
+            console.error('Failed to get record history:', error);
             return [];
         }
     }
 
-    // Generate activity summary
-    async getActivitySummary(startDate, endDate = null) {
+    // Clean old audit logs (useful for maintenance)
+    async cleanOldLogs(daysToKeep = 90) {
         try {
-            let sql = `SELECT module, action, COUNT(*) as count, 
-                             MIN(timestamp) as first_action,
-                             MAX(timestamp) as last_action
-                      FROM audit_log 
-                      WHERE DATE(timestamp) >= DATE(?)`;
+            const { runQuery } = require('./database');
             
-            let params = [startDate];
-
-            if (endDate) {
-                sql += ` AND DATE(timestamp) <= DATE(?)`;
-                params.push(endDate);
-            }
-
-            sql += ` GROUP BY module, action ORDER BY module, count DESC`;
-
-            const { allQuery } = require('./database');
-            return await allQuery(sql, params);
-
-        } catch (error) {
-            console.error('Error getting activity summary:', error);
-            return [];
-        }
-    }
-
-    // Clean old audit logs (maintenance)
-    async cleanOldLogs(daysToKeep = 365) {
-        try {
             const cutoffDate = new Date();
             cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
 
-            const sql = `DELETE FROM audit_log WHERE DATE(timestamp) < DATE(?)`;
-            const result = await runQuery(sql, [cutoffDate.toISOString().split('T')[0]]);
+            const sql = `DELETE FROM audit_log WHERE timestamp < ?`;
+            const result = await runQuery(sql, [cutoffDate.toISOString()]);
 
             console.log(`Cleaned ${result.changes} old audit log entries`);
-            await this.logAction('SYSTEM', 'AUDIT_CLEANUP', null, null, { 
-                cleaned_count: result.changes, 
-                cutoff_date: cutoffDate.toISOString() 
-            });
-
             return result.changes;
 
         } catch (error) {
-            console.error('Error cleaning old logs:', error);
+            console.error('Failed to clean old audit logs:', error);
             return 0;
+        }
+    }
+
+    // Get audit statistics
+    async getAuditStats(startDate = null, endDate = null) {
+        try {
+            const { allQuery } = require('./database');
+            
+            let sql = `SELECT 
+                        module,
+                        action,
+                        COUNT(*) as count
+                      FROM audit_log 
+                      WHERE 1=1`;
+            const params = [];
+
+            if (startDate) {
+                sql += ` AND timestamp >= ?`;
+                params.push(startDate);
+            }
+
+            if (endDate) {
+                sql += ` AND timestamp <= ?`;
+                params.push(endDate);
+            }
+
+            sql += ` GROUP BY module, action ORDER BY count DESC`;
+
+            return await allQuery(sql, params);
+
+        } catch (error) {
+            console.error('Failed to get audit stats:', error);
+            return [];
         }
     }
 }
@@ -262,4 +268,7 @@ class AuditLogger {
 // Create singleton instance
 const auditLogger = new AuditLogger();
 
-module.exports = auditLogger;
+// Make it globally available
+if (typeof window !== 'undefined') {
+    window.auditLogger = auditLogger;
+}

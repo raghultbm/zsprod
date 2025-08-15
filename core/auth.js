@@ -1,5 +1,3 @@
-const { getQuery, runQuery } = require('./database');
-
 class AuthManager {
     constructor() {
         this.currentUser = null;
@@ -9,6 +7,8 @@ class AuthManager {
 
     async login(username, password) {
         try {
+            const { getQuery, runQuery } = require('./database');
+            
             // Simple password verification (in production, use proper hashing)
             const passwordHash = Buffer.from(password).toString('base64');
             
@@ -121,6 +121,8 @@ class AuthManager {
         }
 
         try {
+            const { getQuery, runQuery } = require('./database');
+            
             // Verify old password
             const oldHash = Buffer.from(oldPassword).toString('base64');
             const user = await getQuery(
@@ -162,60 +164,51 @@ class AuthManager {
         }, this.sessionTimeout);
     }
 
-    refreshSession() {
-        if (this.currentUser) {
-            this.startSessionTimer();
-            this.saveSession();
-        }
-    }
-
     saveSession() {
-        if (this.currentUser && typeof localStorage !== 'undefined') {
+        if (this.currentUser) {
+            const sessionData = {
+                user: this.currentUser,
+                timestamp: Date.now()
+            };
+            
             try {
-                localStorage.setItem('zedson_session', JSON.stringify({
-                    user: this.currentUser,
-                    timestamp: Date.now()
-                }));
-            } catch (e) {
-                console.warn('Failed to save session:', e);
+                localStorage.setItem('watchshop_session', JSON.stringify(sessionData));
+            } catch (error) {
+                console.warn('Failed to save session:', error);
             }
         }
     }
 
     loadSession() {
-        if (typeof localStorage === 'undefined') return false;
-        
         try {
-            const sessionData = localStorage.getItem('zedson_session');
+            const sessionData = localStorage.getItem('watchshop_session');
             if (!sessionData) return false;
 
-            const session = JSON.parse(sessionData);
-            const sessionAge = Date.now() - session.timestamp;
+            const parsed = JSON.parse(sessionData);
+            const sessionAge = Date.now() - parsed.timestamp;
 
-            // Check if session is still valid (within timeout period)
+            // Check if session is still valid (8 hours)
             if (sessionAge > this.sessionTimeout) {
                 this.clearSession();
                 return false;
             }
 
-            this.currentUser = session.user;
+            this.currentUser = parsed.user;
             this.startSessionTimer();
             return true;
 
-        } catch (e) {
-            console.warn('Failed to load session:', e);
+        } catch (error) {
+            console.warn('Failed to load session:', error);
             this.clearSession();
             return false;
         }
     }
 
     clearSession() {
-        if (typeof localStorage !== 'undefined') {
-            try {
-                localStorage.removeItem('zedson_session');
-            } catch (e) {
-                console.warn('Failed to clear session:', e);
-            }
+        try {
+            localStorage.removeItem('watchshop_session');
+        } catch (error) {
+            console.warn('Failed to clear session:', error);
         }
     }
 
@@ -224,9 +217,9 @@ class AuthManager {
             dashboard: 'Dashboard Access',
             customers: 'Customer Management',
             inventory: 'Inventory Management',
-            sales: 'Sales Operations',
-            service: 'Service Operations',
-            invoices: 'Invoice Management',
+            sales: 'Sales & Billing',
+            service: 'Service Management',
+            invoices: 'Invoice Generation',
             expense: 'Expense Tracking',
             ledger: 'Ledger & Reports',
             users: 'User Management',
@@ -261,4 +254,7 @@ class AuthManager {
 // Create singleton instance
 const authManager = new AuthManager();
 
-module.exports = authManager;
+// Make it globally available
+if (typeof window !== 'undefined') {
+    window.authManager = authManager;
+}
