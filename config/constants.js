@@ -1,19 +1,14 @@
-// Application Constants
-const CONSTANTS = {
-    // Company Information
-    COMPANY: {
-        NAME: 'ZEDSON Watchcraft',
-        DEFAULT_LOCATION: 'Semmancheri',
-        ADDRESS: 'Shop A2A, Express Food Street, Semmancheri, Chennai 600119',
-        MOBILE: '+91 9345667777',
-        GST_NUMBER: '33EOJPR0534DZZZ'
+// Application constants for ZEDSON Watchcraft
+window.Constants = {
+    // Shop Information
+    SHOP_INFO: {
+        name: 'ZEDSON Watchcraft',
+        defaultLocation: 'Semmancheri',
+        address: 'Shop A2A, Express Food Street, Semmancheri, Chennai 600119',
+        mobile: '+91 9345667777',
+        gst: '33EOJPR0534DZZZ',
+        email: 'info@zedsonwatchcraft.com'
     },
-
-    // Locations
-    LOCATIONS: ['Semmancheri', 'Navalur', 'Padur'],
-
-    // Payment Modes
-    PAYMENT_MODES: ['UPI', 'Cash', 'Card', 'Multiple Payment Modes'],
 
     // User Types
     USER_TYPES: {
@@ -22,69 +17,20 @@ const CONSTANTS = {
         MANAGER: 'manager'
     },
 
-    // Inventory Categories
-    INVENTORY_CATEGORIES: {
-        WATCH: {
-            name: 'Watch',
-            code: 'W',
-            fields: ['brand', 'gender', 'type', 'strap'],
-            options: {
-                gender: ['Gents', 'Ladies'],
-                type: ['Analog', 'Digital'],
-                strap: ['Leather', 'Chain', 'Fiber']
-            }
-        },
-        WALLCLOCKS: {
-            name: 'WallClocks',
-            code: 'C',
-            fields: ['brand', 'type'],
-            options: {
-                type: ['Analog', 'Digital']
-            }
-        },
-        TIMEPIECES: {
-            name: 'Timepieces',
-            code: 'T',
-            fields: ['brand', 'type'],
-            options: {
-                type: ['Analog', 'Digital']
-            }
-        },
-        STRAP: {
-            name: 'Strap',
-            code: 'S',
-            fields: ['brand', 'material', 'size'],
-            options: {
-                material: ['Leather', 'Chain', 'Fiber'],
-                size: generateSizes()
-            }
-        },
-        SPRING_BAR: {
-            name: 'Spring Bar',
-            code: 'B',
-            fields: ['size'],
-            options: {
-                size: generateSizes()
-            }
-        },
-        LOOP: {
-            name: 'Loop',
-            code: 'L',
-            fields: ['size', 'material'],
-            options: {
-                size: generateSizes(),
-                material: ['Leather', 'Fiber']
-            }
-        },
-        BUCKLE: {
-            name: 'Buckle',
-            code: 'K',
-            fields: ['size'],
-            options: {
-                size: generateSizes()
-            }
-        }
-    },
+    // Locations
+    LOCATIONS: [
+        'Semmancheri',
+        'Navalur',
+        'Padur'
+    ],
+
+    // Payment Modes
+    PAYMENT_MODES: [
+        'UPI',
+        'Cash',
+        'Card',
+        'Multiple Payment Modes'
+    ],
 
     // Service Status Options
     SERVICE_STATUS: [
@@ -98,55 +44,163 @@ const CONSTANTS = {
         'Waiting for Customer to Pickup'
     ],
 
-    // Service Types
-    SERVICE_TYPES: {
-        NEW: 'new',
-        INSTANT: 'instant'
+    // Invoice Types
+    INVOICE_TYPES: {
+        SALE: 'sale',
+        SERVICE: 'service'
     },
 
-    // Instant Service Issue Types
-    INSTANT_SERVICE_ISSUES: [
-        {
-            type: 'Battery Change',
-            requiresInventory: true,
-            displayName: 'Battery Change'
-        },
-        {
-            type: 'Link Removal / Addition',
-            requiresInventory: false,
-            displayName: 'Link Removal / Addition'
-        },
-        {
-            type: 'Other',
-            requiresInventory: false,
-            displayName: 'Other'
-        }
+    // Discount Types
+    DISCOUNT_TYPES: [
+        'Percentage',
+        'Amount'
+    ],
+
+    // Watch Genders
+    GENDERS: [
+        'Gents',
+        'Ladies'
+    ],
+
+    // Watch Types
+    WATCH_TYPES: [
+        'Analog',
+        'Digital'
+    ],
+
+    // Strap Materials
+    STRAP_MATERIALS: [
+        'Leather',
+        'Chain',
+        'Fiber'
     ],
 
     // Case Materials
-    CASE_MATERIALS: ['Steel', 'Gold Tone', 'Fiber'],
+    CASE_MATERIALS: [
+        'Steel',
+        'Gold Tone',
+        'Fiber'
+    ],
 
-    // Strap Materials for Services
-    SERVICE_STRAP_MATERIALS: ['Leather', 'Fiber', 'Steel', 'Gold Plated'],
+    // Strap Types for Service
+    SERVICE_STRAP_TYPES: [
+        'Leather',
+        'Fiber',
+        'Steel',
+        'Gold Plated'
+    ],
 
-    // Invoice Prefixes
-    INVOICE_PREFIXES: {
-        SALE: 'INVSA',
-        SERVICE: 'INVSR',
-        ACKNOWLEDGEMENT: 'ACKSR'
+    // Size Options (8MM to 28MM)
+    SIZES: (() => {
+        const sizes = [];
+        for (let i = 8; i <= 28; i += 2) {
+            sizes.push(`${i}MM`);
+        }
+        return sizes;
+    })(),
+
+    // Instant Service Issue Types
+    INSTANT_SERVICE_ISSUES: [
+        'Battery Change',
+        'Link Removal / Addition',
+        'Other'
+    ],
+
+    // Database Table Names
+    TABLES: {
+        USERS: 'users',
+        CUSTOMERS: 'customers',
+        INVENTORY: 'inventory',
+        SALES: 'sales',
+        SERVICES: 'services',
+        INVOICES: 'invoices',
+        EXPENSES: 'expenses',
+        LEDGER: 'ledger',
+        AUDIT_LOG: 'audit_log',
+        BRANDS: 'brands',
+        HISTORY: 'history'
     },
 
-    // Default Settings
+    // Audit Actions
+    AUDIT_ACTIONS: {
+        INSERT: 'INSERT',
+        UPDATE: 'UPDATE',
+        DELETE: 'DELETE',
+        LOGIN: 'LOGIN',
+        LOGOUT: 'LOGOUT'
+    },
+
+    // Date Formats
+    DATE_FORMATS: {
+        DISPLAY: 'DD MMM YYYY',
+        INPUT: 'YYYY-MM-DD',
+        SLASH: 'DD/MM/YYYY',
+        TIMESTAMP: 'DD MMM YYYY, hh:mm A'
+    },
+
+    // Pagination
+    PAGINATION: {
+        DEFAULT_PAGE_SIZE: 20,
+        PAGE_SIZE_OPTIONS: [10, 20, 50, 100]
+    },
+
+    // File Upload
+    FILE_UPLOAD: {
+        MAX_SIZE: 5 * 1024 * 1024, // 5MB
+        ALLOWED_TYPES: ['image/jpeg', 'image/png', 'image/gif']
+    },
+
+    // WhatsApp Integration
+    WHATSAPP: {
+        BASE_URL: 'https://wa.me/',
+        SALE_MESSAGE: 'Thank you for your purchase from ZEDSON Watchcraft! Please find your invoice attached.',
+        SERVICE_MESSAGE: 'Thank you for choosing ZEDSON Watchcraft for your service needs! Your service invoice is attached.'
+    },
+
+    // Export Options
+    EXPORT_FORMATS: [
+        'CSV',
+        'Excel',
+        'PDF'
+    ],
+
+    // Dashboard Refresh Intervals (in milliseconds)
+    REFRESH_INTERVALS: {
+        DASHBOARD: 30000, // 30 seconds
+        NOTIFICATIONS: 60000, // 1 minute
+        ACTIVITY: 120000 // 2 minutes
+    },
+
+    // Validation Rules
+    VALIDATION: {
+        CUSTOMER_ID_LENGTH: 6,
+        MOBILE_LENGTH: 10,
+        GST_LENGTH: 15,
+        MAX_DESCRIPTION_LENGTH: 500,
+        MAX_COMMENTS_LENGTH: 1000,
+        MIN_PASSWORD_LENGTH: 6
+    },
+
+    // Default Values
     DEFAULTS: {
-        WARRANTY_PERIOD: 0, // months
-        DISCOUNT_TYPE: 'Percentage',
+        WARRANTY_PERIOD: 0,
+        LOCATION: 'Semmancheri',
         CURRENCY: '₹',
-        DATE_FORMAT: 'DD MMM YYYY',
-        DATETIME_FORMAT: 'DD MMM YYYY HH:mm'
+        DISCOUNT_VALUE: 0,
+        ADVANCE_AMOUNT: 0
     },
 
-    // Permissions
-    PERMISSIONS: {
+    // UI Constants
+    UI: {
+        MAX_LINES_PER_MODULE: 600,
+        SIDEBAR_WIDTH: '250px',
+        HEADER_HEIGHT: '60px',
+        TOAST_DURATION: 3000,
+        DEBOUNCE_DELAY: 300
+    },
+
+    // Module Names (for permissions)
+    MODULES: {
         DASHBOARD: 'dashboard',
         CUSTOMERS: 'customers',
         INVENTORY: 'inventory',
@@ -155,77 +209,22 @@ const CONSTANTS = {
         INVOICES: 'invoices',
         EXPENSE: 'expense',
         LEDGER: 'ledger',
-        USERS: 'users',
-        ALL_ACCESS: 'all_access'
+        USERS: 'users'
     },
 
-    // Validation Rules
-    VALIDATION: {
-        CUSTOMER_ID_LENGTH: 6,
-        MOBILE_MIN_LENGTH: 10,
-        MOBILE_MAX_LENGTH: 15,
-        PASSWORD_MIN_LENGTH: 6,
-        MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB
-        ALLOWED_IMAGE_TYPES: ['image/jpeg', 'image/png', 'image/gif']
+    // Actions (for permissions)
+    ACTIONS: {
+        CREATE: 'create',
+        READ: 'read',
+        UPDATE: 'update',
+        DELETE: 'delete'
     },
 
-    // WhatsApp Messages
-    WHATSAPP_MESSAGES: {
-        SALE_INVOICE: 'Thank you for your purchase from ZEDSON Watchcraft! Your invoice is attached. For any queries, contact us at +91 9345667777.',
-        SERVICE_INVOICE: 'Your watch service is completed at ZEDSON Watchcraft! Your invoice is attached. Thank you for choosing us. Contact: +91 9345667777.',
-        SERVICE_ACKNOWLEDGEMENT: 'Thank you for choosing ZEDSON Watchcraft for your watch service. Your acknowledgement receipt is attached. We will keep you updated on the progress.'
-    },
-
-    // Database Settings
-    DATABASE: {
-        BATCH_SIZE: 10,
-        MAX_CONNECTIONS: 5,
-        TIMEOUT: 30000, // 30 seconds
-        BACKUP_RETENTION_DAYS: 30
-    },
-
-    // Session Settings
-    SESSION: {
-        TIMEOUT: 8 * 60 * 60 * 1000, // 8 hours in milliseconds
-        REFRESH_INTERVAL: 5 * 60 * 1000, // 5 minutes
-        WARNING_TIME: 10 * 60 * 1000 // 10 minutes before timeout
-    },
-
-    // UI Settings
-    UI: {
-        ITEMS_PER_PAGE: 50,
-        SEARCH_DEBOUNCE: 300, // milliseconds
-        TOAST_DURATION: 3000, // milliseconds
-        LOADING_DELAY: 100 // milliseconds
-    },
-
-    // Audit Settings
-    AUDIT: {
-        RETENTION_DAYS: 365,
-        BATCH_SIZE: 10,
-        BATCH_TIMEOUT: 5000, // milliseconds
-        CRITICAL_ACTIONS: [
-            'DELETE', 'LOGIN', 'LOGOUT', 'PASSWORD_CHANGE',
-            'USER_CREATE', 'USER_DELETE', 'PERMISSION_CHANGE'
-        ]
+    // Special Permissions
+    SPECIAL_PERMISSIONS: {
+        MANAGE_USERS: 'manage_users',
+        CLOSE_BUSINESS: 'close_business',
+        VIEW_AUDIT: 'view_audit',
+        EXPORT_DATA: 'export_data'
     }
 };
-
-// Helper function to generate sizes
-function generateSizes() {
-    const sizes = [];
-    for (let i = 8; i <= 28; i += 2) {
-        sizes.push(`${i}MM`);
-    }
-    return sizes;
-}
-
-// Export for Node.js environment
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = CONSTANTS;
-}
-
-// Make available globally for browser environment
-if (typeof window !== 'undefined') {
-    window.CONSTANTS = CONSTANTS;
-}

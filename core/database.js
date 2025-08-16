@@ -1,314 +1,322 @@
-const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
-// Database path - will be in app data directory
-const DB_PATH = path.join(process.env.APPDATA || process.env.HOME, 'WatchShop', 'watchshop.db');
-
-let db = null;
-
-async function initDatabase() {
-    return new Promise((resolve, reject) => {
-        try {
-            // Ensure directory exists
-            const dbDir = path.dirname(DB_PATH);
-            if (!fs.existsSync(dbDir)) {
-                fs.mkdirSync(dbDir, { recursive: true });
-            }
-
-            // Initialize database
-            db = new sqlite3.Database(DB_PATH, (err) => {
-                if (err) {
-                    console.error('Error opening database:', err);
-                    return reject(err);
-                }
-                console.log('Connected to SQLite database');
-                createTables()
-                    .then(() => resolve())
-                    .catch(reject);
-            });
-
-        } catch (error) {
-            console.error('Database initialization error:', error);
-            reject(error);
-        }
-    });
-}
-
-function createTables() {
-    return new Promise((resolve, reject) => {
-        const tables = [
-            `CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
-                user_type TEXT NOT NULL DEFAULT 'manager',
-                permissions TEXT,
-                is_active INTEGER DEFAULT 1,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_by TEXT
-            )`,
-            
-            `CREATE TABLE IF NOT EXISTS customers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                customer_id TEXT UNIQUE NOT NULL,
-                name TEXT NOT NULL,
-                mobile_number TEXT NOT NULL,
-                creation_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-                is_active INTEGER DEFAULT 1,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                created_by TEXT,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_by TEXT
-            )`,
-            
-            `CREATE TABLE IF NOT EXISTS inventory (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                code TEXT NOT NULL,
-                date DATETIME NOT NULL,
-                category TEXT NOT NULL,
-                brand TEXT,
-                gender TEXT,
-                type TEXT,
-                strap TEXT,
-                material TEXT,
-                size TEXT,
-                amount REAL NOT NULL,
-                warranty_period INTEGER DEFAULT 0,
-                location TEXT DEFAULT 'Semmancheri',
-                comments TEXT,
-                particulars TEXT,
-                is_active INTEGER DEFAULT 1,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                created_by TEXT,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_by TEXT
-            )`,
-            
-            `CREATE TABLE IF NOT EXISTS sales (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                customer_id TEXT NOT NULL,
-                sale_date DATETIME NOT NULL,
-                invoice_number TEXT UNIQUE NOT NULL,
-                total_amount REAL NOT NULL,
-                discount_type TEXT,
-                discount_value REAL DEFAULT 0,
-                discount_amount REAL DEFAULT 0,
-                advance_amount REAL DEFAULT 0,
-                balance_amount REAL DEFAULT 0,
-                payment_mode TEXT NOT NULL,
-                status TEXT DEFAULT 'completed',
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                created_by TEXT,
-                FOREIGN KEY (customer_id) REFERENCES customers (customer_id)
-            )`,
-            
-            `CREATE TABLE IF NOT EXISTS sale_items (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                sale_id INTEGER NOT NULL,
-                inventory_id INTEGER NOT NULL,
-                quantity INTEGER NOT NULL DEFAULT 1,
-                unit_price REAL NOT NULL,
-                total_price REAL NOT NULL,
-                FOREIGN KEY (sale_id) REFERENCES sales (id),
-                FOREIGN KEY (inventory_id) REFERENCES inventory (id)
-            )`,
-            
-            `CREATE TABLE IF NOT EXISTS services (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                service_id TEXT UNIQUE NOT NULL,
-                customer_id TEXT NOT NULL,
-                service_date DATETIME NOT NULL,
-                category TEXT NOT NULL,
-                brand TEXT,
-                issue_description TEXT,
-                estimated_cost REAL DEFAULT 0,
-                actual_cost REAL DEFAULT 0,
-                status TEXT DEFAULT 'Yet to Start',
-                location TEXT DEFAULT 'Semmancheri',
-                case_material TEXT,
-                strap_material TEXT,
-                delivery_date DATETIME,
-                comments TEXT,
-                is_instant INTEGER DEFAULT 0,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                created_by TEXT,
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_by TEXT,
-                FOREIGN KEY (customer_id) REFERENCES customers (customer_id)
-            )`,
-            
-            `CREATE TABLE IF NOT EXISTS invoices (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                invoice_number TEXT UNIQUE NOT NULL,
-                customer_id TEXT NOT NULL,
-                invoice_date DATETIME NOT NULL,
-                total_amount REAL NOT NULL,
-                cgst_rate REAL DEFAULT 0,
-                sgst_rate REAL DEFAULT 0,
-                cgst_amount REAL DEFAULT 0,
-                sgst_amount REAL DEFAULT 0,
-                grand_total REAL NOT NULL,
-                payment_status TEXT DEFAULT 'pending',
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                created_by TEXT,
-                FOREIGN KEY (customer_id) REFERENCES customers (customer_id)
-            )`,
-            
-            `CREATE TABLE IF NOT EXISTS invoice_items (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                invoice_id INTEGER NOT NULL,
-                description TEXT NOT NULL,
-                quantity INTEGER NOT NULL DEFAULT 1,
-                unit_price REAL NOT NULL,
-                total_price REAL NOT NULL,
-                FOREIGN KEY (invoice_id) REFERENCES invoices (id)
-            )`,
-            
-            `CREATE TABLE IF NOT EXISTS expenses (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                expense_date DATETIME NOT NULL,
-                category TEXT NOT NULL,
-                description TEXT NOT NULL,
-                amount REAL NOT NULL,
-                payment_mode TEXT,
-                receipt_number TEXT,
-                comments TEXT,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                created_by TEXT
-            )`,
-            
-            `CREATE TABLE IF NOT EXISTS audit_log (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                module TEXT NOT NULL,
-                action TEXT NOT NULL,
-                record_id TEXT,
-                old_data TEXT,
-                new_data TEXT,
-                user_name TEXT NOT NULL,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-            )`,
-            
-            `CREATE TABLE IF NOT EXISTS history (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                module TEXT NOT NULL,
-                record_id INTEGER NOT NULL,
-                field_name TEXT NOT NULL,
-                old_value TEXT,
-                new_value TEXT,
-                comments TEXT,
-                changed_by TEXT NOT NULL,
-                changed_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )`
-        ];
-
-        let completed = 0;
-        let hasError = false;
-
-        tables.forEach((sql, index) => {
-            db.run(sql, (err) => {
-                if (err && !hasError) {
-                    hasError = true;
-                    console.error(`Error creating table ${index}:`, err);
-                    return reject(err);
-                }
-                
-                completed++;
-                if (completed === tables.length && !hasError) {
-                    createDefaultUser()
-                        .then(() => resolve())
-                        .catch(reject);
-                }
-            });
-        });
-    });
-}
-
-function createDefaultUser() {
-    return new Promise((resolve, reject) => {
-        const checkUser = `SELECT COUNT(*) as count FROM users WHERE username = ?`;
-        db.get(checkUser, ['admin'], (err, row) => {
-            if (err) return reject(err);
-            
-            if (row.count === 0) {
-                const insertAdmin = `INSERT INTO users (username, password_hash, user_type, permissions) VALUES (?, ?, ?, ?)`;
-                const adminHash = Buffer.from('admin123').toString('base64');
-                const permissions = JSON.stringify({
-                    dashboard: true, customers: true, inventory: true, sales: true,
-                    service: true, invoices: true, expense: true, ledger: true,
-                    users: true, all_access: true
-                });
-                
-                db.run(insertAdmin, ['admin', adminHash, 'admin', permissions], (err) => {
-                    if (err) return reject(err);
-                    console.log('Default admin user created');
-                    resolve();
-                });
-            } else {
-                resolve();
-            }
-        });
-    });
-}
-
-function getDatabase() {
-    if (!db) {
-        throw new Error('Database not initialized');
+class DatabaseManager {
+    constructor() {
+        this.db = null;
+        this.isInitialized = false;
+        this.dbPath = null;
+        this.sqlite3 = null;
     }
-    return db;
-}
 
-function runQuery(sql, params = []) {
-    return new Promise((resolve, reject) => {
-        if (!db) return reject(new Error('Database not initialized'));
-        db.run(sql, params, function(err) {
-            if (err) reject(err);
-            else resolve({ id: this.lastID, changes: this.changes });
-        });
-    });
-}
-
-function getQuery(sql, params = []) {
-    return new Promise((resolve, reject) => {
-        if (!db) return reject(new Error('Database not initialized'));
-        db.get(sql, params, (err, row) => {
-            if (err) reject(err);
-            else resolve(row);
-        });
-    });
-}
-
-function allQuery(sql, params = []) {
-    return new Promise((resolve, reject) => {
-        if (!db) return reject(new Error('Database not initialized'));
-        db.all(sql, params, (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
-        });
-    });
-}
-
-function closeDatabase() {
-    return new Promise((resolve) => {
-        if (db) {
-            db.close((err) => {
-                if (err) console.error('Error closing database:', err);
-                db = null;
-                resolve();
-            });
+    getUserDataPath() {
+        // Get user data path without using app.getPath()
+        const platform = process.platform;
+        const homeDir = os.homedir();
+        
+        let userDataPath;
+        if (platform === 'win32') {
+            userDataPath = path.join(homeDir, 'AppData', 'Roaming', 'zedson-watchcraft');
+        } else if (platform === 'darwin') {
+            userDataPath = path.join(homeDir, 'Library', 'Application Support', 'zedson-watchcraft');
         } else {
-            resolve();
+            userDataPath = path.join(homeDir, '.config', 'zedson-watchcraft');
         }
-    });
+        
+        // Ensure directory exists
+        if (!fs.existsSync(userDataPath)) {
+            fs.mkdirSync(userDataPath, { recursive: true });
+        }
+        
+        return userDataPath;
+    }
+
+    async initialize() {
+        if (this.isInitialized) return this.db;
+        
+        try {
+            // Try to load sqlite3, fallback to JSON storage if it fails
+            try {
+                this.sqlite3 = require('sqlite3').verbose();
+            } catch (error) {
+                console.warn('SQLite3 not available, falling back to JSON storage');
+                return this.initializeJSONStorage();
+            }
+            
+            this.dbPath = path.join(this.getUserDataPath(), 'zedson_watchcraft.db');
+            
+            return new Promise((resolve, reject) => {
+                this.db = new this.sqlite3.Database(this.dbPath, (err) => {
+                    if (err) {
+                        console.warn('SQLite failed, falling back to JSON storage:', err);
+                        this.initializeJSONStorage().then(resolve).catch(reject);
+                        return;
+                    }
+                    
+                    console.log('Connected to SQLite database at:', this.dbPath);
+                    this.isInitialized = true;
+                    this.createTables().then(() => resolve(this.db)).catch(reject);
+                });
+            });
+        } catch (error) {
+            console.warn('Database initialization failed, using JSON storage:', error);
+            return this.initializeJSONStorage();
+        }
+    }
+
+    async initializeJSONStorage() {
+        console.log('Initializing JSON-based storage...');
+        this.dbPath = path.join(this.getUserDataPath(), 'zedson_watchcraft.json');
+        
+        // Create a simple JSON-based database
+        this.db = {
+            data: {},
+            isJSON: true
+        };
+        
+        // Load existing data if available
+        if (fs.existsSync(this.dbPath)) {
+            try {
+                const data = fs.readFileSync(this.dbPath, 'utf8');
+                this.db.data = JSON.parse(data);
+            } catch (error) {
+                console.warn('Could not load existing JSON data:', error);
+                this.db.data = {};
+            }
+        }
+        
+        // Initialize tables
+        if (!this.db.data.users) {
+            this.db.data.users = [];
+        }
+        if (!this.db.data.customers) {
+            this.db.data.customers = [];
+        }
+        
+        // Create default admin user
+        await this.createDefaultUser();
+        this.saveJSONData();
+        
+        this.isInitialized = true;
+        console.log('JSON storage initialized successfully');
+        return this.db;
+    }
+
+    saveJSONData() {
+        if (this.db && this.db.isJSON) {
+            try {
+                const dir = path.dirname(this.dbPath);
+                if (!fs.existsSync(dir)) {
+                    fs.mkdirSync(dir, { recursive: true });
+                }
+                fs.writeFileSync(this.dbPath, JSON.stringify(this.db.data, null, 2));
+            } catch (error) {
+                console.error('Error saving JSON data:', error);
+            }
+        }
+    }
+
+    async createTables() {
+        if (this.db.isJSON) {
+            // JSON storage doesn't need table creation
+            return;
+        }
+        
+        const tables = window.Tables || {};
+        
+        for (const [tableName, tableSchema] of Object.entries(tables)) {
+            await this.run(tableSchema);
+        }
+
+        await this.createDefaultUser();
+        console.log('Database tables created successfully');
+    }
+
+    async createDefaultUser() {
+        try {
+            const adminExists = await this.get('SELECT id FROM users WHERE username = ?', ['admin']);
+            
+            if (!adminExists) {
+                await this.run(`
+                    INSERT INTO users (username, password_hash, user_type, created_by, created_at)
+                    VALUES (?, ?, ?, ?, ?)
+                `, ['admin', 'admin123', 'admin', 'system', new Date().toISOString()]);
+                console.log('Default admin user created');
+            }
+        } catch (error) {
+            console.error('Error creating default user:', error);
+        }
+    }
+
+    async run(sql, params = []) {
+        if (this.db.isJSON) {
+            return this.runJSON(sql, params);
+        }
+        
+        return new Promise((resolve, reject) => {
+            this.db.run(sql, params, function(err) {
+                if (err) {
+                    console.error('SQL Error:', err, 'Query:', sql);
+                    reject(err);
+                } else {
+                    resolve({ id: this.lastID, changes: this.changes });
+                }
+            });
+        });
+    }
+
+    async get(sql, params = []) {
+        if (this.db.isJSON) {
+            return this.getJSON(sql, params);
+        }
+        
+        return new Promise((resolve, reject) => {
+            this.db.get(sql, params, (err, row) => {
+                if (err) {
+                    console.error('SQL Error:', err);
+                    reject(err);
+                } else {
+                    resolve(row);
+                }
+            });
+        });
+    }
+
+    async all(sql, params = []) {
+        if (this.db.isJSON) {
+            return this.allJSON(sql, params);
+        }
+        
+        return new Promise((resolve, reject) => {
+            this.db.all(sql, params, (err, rows) => {
+                if (err) {
+                    console.error('SQL Error:', err);
+                    reject(err);
+                } else {
+                    resolve(rows);
+                }
+            });
+        });
+    }
+
+    // Simple JSON-based query implementations
+    runJSON(sql, params = []) {
+        const sqlLower = sql.toLowerCase().trim();
+        
+        if (sqlLower.includes('create table')) {
+            return { id: null, changes: 0 };
+        }
+        
+        if (sqlLower.includes('insert into users')) {
+            const user = {
+                id: Date.now(),
+                username: params[0],
+                password_hash: params[1],
+                user_type: params[2],
+                created_by: params[3],
+                created_at: params[4],
+                is_active: 1
+            };
+            this.db.data.users.push(user);
+            this.saveJSONData();
+            return { id: user.id, changes: 1 };
+        }
+        
+        if (sqlLower.includes('insert into customers')) {
+            const customer = {
+                id: Date.now(),
+                customer_id: params[0],
+                name: params[1],
+                mobile_number: params[2],
+                email: params[3],
+                address: params[4],
+                creation_date: params[5],
+                net_value: params[6] || 0,
+                created_by: params[7],
+                created_at: params[8],
+                is_active: 1
+            };
+            this.db.data.customers.push(customer);
+            this.saveJSONData();
+            return { id: customer.id, changes: 1 };
+        }
+        
+        return { id: null, changes: 0 };
+    }
+
+    getJSON(sql, params = []) {
+        const sqlLower = sql.toLowerCase().trim();
+        
+        if (sqlLower.includes('select') && sqlLower.includes('users')) {
+            if (params[0] === 'admin') {
+                return this.db.data.users.find(u => u.username === 'admin');
+            }
+        }
+        
+        return null;
+    }
+
+    allJSON(sql, params = []) {
+        const sqlLower = sql.toLowerCase().trim();
+        
+        if (sqlLower.includes('customers') && sqlLower.includes('is_active = 1')) {
+            return this.db.data.customers.filter(c => c.is_active === 1);
+        }
+        
+        if (sqlLower.includes('users')) {
+            return this.db.data.users.filter(u => u.is_active === 1);
+        }
+        
+        return [];
+    }
+
+    async getNextSequence(tableName, field = 'id') {
+        if (this.db.isJSON) {
+            const data = this.db.data[tableName] || [];
+            const maxId = data.reduce((max, item) => Math.max(max, item[field] || 0), 0);
+            return maxId + 1;
+        }
+        
+        const result = await this.get(`SELECT MAX(${field}) as max_id FROM ${tableName}`);
+        return (result?.max_id || 0) + 1;
+    }
+
+    async transaction(callback) {
+        try {
+            if (this.db.isJSON) {
+                const result = await callback();
+                this.saveJSONData();
+                return result;
+            }
+            
+            await this.run('BEGIN TRANSACTION');
+            const result = await callback();
+            await this.run('COMMIT');
+            return result;
+        } catch (error) {
+            if (!this.db.isJSON) {
+                await this.run('ROLLBACK');
+            }
+            throw error;
+        }
+    }
+
+    close() {
+        if (this.db && !this.db.isJSON) {
+            this.db.close((err) => {
+                if (err) {
+                    console.error('Error closing database:', err);
+                } else {
+                    console.log('Database connection closed');
+                }
+            });
+        } else if (this.db && this.db.isJSON) {
+            this.saveJSONData();
+            console.log('JSON storage saved and closed');
+        }
+    }
 }
 
-module.exports = {
-    initDatabase,
-    getDatabase,
-    closeDatabase,
-    runQuery,
-    getQuery,
-    allQuery,
-    DB_PATH
-};
+// Global database instance
+window.DB = new DatabaseManager();

@@ -1,140 +1,74 @@
-class WatchShopApp {
+// Main application router and controller for ZEDSON Watchcraft
+class WatchcraftApp {
     constructor() {
         this.currentModule = null;
-        this.modules = {};
         this.isInitialized = false;
+        this.modules = {};
     }
 
-    async init() {
+    async initialize() {
+        if (this.isInitialized) return;
+
         try {
-            console.log('Initializing WatchShop application...');
-            
-            // Wait for database to be ready
-            await this.waitForDatabase();
+            // Initialize database
+            await window.DB.initialize();
             
             // Initialize authentication
-            this.setupAuth();
+            await window.Auth.initialize();
             
-            // Load user session
-            const restored = authManager.loadSession();
-            if (restored) {
-                this.updateUserInfo();
-                this.showDashboard();
+            // Setup event listeners
+            this.setupEventListeners();
+            
+            // Check authentication state
+            if (window.Auth.isLoggedIn) {
+                this.showMainApp();
+                this.loadModule('dashboard');
             } else {
-                this.showLogin();
+                this.showLoginScreen();
             }
-            
-            // Setup navigation and event handlers
-            this.setupNavigation();
-            this.setupEventHandlers();
-            
-            // Hide loading screen
-            document.getElementById('loading-screen').style.display = 'none';
-            
+
+            this.isInitialized = true;
             console.log('Application initialized successfully');
-            
         } catch (error) {
-            console.error('Application initialization error:', error);
-            this.showInitializationError(error);
-            throw error;
+            console.error('Failed to initialize application:', error);
+            this.showError('Failed to initialize application. Please try again.');
         }
     }
 
-    async waitForDatabase(maxAttempts = 30, delay = 1000) {
-        for (let i = 0; i < maxAttempts; i++) {
-            try {
-                // Import database functions dynamically to avoid early loading
-                const { getQuery } = require('./core/database');
-                
-                // Test database connection
-                const result = await getQuery('SELECT 1 as test');
-                if (result) {
-                    console.log('Database connected successfully');
-                    return true;
-                }
-            } catch (error) {
-                console.log(`Database connection attempt ${i + 1} failed:`, error.message);
-            }
-            
-            if (i < maxAttempts - 1) {
-                await new Promise(resolve => setTimeout(resolve, delay));
-            }
-        }
-        
-        throw new Error(`Database initialization timeout after ${maxAttempts} attempts`);
-    }
-
-    setupAuth() {
-        // Make auth manager globally available
-        window.authManager = authManager;
-    }
-
-    showInitializationError(error) {
-        const loadingScreen = document.getElementById('loading-screen');
-        let message = 'Application initialization failed. Please try again.';
-        if (error.message) {
-            message = error.message;
-        }
-        
-        loadingScreen.innerHTML = `
-            <div class="loading-content">
-                <div class="error-message">
-                    <h3>Initialization Failed</h3>
-                    <p>${message}</p>
-                    <button onclick="location.reload()" class="btn btn-primary">Retry</button>
-                </div>
-            </div>
-        `;
-        
-        this.showMessage(message, 'error');
-    }
-
-    showMessage(message, type = 'info') {
-        const toastContainer = document.getElementById('toast-container');
-        if (!toastContainer) return;
-
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        toast.innerHTML = `
-            <span class="toast-message">${message}</span>
-            <button class="toast-close" onclick="this.parentElement.remove()">×</button>
-        `;
-
-        toastContainer.appendChild(toast);
-
-        // Auto remove after 5 seconds
-        setTimeout(() => {
-            if (toast.parentElement) {
-                toast.remove();
-            }
-        }, 5000);
-    }
-
-    showLogin() {
-        document.getElementById('loading-screen').style.display = 'none';
-        document.getElementById('login-screen').style.display = 'flex';
-        document.getElementById('main-app').style.display = 'none';
-        
-        // Setup login form
+    setupEventListeners() {
+        // Login form submission
         const loginForm = document.getElementById('login-form');
         if (loginForm) {
-            loginForm.onsubmit = (e) => this.handleLogin(e);
+            loginForm.addEventListener('submit', (e) => this.handleLogin(e));
         }
-        
-        // Focus username field
-        const usernameField = document.getElementById('username');
-        if (usernameField) {
-            usernameField.focus();
-        }
-    }
 
-    showDashboard() {
-        document.getElementById('loading-screen').style.display = 'none';
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('main-app').style.display = 'flex';
-        
-        // Load dashboard content
-        this.loadModule('dashboard');
+        // Logout button
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => this.handleLogout());
+        }
+
+        // Navigation menu
+        const navItems = document.querySelectorAll('.nav-item');
+        navItems.forEach(item => {
+            item.addEventListener('click', (e) => this.handleNavigation(e));
+        });
+
+        // Handle window close
+        window.addEventListener('beforeunload', () => {
+            if (window.DB) {
+                window.DB.close();
+            }
+        });
+
+        // Handle offline/online status
+        window.addEventListener('online', () => {
+            window.Utils.showToast('Connection restored', 'success');
+        });
+
+        window.addEventListener('offline', () => {
+            window.Utils.showToast('Connection lost - working offline', 'warning');
+        });
     }
 
     async handleLogin(event) {
@@ -143,275 +77,241 @@ class WatchShopApp {
         const formData = new FormData(event.target);
         const username = formData.get('username');
         const password = formData.get('password');
-        
+
         if (!username || !password) {
-            this.showMessage('Please enter both username and password', 'error');
+            this.showLoginError('Please enter both username and password');
             return;
         }
+
+        window.Utils.showLoader();
         
         try {
-            const result = await authManager.login(username, password);
+            const result = await window.Auth.login(username, password);
             
             if (result.success) {
-                this.showMessage(result.message, 'success');
-                this.updateUserInfo();
-                this.showDashboard();
-                
-                // Log the login
-                if (typeof auditLogger !== 'undefined') {
-                    await auditLogger.logLogin(username);
-                }
+                this.hideLoginError();
+                this.showMainApp();
+                this.loadModule('dashboard');
+                window.Utils.showToast(`Welcome back, ${result.user.username}!`, 'success');
             } else {
-                this.showMessage(result.message, 'error');
+                this.showLoginError(result.error);
             }
         } catch (error) {
             console.error('Login error:', error);
-            this.showMessage('Login failed. Please try again.', 'error');
+            this.showLoginError('Login failed. Please try again.');
+        } finally {
+            window.Utils.hideLoader();
         }
     }
 
     async handleLogout() {
         try {
-            const currentUser = authManager.getCurrentUser();
-            const result = authManager.logout();
-            
-            if (result.success) {
-                this.showMessage(result.message, 'success');
-                this.showLogin();
-                
-                // Log the logout
-                if (typeof auditLogger !== 'undefined' && currentUser) {
-                    await auditLogger.logLogout(currentUser.username);
-                }
-            }
+            await window.Auth.logout();
+            this.showLoginScreen();
+            this.currentModule = null;
+            window.Utils.showToast('Logged out successfully', 'info');
         } catch (error) {
             console.error('Logout error:', error);
-            this.showMessage('Logout failed', 'error');
         }
     }
 
-    updateUserInfo() {
-        const userInfo = authManager.getUserDisplayInfo();
-        if (userInfo) {
-            const currentUserElement = document.getElementById('current-user');
-            if (currentUserElement) {
-                currentUserElement.textContent = userInfo.displayName;
-            }
-        }
-    }
-
-    setupNavigation() {
-        const navItems = document.querySelectorAll('.nav-item');
-        navItems.forEach(item => {
-            item.onclick = () => this.handleNavigation(item);
-        });
-    }
-
-    setupEventHandlers() {
-        // Logout button
-        const logoutBtn = document.getElementById('logout-btn');
-        if (logoutBtn) {
-            logoutBtn.onclick = () => this.handleLogout();
-        }
-
-        // Search functionality
-        const searchInput = document.getElementById('global-search');
-        if (searchInput) {
-            searchInput.onkeypress = (e) => {
-                if (e.key === 'Enter') {
-                    this.globalSearch(e.target.value);
-                }
-            };
-        }
-
-        // Settings button
-        const settingsBtn = document.getElementById('settings-btn');
-        if (settingsBtn) {
-            settingsBtn.onclick = () => this.showSettings();
-        }
-    }
-
-    async handleNavigation(navItem) {
-        const module = navItem.dataset.module;
+    handleNavigation(event) {
+        event.preventDefault();
         
-        // Check permissions
-        if (!authManager.hasPermission(module)) {
-            this.showMessage('Access denied. Insufficient permissions.', 'error');
-            return;
+        const module = event.target.dataset.module;
+        if (module && window.Auth.hasPermission(module)) {
+            this.loadModule(module);
+        } else {
+            window.Utils.showToast('You do not have permission to access this module', 'error');
         }
-        
-        // Update active nav item
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.classList.remove('active');
-        });
-        navItem.classList.add('active');
-        
-        // Load module
-        await this.loadModule(module);
     }
 
     async loadModule(moduleName) {
-        try {
-            const contentArea = document.getElementById('content-area');
-            if (!contentArea) return;
+        if (!window.Auth.hasPermission(moduleName)) {
+            window.Utils.showToast('Access denied', 'error');
+            return;
+        }
 
-            // Show loading
-            contentArea.innerHTML = '<div class="loading">Loading...</div>';
+        try {
+            window.Utils.showLoader();
+
+            // Update navigation
+            this.updateNavigation(moduleName);
 
             // Load module dynamically
-            let moduleContent = '';
-            
-            switch (moduleName) {
-                case 'dashboard':
-                    moduleContent = await this.loadDashboard();
-                    break;
-                case 'customers':
-                    moduleContent = '<div class="module-placeholder">Customers module will be loaded here</div>';
-                    break;
-                case 'inventory':
-                    moduleContent = '<div class="module-placeholder">Inventory module will be loaded here</div>';
-                    break;
-                case 'sales':
-                    moduleContent = '<div class="module-placeholder">Sales module will be loaded here</div>';
-                    break;
-                case 'service':
-                    moduleContent = '<div class="module-placeholder">Service module will be loaded here</div>';
-                    break;
-                default:
-                    moduleContent = '<div class="module-placeholder">Module not found</div>';
+            await this.loadModuleScript(moduleName);
+
+            // Initialize module
+            const moduleClass = this.getModuleClass(moduleName);
+            if (moduleClass) {
+                this.currentModule = new moduleClass();
+                await this.currentModule.render();
             }
 
-            contentArea.innerHTML = moduleContent;
-            this.currentModule = moduleName;
-
-            // Log module access
-            if (typeof auditLogger !== 'undefined') {
-                await auditLogger.logView(moduleName.toUpperCase());
-            }
-
+            console.log(`Module ${moduleName} loaded successfully`);
         } catch (error) {
-            console.error('Module loading error:', error);
-            this.showMessage('Failed to load module', 'error');
+            console.error(`Failed to load module ${moduleName}:`, error);
+            window.Utils.showToast(`Failed to load ${moduleName} module`, 'error');
+        } finally {
+            window.Utils.hideLoader();
         }
     }
 
-    async loadDashboard() {
-        return `
-            <div class="dashboard">
-                <h2>Dashboard</h2>
-                <div class="dashboard-stats">
-                    <div class="stat-card">
-                        <h3>Quick Stats</h3>
-                        <p>Welcome to WatchShop Management System</p>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    showSettings() {
-        const content = `
-            <div class="settings-form">
-                <h3>User Settings</h3>
-                <button class="btn btn-secondary" onclick="app.showChangePassword()">Change Password</button>
-            </div>
-        `;
-
-        this.showModal('Settings', content, `
-            <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Close</button>
-        `);
-    }
-
-    showChangePassword() {
-        const content = `
-            <form id="change-password-form" class="change-password-form">
-                <div class="form-group">
-                    <label for="current-password">Current Password</label>
-                    <input type="password" id="current-password" name="currentPassword" required>
-                </div>
-                <div class="form-group">
-                    <label for="new-password">New Password</label>
-                    <input type="password" id="new-password" name="newPassword" required>
-                </div>
-                <div class="form-group">
-                    <label for="confirm-password">Confirm New Password</label>
-                    <input type="password" id="confirm-password" name="confirmPassword" required>
-                </div>
-            </form>
-        `;
-
-        this.showModal('Change Password', content, `
-            <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-            <button class="btn btn-primary" onclick="app.submitPasswordChange()">Change Password</button>
-        `);
-    }
-
-    async submitPasswordChange() {
-        const form = document.getElementById('change-password-form');
-        const formData = new FormData(form);
-        
-        const currentPassword = formData.get('currentPassword');
-        const newPassword = formData.get('newPassword');
-        const confirmPassword = formData.get('confirmPassword');
-        
-        if (newPassword !== confirmPassword) {
-            this.showMessage('Passwords do not match', 'error');
+    async loadModuleScript(moduleName) {
+        // Check if module is already loaded
+        if (this.modules[moduleName]) {
             return;
         }
+
+        // Define module file paths
+        const moduleFiles = {
+            dashboard: ['modules/dashboard/dashboard.js', 'modules/dashboard/dashboard-queries.js'],
+            customers: ['modules/customers/customers.js', 'modules/customers/customers-form.js', 'modules/customers/customers-db.js'],
+            inventory: ['modules/inventory/inventory.js', 'modules/inventory/inventory-form.js', 'modules/inventory/inventory-list.js', 'modules/inventory/inventory-db.js'],
+            sales: ['modules/sales/sales.js', 'modules/sales/sales-form.js', 'modules/sales/sales-invoice.js', 'modules/sales/sales-db.js'],
+            service: ['modules/service/service.js', 'modules/service/service-new.js', 'modules/service/service-instant.js', 'modules/service/service-status.js', 'modules/service/service-db.js'],
+            invoices: ['modules/invoices/invoices.js', 'modules/invoices/invoices-print.js'],
+            expense: ['modules/expense/expense.js', 'modules/expense/expense-db.js'],
+            ledger: ['modules/ledger/ledger.js', 'modules/ledger/ledger-export.js'],
+            users: ['modules/users/users.js', 'modules/users/users-permissions.js']
+        };
+
+        const files = moduleFiles[moduleName] || [];
         
-        if (newPassword.length < 6) {
-            this.showMessage('Password must be at least 6 characters', 'error');
-            return;
+        // Load all module files
+        for (const file of files) {
+            await this.loadScript(file);
+        }
+
+        this.modules[moduleName] = true;
+    }
+
+    loadScript(src) {
+        return new Promise((resolve, reject) => {
+            // Check if script is already loaded
+            if (document.querySelector(`script[src="${src}"]`)) {
+                resolve();
+                return;
+            }
+
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = resolve;
+            script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+            document.head.appendChild(script);
+        });
+    }
+
+    getModuleClass(moduleName) {
+        const moduleClasses = {
+            dashboard: window.DashboardModule,
+            customers: window.CustomersModule,
+            inventory: window.InventoryModule,
+            sales: window.SalesModule,
+            service: window.ServiceModule,
+            invoices: window.InvoicesModule,
+            expense: window.ExpenseModule,
+            ledger: window.LedgerModule,
+            users: window.UsersModule
+        };
+
+        return moduleClasses[moduleName];
+    }
+
+    updateNavigation(activeModule) {
+        // Remove active class from all nav items
+        const navItems = document.querySelectorAll('.nav-item');
+        navItems.forEach(item => item.classList.remove('active'));
+
+        // Add active class to current module
+        const activeItem = document.querySelector(`[data-module="${activeModule}"]`);
+        if (activeItem) {
+            activeItem.classList.add('active');
+        }
+    }
+
+    showLoginScreen() {
+        document.getElementById('login-screen').classList.add('active');
+        document.getElementById('main-app').classList.remove('active');
+        
+        // Clear login form
+        const loginForm = document.getElementById('login-form');
+        if (loginForm) {
+            loginForm.reset();
         }
         
-        try {
-            const result = await authManager.changePassword(currentPassword, newPassword);
-            
-            if (result.success) {
-                this.showMessage('Password changed successfully', 'success');
-                document.querySelector('.modal-overlay').remove();
+        this.hideLoginError();
+    }
+
+    showMainApp() {
+        document.getElementById('login-screen').classList.remove('active');
+        document.getElementById('main-app').classList.add('active');
+        
+        // Update user info
+        const currentUser = window.Auth.getCurrentUser();
+        if (currentUser) {
+            document.getElementById('current-user').textContent = currentUser.username;
+        }
+
+        // Setup module permissions
+        this.setupModulePermissions();
+    }
+
+    setupModulePermissions() {
+        const navItems = document.querySelectorAll('.nav-item');
+        
+        navItems.forEach(item => {
+            const module = item.dataset.module;
+            if (!window.Auth.hasPermission(module)) {
+                item.style.display = 'none';
             } else {
-                this.showMessage(result.message, 'error');
+                item.style.display = 'block';
             }
-        } catch (error) {
-            this.showMessage('Failed to change password', 'error');
+        });
+    }
+
+    showLoginError(message) {
+        const errorElement = document.getElementById('login-error');
+        if (errorElement) {
+            errorElement.textContent = message;
+            errorElement.classList.remove('hidden');
         }
     }
 
-    showModal(title, content, actions = '') {
-        const modal = document.createElement('div');
-        modal.className = 'modal-overlay';
-        modal.innerHTML = `
-            <div class="modal">
-                <div class="modal-header">
-                    <h3>${title}</h3>
-                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
-                </div>
-                <div class="modal-content">
-                    ${content}
-                </div>
-                <div class="modal-actions">
-                    ${actions}
-                </div>
-            </div>
-        `;
-
-        document.body.appendChild(modal);
+    hideLoginError() {
+        const errorElement = document.getElementById('login-error');
+        if (errorElement) {
+            errorElement.classList.add('hidden');
+        }
     }
 
-    async globalSearch(searchTerm) {
-        if (!searchTerm || searchTerm.length < 3) {
-            this.showMessage('Please enter at least 3 characters to search', 'info');
-            return;
+    showError(message) {
+        window.Utils.showToast(message, 'error');
+    }
+
+    // Public method to reload current module
+    async reloadCurrentModule() {
+        if (this.currentModule && this.currentModule.render) {
+            await this.currentModule.render();
         }
-        
-        this.showMessage(`Searching for "${searchTerm}"...`, 'info');
-        // Implement search functionality here
+    }
+
+    // Public method to get current module
+    getCurrentModule() {
+        return this.currentModule;
+    }
+
+    // Public method to navigate to specific module
+    navigateTo(moduleName, params = {}) {
+        this.loadModule(moduleName, params);
     }
 }
 
-// Create and initialize the app
-const app = new WatchShopApp();
+// Initialize application when DOM is ready
+document.addEventListener('DOMContentLoaded', async () => {
+    window.App = new WatchcraftApp();
+    await window.App.initialize();
+});
 
-// Make it globally available
-window.app = app;
+// Make app globally available
+window.WatchcraftApp = WatchcraftApp;

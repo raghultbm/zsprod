@@ -1,260 +1,228 @@
 class AuthManager {
     constructor() {
         this.currentUser = null;
-        this.sessionTimeout = 8 * 60 * 60 * 1000; // 8 hours
-        this.sessionTimer = null;
+        this.permissions = {};
+        this.isLoggedIn = false;
+    }
+
+    async initialize() {
+        // Check if there's a remembered session (basic implementation)
+        const savedUser = localStorage.getItem('currentUser');
+        if (savedUser) {
+            try {
+                const userData = JSON.parse(savedUser);
+                const user = await window.DB.get('SELECT * FROM users WHERE username = ? AND is_active = 1', [userData.username]);
+                if (user) {
+                    await this.setCurrentUser(user);
+                }
+            } catch (error) {
+                console.error('Error restoring session:', error);
+                localStorage.removeItem('currentUser');
+            }
+        }
     }
 
     async login(username, password) {
         try {
-            const { getQuery, runQuery } = require('./database');
-            
-            // Simple password verification (in production, use proper hashing)
-            const passwordHash = Buffer.from(password).toString('base64');
-            
-            const user = await getQuery(
-                `SELECT * FROM users WHERE username = ? AND password_hash = ? AND is_active = 1`,
-                [username, passwordHash]
+            // Simple password check (in production, use proper hashing)
+            const user = await window.DB.get(
+                'SELECT * FROM users WHERE username = ? AND password_hash = ? AND is_active = 1',
+                [username, password]
             );
 
             if (!user) {
                 throw new Error('Invalid username or password');
             }
 
-            // Parse permissions
-            let permissions = {};
-            try {
-                permissions = JSON.parse(user.permissions || '{}');
-            } catch (e) {
-                console.warn('Error parsing user permissions:', e);
-                permissions = {};
-            }
-
-            this.currentUser = {
-                id: user.id,
-                username: user.username,
-                userType: user.user_type,
-                permissions: permissions,
-                loginTime: new Date()
-            };
-
-            // Update last login
-            await runQuery(
-                `UPDATE users SET updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-                [user.id]
-            );
-
-            this.startSessionTimer();
-            this.saveSession();
+            await this.setCurrentUser(user);
             
-            return {
-                success: true,
-                user: this.getCurrentUser(),
-                message: 'Login successful'
-            };
+            // Remember login (basic implementation)
+            localStorage.setItem('currentUser', JSON.stringify({
+                username: user.username,
+                loginTime: new Date().toISOString()
+            }));
 
+            // Log the login
+            await window.AuditLogger.log('users', user.id, 'LOGIN', {}, { login_time: new Date().toISOString() });
+
+            return { success: true, user: this.getCurrentUser() };
         } catch (error) {
             console.error('Login error:', error);
-            return {
-                success: false,
-                message: error.message || 'Login failed'
-            };
+            return { success: false, error: error.message };
         }
     }
 
-    logout() {
-        this.clearSession();
-        this.currentUser = null;
-        if (this.sessionTimer) {
-            clearTimeout(this.sessionTimer);
-            this.sessionTimer = null;
+    async setCurrentUser(user) {
+        this.currentUser = {
+            id: user.id,
+            username: user.username,
+            userType: user.user_type,
+            isActive: user.is_active
+        };
+
+        // Parse permissions
+        try {
+            this.permissions = user.permissions ? JSON.parse(user.permissions) : this.getDefaultPermissions(user.user_type);
+        } catch (error) {
+            this.permissions = this.getDefaultPermissions(user.user_type);
         }
-        return { success: true, message: 'Logged out successfully' };
+
+        this.isLoggedIn = true;
+
+        // Update UI
+        if (document.getElementById('current-user')) {
+            document.getElementById('current-user').textContent = this.currentUser.username;
+        }
+    }
+
+    getDefaultPermissions(userType) {
+        const allModules = ['dashboard', 'customers', 'inventory', 'sales', 'service', 'invoices', 'expense', 'ledger'];
+        
+        switch (userType) {
+            case 'admin':
+                return {
+                    modules: allModules,
+                    actions: {
+                        create: allModules,
+                        read: allModules,
+                        update: allModules,
+                        delete: allModules,
+                        manage_users: true,
+                        close_business: true
+                    }
+                };
+            
+            case 'owner':
+                return {
+                    modules: allModules,
+                    actions: {
+                        create: allModules,
+                        read: allModules,
+                        update: allModules,
+                        delete: ['customers', 'inventory', 'expense'],
+                        manage_users: false,
+                        close_business: true
+                    }
+                };
+            
+            case 'manager':
+                const managerModules = ['dashboard', 'customers', 'inventory', 'sales', 'service', 'invoices'];
+                return {
+                    modules: managerModules,
+                    actions: {
+                        create: managerModules,
+                        read: managerModules,
+                        update: ['customers', 'inventory', 'sales', 'service'],
+                        delete: [],
+                        manage_users: false,
+                        close_business: false
+                    }
+                };
+            
+            default:
+                return {
+                    modules: ['dashboard'],
+                    actions: {
+                        create: [],
+                        read: ['dashboard'],
+                        update: [],
+                        delete: [],
+                        manage_users: false,
+                        close_business: false
+                    }
+                };
+        }
+    }
+
+    hasPermission(module, action = 'read') {
+        if (!this.isLoggedIn) return false;
+        if (this.currentUser.userType === 'admin') return true;
+
+        const modulePermissions = this.permissions.modules || [];
+        const actionPermissions = this.permissions.actions || {};
+
+        // Check if user has access to the module
+        if (!modulePermissions.includes(module)) return false;
+
+        // Check specific action permission
+        if (action === 'read') return true; // If they have module access, they can read
+        
+        const allowedActions = actionPermissions[action] || [];
+        return allowedActions.includes(module);
+    }
+
+    hasSpecialPermission(permission) {
+        if (!this.isLoggedIn) return false;
+        if (this.currentUser.userType === 'admin') return true;
+
+        const actionPermissions = this.permissions.actions || {};
+        return actionPermissions[permission] === true;
     }
 
     getCurrentUser() {
-        return this.currentUser ? {
-            id: this.currentUser.id,
-            username: this.currentUser.username,
-            userType: this.currentUser.userType,
-            permissions: this.currentUser.permissions,
-            loginTime: this.currentUser.loginTime
-        } : null;
+        return this.currentUser;
     }
 
-    isAuthenticated() {
-        return this.currentUser !== null;
-    }
-
-    hasPermission(module) {
-        if (!this.currentUser) return false;
-        
-        const permissions = this.currentUser.permissions;
-        
-        // Admin has all permissions
-        if (this.currentUser.userType === 'admin') return true;
-        
-        // Check specific permission
-        return permissions[module] === true || permissions.all_access === true;
-    }
-
-    hasAnyPermission(modules = []) {
-        if (!this.currentUser) return false;
-        return modules.some(module => this.hasPermission(module));
-    }
-
-    requirePermission(module) {
-        if (!this.isAuthenticated()) {
-            throw new Error('Authentication required');
+    async logout() {
+        if (this.currentUser) {
+            // Log the logout
+            await window.AuditLogger.log('users', this.currentUser.id, 'LOGOUT', {}, { logout_time: new Date().toISOString() });
         }
+
+        this.currentUser = null;
+        this.permissions = {};
+        this.isLoggedIn = false;
         
-        if (!this.hasPermission(module)) {
-            throw new Error(`Access denied. Required permission: ${module}`);
-        }
+        localStorage.removeItem('currentUser');
         
-        return true;
+        return { success: true };
     }
 
-    async changePassword(oldPassword, newPassword) {
-        if (!this.currentUser) {
-            return { success: false, message: 'Not authenticated' };
+    async changePassword(currentPassword, newPassword) {
+        if (!this.isLoggedIn) {
+            return { success: false, error: 'User not logged in' };
         }
 
         try {
-            const { getQuery, runQuery } = require('./database');
-            
-            // Verify old password
-            const oldHash = Buffer.from(oldPassword).toString('base64');
-            const user = await getQuery(
-                `SELECT id FROM users WHERE id = ? AND password_hash = ?`,
-                [this.currentUser.id, oldHash]
+            // Verify current password
+            const user = await window.DB.get(
+                'SELECT * FROM users WHERE id = ? AND password_hash = ?',
+                [this.currentUser.id, currentPassword]
             );
 
             if (!user) {
-                return { success: false, message: 'Current password is incorrect' };
+                return { success: false, error: 'Current password is incorrect' };
             }
 
             // Update password
-            const newHash = Buffer.from(newPassword).toString('base64');
-            await runQuery(
-                `UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP, updated_by = ? WHERE id = ?`,
-                [newHash, this.currentUser.username, this.currentUser.id]
+            await window.DB.run(
+                'UPDATE users SET password_hash = ?, updated_by = ?, updated_at = ? WHERE id = ?',
+                [newPassword, this.currentUser.username, new Date().toISOString(), this.currentUser.id]
+            );
+
+            // Log the password change
+            await window.AuditLogger.log('users', this.currentUser.id, 'UPDATE', 
+                { password_changed: false }, 
+                { password_changed: true }
             );
 
             return { success: true, message: 'Password changed successfully' };
-
         } catch (error) {
-            console.error('Change password error:', error);
-            return { success: false, message: 'Failed to change password' };
+            console.error('Password change error:', error);
+            return { success: false, error: 'Failed to change password' };
         }
     }
 
-    startSessionTimer() {
-        if (this.sessionTimer) {
-            clearTimeout(this.sessionTimer);
-        }
-
-        this.sessionTimer = setTimeout(() => {
-            this.logout();
-            // Notify about session expiry
-            if (window.app) {
-                window.app.showMessage('Session expired. Please login again.', 'warning');
-                window.app.showLogin();
-            }
-        }, this.sessionTimeout);
+    // Utility method to check if current user is admin
+    isAdmin() {
+        return this.currentUser && this.currentUser.userType === 'admin';
     }
 
-    saveSession() {
-        if (this.currentUser) {
-            const sessionData = {
-                user: this.currentUser,
-                timestamp: Date.now()
-            };
-            
-            try {
-                localStorage.setItem('watchshop_session', JSON.stringify(sessionData));
-            } catch (error) {
-                console.warn('Failed to save session:', error);
-            }
-        }
-    }
-
-    loadSession() {
-        try {
-            const sessionData = localStorage.getItem('watchshop_session');
-            if (!sessionData) return false;
-
-            const parsed = JSON.parse(sessionData);
-            const sessionAge = Date.now() - parsed.timestamp;
-
-            // Check if session is still valid (8 hours)
-            if (sessionAge > this.sessionTimeout) {
-                this.clearSession();
-                return false;
-            }
-
-            this.currentUser = parsed.user;
-            this.startSessionTimer();
-            return true;
-
-        } catch (error) {
-            console.warn('Failed to load session:', error);
-            this.clearSession();
-            return false;
-        }
-    }
-
-    clearSession() {
-        try {
-            localStorage.removeItem('watchshop_session');
-        } catch (error) {
-            console.warn('Failed to clear session:', error);
-        }
-    }
-
-    getPermissionsList() {
-        return {
-            dashboard: 'Dashboard Access',
-            customers: 'Customer Management',
-            inventory: 'Inventory Management',
-            sales: 'Sales & Billing',
-            service: 'Service Management',
-            invoices: 'Invoice Generation',
-            expense: 'Expense Tracking',
-            ledger: 'Ledger & Reports',
-            users: 'User Management',
-            all_access: 'Full System Access'
-        };
-    }
-
-    // Utility method to get user display info
-    getUserDisplayInfo() {
-        if (!this.currentUser) return null;
-        
-        return {
-            username: this.currentUser.username,
-            userType: this.currentUser.userType,
-            displayName: this.currentUser.username.charAt(0).toUpperCase() + 
-                        this.currentUser.username.slice(1),
-            typeLabel: this.getUserTypeLabel(this.currentUser.userType),
-            loginTime: this.currentUser.loginTime
-        };
-    }
-
-    getUserTypeLabel(userType) {
-        const labels = {
-            'admin': 'Administrator',
-            'owner': 'Owner',
-            'manager': 'Manager'
-        };
-        return labels[userType] || userType;
+    // Utility method to get user's display name
+    getDisplayName() {
+        return this.currentUser ? this.currentUser.username : 'Guest';
     }
 }
 
-// Create singleton instance
-const authManager = new AuthManager();
-
-// Make it globally available
-if (typeof window !== 'undefined') {
-    window.authManager = authManager;
-}
+// Global authentication manager
+window.Auth = new AuthManager();
