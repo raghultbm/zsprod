@@ -1,13 +1,4 @@
-// Complete Fixed Customers module for ZEDSON Watchcraft
-(function() {
-    'use strict';
-    
-    // Prevent redeclaration
-    if (typeof window.CustomersModule !== 'undefined') {
-        console.log('CustomersModule already exists, skipping redeclaration');
-        return;
-    }
-
+// Customers module for ZEDSON Watchcraft
 class CustomersModule {
     constructor() {
         this.customers = [];
@@ -16,47 +7,17 @@ class CustomersModule {
         this.searchTerm = '';
         this.filters = {};
         this.editingCustomer = null;
-        
-        // Store event handlers for proper cleanup
-        this.eventHandlers = {};
     }
 
     async render(container) {
         try {
-            console.log('Customers module: Starting render...');
-            
-            // Check dependencies
-            if (typeof app === 'undefined') {
-                throw new Error('App instance not available');
-            }
-            
-            if (typeof Utils === 'undefined') {
-                throw new Error('Utils not available');
-            }
-            
             container.innerHTML = this.getTemplate();
-            console.log('Customers module: Template rendered');
-            
             await this.loadCustomers();
-            console.log('Customers module: Data loaded');
-            
             this.setupEventListeners();
-            console.log('Customers module: Event listeners setup');
-            
             this.renderCustomersList();
-            console.log('Customers module: List rendered');
-            
         } catch (error) {
             console.error('Customers render error:', error);
-            container.innerHTML = `
-                <div class="error-container" style="padding: 2rem; text-align: center; color: #dc2626;">
-                    <h2>Failed to Load Customers Module</h2>
-                    <p><strong>Error:</strong> ${error.message}</p>
-                    <button onclick="location.reload()" class="btn btn-primary" style="margin-top: 1rem;">
-                        Reload Application
-                    </button>
-                </div>
-            `;
+            Utils.showError('Failed to load customers module');
         }
     }
 
@@ -222,87 +183,72 @@ class CustomersModule {
     }
 
     setupEventListeners() {
-        // Clear existing listeners to prevent duplicates
-        this.removeEventListeners();
-        
-        // Add customer button
+        // Remove any existing listeners first to prevent duplicates
         const addBtn = document.getElementById('add-customer-btn');
-        this.eventHandlers.addBtn = (e) => {
+        const searchInput = document.getElementById('customer-search');
+        const clearBtn = document.getElementById('clear-search');
+        const locationFilter = document.getElementById('location-filter');
+        const sortBy = document.getElementById('sort-by');
+        const form = document.getElementById('customer-form');
+
+        // Clone and replace elements to remove all existing listeners
+        addBtn.replaceWith(addBtn.cloneNode(true));
+        searchInput.replaceWith(searchInput.cloneNode(true));
+        clearBtn.replaceWith(clearBtn.cloneNode(true));
+        locationFilter.replaceWith(locationFilter.cloneNode(true));
+        sortBy.replaceWith(sortBy.cloneNode(true));
+
+        // Get fresh references after cloning
+        const newAddBtn = document.getElementById('add-customer-btn');
+        const newSearchInput = document.getElementById('customer-search');
+        const newClearBtn = document.getElementById('clear-search');
+        const newLocationFilter = document.getElementById('location-filter');
+        const newSortBy = document.getElementById('sort-by');
+
+        // Add customer button - single listener
+        newAddBtn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
             this.openCustomerModal();
-        };
-        addBtn.addEventListener('click', this.eventHandlers.addBtn);
+        });
 
         // Search functionality
-        const searchInput = document.getElementById('customer-search');
-        this.eventHandlers.search = Utils.debounce((e) => {
+        newSearchInput.addEventListener('input', Utils.debounce((e) => {
             this.searchTerm = e.target.value;
             this.applyFilters();
-        }, 300);
-        searchInput.addEventListener('input', this.eventHandlers.search);
+        }, 300));
 
         // Clear search
-        const clearBtn = document.getElementById('clear-search');
-        this.eventHandlers.clear = (e) => {
+        newClearBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            searchInput.value = '';
+            newSearchInput.value = '';
             this.searchTerm = '';
             this.applyFilters();
-        };
-        clearBtn.addEventListener('click', this.eventHandlers.clear);
+        });
 
         // Filters
-        const locationFilter = document.getElementById('location-filter');
-        this.eventHandlers.locationFilter = (e) => {
+        newLocationFilter.addEventListener('change', (e) => {
             this.filters.location = e.target.value;
             this.applyFilters();
-        };
-        locationFilter.addEventListener('change', this.eventHandlers.locationFilter);
+        });
 
-        const sortBy = document.getElementById('sort-by');
-        this.eventHandlers.sort = (e) => {
+        newSortBy.addEventListener('change', (e) => {
             const [field, direction] = e.target.value.split('-');
             this.currentSort = { field, direction };
             this.applyFilters();
-        };
-        sortBy.addEventListener('change', this.eventHandlers.sort);
+        });
 
-        // Form submission
-        const form = document.getElementById('customer-form');
-        this.eventHandlers.form = (e) => {
+        // Form submission - single listener
+        form.addEventListener('submit', (e) => {
             this.handleFormSubmit(e);
-        };
-        form.addEventListener('submit', this.eventHandlers.form);
+        });
 
         // Modal close on backdrop click
-        this.eventHandlers.modal = (e) => {
+        document.addEventListener('click', (e) => {
             if (e.target.classList.contains('modal-backdrop')) {
                 e.target.style.display = 'none';
             }
-        };
-        document.addEventListener('click', this.eventHandlers.modal);
-    }
-
-    removeEventListeners() {
-        // Remove existing event listeners to prevent duplicates
-        const addBtn = document.getElementById('add-customer-btn');
-        const searchInput = document.getElementById('customer-search');
-        const clearBtn = document.getElementById('clear-search');
-        const locationFilter = document.getElementById('location-filter');
-        const sortBy = document.getElementById('sort-by');
-        const form = document.getElementById('customer-form');
-
-        if (this.eventHandlers.addBtn) addBtn?.removeEventListener('click', this.eventHandlers.addBtn);
-        if (this.eventHandlers.search) searchInput?.removeEventListener('input', this.eventHandlers.search);
-        if (this.eventHandlers.clear) clearBtn?.removeEventListener('click', this.eventHandlers.clear);
-        if (this.eventHandlers.locationFilter) locationFilter?.removeEventListener('change', this.eventHandlers.locationFilter);
-        if (this.eventHandlers.sort) sortBy?.removeEventListener('change', this.eventHandlers.sort);
-        if (this.eventHandlers.form) form?.removeEventListener('submit', this.eventHandlers.form);
-        if (this.eventHandlers.modal) document.removeEventListener('click', this.eventHandlers.modal);
-        
-        // Clear handlers
-        this.eventHandlers = {};
+        });
     }
 
     applyFilters() {
@@ -318,9 +264,10 @@ class CustomersModule {
             );
         }
 
-        // Apply location filter (if you track customer locations)
+        // Apply location filter
         if (this.filters.location) {
             // This would be used if we track customer locations
+            // For now, we'll keep all customers
         }
 
         // Apply sorting
@@ -339,7 +286,7 @@ class CustomersModule {
                     <div class="empty-icon">👥</div>
                     <h3>No customers found</h3>
                     <p>Start by adding your first customer</p>
-                    <button class="btn btn-primary" onclick="customersModule.openCustomerModal()">
+                    <button class="btn btn-primary" onclick="document.getElementById('add-customer-btn').click()">
                         Add Customer
                     </button>
                 </div>
@@ -396,23 +343,20 @@ class CustomersModule {
 
         container.innerHTML = tableHTML;
 
-        // Add sort click handlers using event delegation
-        const table = container.querySelector('.table');
-        if (table) {
-            table.addEventListener('click', (e) => {
-                if (e.target.classList.contains('sortable')) {
-                    const field = e.target.getAttribute('data-field');
-                    const direction = this.currentSort.field === field && this.currentSort.direction === 'asc' ? 'desc' : 'asc';
-                    
-                    this.currentSort = { field, direction };
-                    this.applyFilters();
-                    
-                    // Update UI indicators
-                    table.querySelectorAll('th').forEach(header => header.classList.remove('sorted-asc', 'sorted-desc'));
-                    e.target.classList.add(`sorted-${direction}`);
-                }
+        // Add sort click handlers
+        container.querySelectorAll('.sortable').forEach(th => {
+            th.addEventListener('click', () => {
+                const field = th.getAttribute('data-field');
+                const direction = this.currentSort.field === field && this.currentSort.direction === 'asc' ? 'desc' : 'asc';
+                
+                this.currentSort = { field, direction };
+                this.applyFilters();
+                
+                // Update UI indicators
+                container.querySelectorAll('th').forEach(header => header.classList.remove('sorted-asc', 'sorted-desc'));
+                th.classList.add(`sorted-${direction}`);
             });
-        }
+        });
     }
 
     updateStats() {
@@ -444,21 +388,20 @@ class CustomersModule {
         const form = document.getElementById('customer-form');
         const saveBtn = document.getElementById('save-customer-btn');
 
-        // Clear form errors immediately
+        // Clear form errors
         document.getElementById('form-errors').style.display = 'none';
 
         if (customer) {
-            // Edit mode - populate form synchronously
+            // Edit mode
             title.textContent = 'Edit Customer';
             saveBtn.textContent = 'Update Customer';
             
-            // Populate fields immediately
-            const customerIdField = document.getElementById('customer-id');
-            customerIdField.value = customer.customer_id;
-            customerIdField.readOnly = true;
-            customerIdField.style.backgroundColor = '#f8f9fa';
-            customerIdField.style.cursor = 'not-allowed';
-            customerIdField.style.color = '#6c757d';
+            // Populate fields directly
+            document.getElementById('customer-id').value = customer.customer_id;
+            document.getElementById('customer-id').readOnly = true;
+            document.getElementById('customer-id').style.backgroundColor = '#f8f9fa';
+            document.getElementById('customer-id').style.cursor = 'not-allowed';
+            document.getElementById('customer-id').style.color = '#6c757d';
             
             form.querySelector('input[name="name"]').value = customer.name || '';
             form.querySelector('input[name="mobile"]').value = customer.mobile || '';
@@ -471,25 +414,19 @@ class CustomersModule {
             
             // Generate new customer ID immediately
             const customerId = this.getNextCustomerIdSync();
-            const customerIdField = document.getElementById('customer-id');
-            customerIdField.value = customerId;
-            customerIdField.readOnly = false;
-            customerIdField.style.backgroundColor = '';
-            customerIdField.style.cursor = '';
-            customerIdField.style.color = '';
+            document.getElementById('customer-id').value = customerId;
+            document.getElementById('customer-id').readOnly = false;
+            document.getElementById('customer-id').style.backgroundColor = '';
+            document.getElementById('customer-id').style.cursor = '';
+            document.getElementById('customer-id').style.color = '';
         }
 
-        // Show modal and focus immediately
         modal.style.display = 'block';
         
         // Focus on the name field
-        requestAnimationFrame(() => {
-            const nameField = form.querySelector('input[name="name"]');
-            if (nameField) {
-                nameField.focus();
-                nameField.select(); // Select any existing text for immediate replacement
-            }
-        });
+        const nameField = form.querySelector('input[name="name"]');
+        nameField.focus();
+        nameField.select(); // Select any existing text for immediate replacement
     }
 
     getNextCustomerIdSync() {
@@ -662,16 +599,19 @@ class CustomersModule {
 
     // Action methods for sales and services
     createSale(customerId) {
+        // This will be implemented when we create the sales module
         console.log('Create sale for customer:', customerId);
         Utils.showError('Sales module not implemented yet');
     }
 
     createService(customerId) {
+        // This will be implemented when we create the service module
         console.log('Create service for customer:', customerId);
         Utils.showError('Service module not implemented yet');
     }
 
     createInstantService(customerId) {
+        // This will be implemented when we create the service module
         console.log('Create instant service for customer:', customerId);
         Utils.showError('Instant service module not implemented yet');
     }
@@ -697,40 +637,10 @@ class CustomersModule {
             Utils.showError('Failed to refresh customers');
         }
     }
-
-    // Cleanup method for performance
-    cleanup() {
-        console.log('Cleaning up customers module...');
-        this.removeEventListeners();
-        
-        // Clear any intervals or timeouts
-        if (this.searchTimeout) {
-            clearTimeout(this.searchTimeout);
-        }
-        
-        // Reset state
-        this.editingCustomer = null;
-        this.customers = [];
-        this.filteredCustomers = [];
-        this.eventHandlers = {};
-    }
 }
 
-// Register the module (prevent duplicate registration)
-if (typeof window !== 'undefined') {
-    window.CustomersModule = CustomersModule;
-}
-
+// Register the module
 const customersModule = new CustomersModule();
 if (typeof app !== 'undefined') {
     app.registerModule('customers', customersModule);
-} else {
-    // Wait for app to be available
-    document.addEventListener('DOMContentLoaded', function() {
-        if (typeof app !== 'undefined') {
-            app.registerModule('customers', customersModule);
-        }
-    });
 }
-
-})(); // End IIFE

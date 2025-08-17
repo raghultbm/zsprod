@@ -304,109 +304,63 @@ class UsersModule {
     }
 
     setupEventListeners() {
-        // Clear existing listeners to prevent duplicates
-        this.removeEventListeners();
-        
         // Add user button
-        const addBtn = document.getElementById('add-user-btn');
-        this.addBtnHandler = (e) => {
+        document.getElementById('add-user-btn').addEventListener('click', (e) => {
             e.preventDefault();
             this.openUserModal();
-        };
-        addBtn.addEventListener('click', this.addBtnHandler);
+        });
 
         // Search functionality
-        const searchInput = document.getElementById('user-search');
-        this.searchHandler = Utils.debounce((e) => {
+        document.getElementById('user-search').addEventListener('input', Utils.debounce((e) => {
             this.searchTerm = e.target.value;
             this.applyFilters();
-        }, 300);
-        searchInput.addEventListener('input', this.searchHandler);
+        }, 300));
 
         // Clear search
-        const clearBtn = document.getElementById('clear-search');
-        this.clearHandler = (e) => {
+        document.getElementById('clear-search').addEventListener('click', (e) => {
             e.preventDefault();
-            searchInput.value = '';
+            document.getElementById('user-search').value = '';
             this.searchTerm = '';
             this.applyFilters();
-        };
-        clearBtn.addEventListener('click', this.clearHandler);
+        });
 
         // Filters
-        const userTypeFilter = document.getElementById('usertype-filter');
-        this.userTypeFilterHandler = (e) => {
+        document.getElementById('usertype-filter').addEventListener('change', (e) => {
             this.filters.userType = e.target.value;
             this.applyFilters();
-        };
-        userTypeFilter.addEventListener('change', this.userTypeFilterHandler);
+        });
 
-        const statusFilter = document.getElementById('status-filter');
-        this.statusFilterHandler = (e) => {
+        document.getElementById('status-filter').addEventListener('change', (e) => {
             this.filters.status = e.target.value;
             this.applyFilters();
-        };
-        statusFilter.addEventListener('change', this.statusFilterHandler);
+        });
 
-        const sortBy = document.getElementById('sort-by');
-        this.sortHandler = (e) => {
+        document.getElementById('sort-by').addEventListener('change', (e) => {
             const [field, direction] = e.target.value.split('-');
             this.currentSort = { field, direction };
             this.applyFilters();
-        };
-        sortBy.addEventListener('change', this.sortHandler);
+        });
 
         // Form submissions
-        const userForm = document.getElementById('user-form');
-        this.userFormHandler = (e) => {
+        document.getElementById('user-form').addEventListener('submit', (e) => {
             this.handleUserFormSubmit(e);
-        };
-        userForm.addEventListener('submit', this.userFormHandler);
+        });
 
-        const passwordForm = document.getElementById('password-form');
-        this.passwordFormHandler = (e) => {
+        document.getElementById('password-form').addEventListener('submit', (e) => {
             this.handlePasswordFormSubmit(e);
-        };
-        passwordForm.addEventListener('submit', this.passwordFormHandler);
+        });
 
         // User type change for permissions
-        const userTypeSelect = document.querySelector('select[name="userType"]');
-        this.userTypeSelectHandler = (e) => {
+        document.querySelector('select[name="userType"]').addEventListener('change', (e) => {
             this.renderModulePermissions(e.target.value);
-        };
-        userTypeSelect.addEventListener('change', this.userTypeSelectHandler);
+        });
 
         // Modal close on backdrop click
-        this.modalHandler = (e) => {
+        document.addEventListener('click', (e) => {
             if (e.target.classList.contains('modal-backdrop')) {
                 e.target.style.display = 'none';
             }
-        };
-        document.addEventListener('click', this.modalHandler);
-    }
-
-    removeEventListeners() {
-        // Remove existing event listeners to prevent duplicates
-        const addBtn = document.getElementById('add-user-btn');
-        const searchInput = document.getElementById('user-search');
-        const clearBtn = document.getElementById('clear-search');
-        const userTypeFilter = document.getElementById('usertype-filter');
-        const statusFilter = document.getElementById('status-filter');
-        const sortBy = document.getElementById('sort-by');
-        const userForm = document.getElementById('user-form');
-        const passwordForm = document.getElementById('password-form');
-        const userTypeSelect = document.querySelector('select[name="userType"]');
-
-        if (this.addBtnHandler) addBtn?.removeEventListener('click', this.addBtnHandler);
-        if (this.searchHandler) searchInput?.removeEventListener('input', this.searchHandler);
-        if (this.clearHandler) clearBtn?.removeEventListener('click', this.clearHandler);
-        if (this.userTypeFilterHandler) userTypeFilter?.removeEventListener('change', this.userTypeFilterHandler);
-        if (this.statusFilterHandler) statusFilter?.removeEventListener('change', this.statusFilterHandler);
-        if (this.sortHandler) sortBy?.removeEventListener('change', this.sortHandler);
-        if (this.userFormHandler) userForm?.removeEventListener('submit', this.userFormHandler);
-        if (this.passwordFormHandler) passwordForm?.removeEventListener('submit', this.passwordFormHandler);
-        if (this.userTypeSelectHandler) userTypeSelect?.removeEventListener('change', this.userTypeSelectHandler);
-        if (this.modalHandler) document.removeEventListener('click', this.modalHandler);
+        });
     }
 
     applyFilters() {
@@ -559,60 +513,38 @@ class UsersModule {
         const saveBtn = document.getElementById('save-user-btn');
         const passwordSection = document.getElementById('password-section');
 
-        // Clear form errors immediately
+        // Clear form errors
         document.getElementById('form-errors').style.display = 'none';
 
         if (user) {
-            // Edit mode - populate form synchronously
+            // Edit mode
             title.textContent = 'Edit User';
             saveBtn.textContent = 'Update User';
             passwordSection.style.display = 'none'; // Hide password fields in edit mode
             
-            // Populate form fields immediately
-            const usernameField = form.querySelector('input[name="username"]');
-            usernameField.value = user.username || '';
-            usernameField.readOnly = true;
-            usernameField.style.backgroundColor = '#f8f9fa';
-            usernameField.style.cursor = 'not-allowed';
-            
+            // Populate form fields
+            form.querySelector('input[name="username"]').value = user.username || '';
+            form.querySelector('input[name="username"]').readOnly = true;
             form.querySelector('select[name="userType"]').value = user.user_type || '';
             form.querySelector('select[name="isActive"]').value = user.is_active ? '1' : '0';
             
-            // Render permissions immediately
+            // Render permissions for this user type
             this.renderModulePermissions(user.user_type, user.permissions);
         } else {
-            // Add mode - reset form
+            // Add mode
             form.reset();
             title.textContent = 'Add New User';
             saveBtn.textContent = 'Save User';
             passwordSection.style.display = 'block'; // Show password fields in add mode
             
-            const usernameField = form.querySelector('input[name="username"]');
-            usernameField.readOnly = false;
-            usernameField.style.backgroundColor = '';
-            usernameField.style.cursor = '';
+            form.querySelector('input[name="username"]').readOnly = false;
             
             // Clear permissions
             document.getElementById('module-permissions').innerHTML = '';
         }
 
-        // Show modal and focus immediately
         modal.style.display = 'block';
-        
-        // Focus on the first editable field
-        requestAnimationFrame(() => {
-            const firstInput = form.querySelector('input[name="username"]');
-            if (firstInput && !firstInput.readOnly) {
-                firstInput.focus();
-                firstInput.select();
-            } else {
-                // Focus on user type if username is readonly
-                const userTypeSelect = form.querySelector('select[name="userType"]');
-                if (userTypeSelect) {
-                    userTypeSelect.focus();
-                }
-            }
-        });
+        form.querySelector('input[name="username"]').focus();
     }
 
     renderModulePermissions(userType, currentPermissions = {}) {

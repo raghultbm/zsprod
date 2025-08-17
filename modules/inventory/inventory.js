@@ -342,107 +342,62 @@ class InventoryModule {
     }
 
     setupEventListeners() {
-        // Clear existing listeners to prevent duplicates
-        this.removeEventListeners();
-        
         // Add item button
-        const addBtn = document.getElementById('add-inventory-btn');
-        this.addBtnHandler = (e) => {
+        document.getElementById('add-inventory-btn').addEventListener('click', (e) => {
             e.preventDefault();
             this.openInventoryModal();
-        };
-        addBtn.addEventListener('click', this.addBtnHandler);
+        });
 
         // Search functionality
-        const searchInput = document.getElementById('inventory-search');
-        this.searchHandler = Utils.debounce((e) => {
+        document.getElementById('inventory-search').addEventListener('input', Utils.debounce((e) => {
             this.searchTerm = e.target.value;
             this.applyFilters();
-        }, 300);
-        searchInput.addEventListener('input', this.searchHandler);
+        }, 300));
 
         // Clear search
-        const clearBtn = document.getElementById('clear-search');
-        this.clearHandler = (e) => {
+        document.getElementById('clear-search').addEventListener('click', (e) => {
             e.preventDefault();
-            searchInput.value = '';
+            document.getElementById('inventory-search').value = '';
             this.searchTerm = '';
             this.applyFilters();
-        };
-        clearBtn.addEventListener('click', this.clearHandler);
+        });
 
         // Filters
-        const categoryFilter = document.getElementById('category-filter');
-        this.categoryFilterHandler = (e) => {
+        document.getElementById('category-filter').addEventListener('change', (e) => {
             this.filters.category = e.target.value;
             this.applyFilters();
-        };
-        categoryFilter.addEventListener('change', this.categoryFilterHandler);
+        });
 
-        const locationFilter = document.getElementById('location-filter');
-        this.locationFilterHandler = (e) => {
+        document.getElementById('location-filter').addEventListener('change', (e) => {
             this.filters.location = e.target.value;
             this.applyFilters();
-        };
-        locationFilter.addEventListener('change', this.locationFilterHandler);
+        });
 
-        const sortBy = document.getElementById('sort-by');
-        this.sortHandler = (e) => {
+        document.getElementById('sort-by').addEventListener('change', (e) => {
             const [field, direction] = e.target.value.split('-');
             this.currentSort = { field, direction };
             this.applyFilters();
-        };
-        sortBy.addEventListener('change', this.sortHandler);
+        });
 
         // Form submission
-        const form = document.getElementById('inventory-form');
-        this.formHandler = (e) => {
+        document.getElementById('inventory-form').addEventListener('submit', (e) => {
             this.handleFormSubmit(e);
-        };
-        form.addEventListener('submit', this.formHandler);
+        });
 
         // Category change for dynamic fields
-        const categorySelect = document.getElementById('category-select');
-        this.categorySelectHandler = (e) => {
+        document.getElementById('category-select').addEventListener('change', (e) => {
             this.renderDynamicFields(e.target.value);
-        };
-        categorySelect.addEventListener('change', this.categorySelectHandler);
+        });
 
         // Set today's date as default
-        const dateInput = document.querySelector('input[name="date"]');
-        if (dateInput) {
-            dateInput.value = Utils.getCurrentDate();
-        }
+        document.querySelector('input[name="date"]').value = Utils.getCurrentDate();
 
-        // Modal close on backdrop click (use event delegation)
-        this.modalHandler = (e) => {
+        // Modal close on backdrop click
+        document.addEventListener('click', (e) => {
             if (e.target.classList.contains('modal-backdrop')) {
                 e.target.style.display = 'none';
             }
-        };
-        document.addEventListener('click', this.modalHandler);
-    }
-
-    removeEventListeners() {
-        // Remove existing event listeners to prevent duplicates
-        const addBtn = document.getElementById('add-inventory-btn');
-        const searchInput = document.getElementById('inventory-search');
-        const clearBtn = document.getElementById('clear-search');
-        const categoryFilter = document.getElementById('category-filter');
-        const locationFilter = document.getElementById('location-filter');
-        const sortBy = document.getElementById('sort-by');
-        const form = document.getElementById('inventory-form');
-        const categorySelect = document.getElementById('category-select');
-
-        if (this.addBtnHandler) addBtn?.removeEventListener('click', this.addBtnHandler);
-        if (this.searchHandler) searchInput?.removeEventListener('input', this.searchHandler);
-        if (this.clearHandler) clearBtn?.removeEventListener('click', this.clearHandler);
-        if (this.categoryFilterHandler) categoryFilter?.removeEventListener('change', this.categoryFilterHandler);
-        if (this.locationFilterHandler) locationFilter?.removeEventListener('change', this.locationFilterHandler);
-        if (this.sortHandler) sortBy?.removeEventListener('change', this.sortHandler);
-        if (this.formHandler) form?.removeEventListener('submit', this.formHandler);
-        if (this.categorySelectHandler) categorySelect?.removeEventListener('change', this.categorySelectHandler);
-        if (this.modalHandler) document.removeEventListener('click', this.modalHandler);
+        });
     }
 
     renderDynamicFields(categoryName) {
@@ -666,15 +621,15 @@ class InventoryModule {
         const form = document.getElementById('inventory-form');
         const saveBtn = document.getElementById('save-inventory-btn');
 
-        // Clear form errors immediately
+        // Clear form errors
         document.getElementById('form-errors').style.display = 'none';
 
         if (item) {
-            // Edit mode - populate form synchronously
+            // Edit mode
             title.textContent = 'Edit Inventory Item';
             saveBtn.textContent = 'Update Item';
             
-            // Populate basic form fields immediately
+            // Populate form fields
             form.querySelector('input[name="code"]').value = item.code || '';
             form.querySelector('input[name="date"]').value = item.date || '';
             form.querySelector('select[name="category"]').value = item.category || '';
@@ -684,32 +639,30 @@ class InventoryModule {
             form.querySelector('textarea[name="comments"]').value = item.comments || '';
 
             // Render dynamic fields for the category
-            if (item.category) {
-                this.renderDynamicFields(item.category);
+            this.renderDynamicFields(item.category);
+            
+            // Populate dynamic fields
+            setTimeout(() => {
+                const brandField = form.querySelector('input[name="brand"]');
+                if (brandField) brandField.value = item.brand || '';
                 
-                // Populate dynamic fields immediately after rendering
-                requestAnimationFrame(() => {
-                    const brandField = form.querySelector('input[name="brand"]');
-                    if (brandField) brandField.value = item.brand || '';
-                    
-                    const genderField = form.querySelector('select[name="gender"]');
-                    if (genderField) genderField.value = item.gender || '';
-                    
-                    const typeField = form.querySelector('select[name="type"]');
-                    if (typeField) typeField.value = item.type || '';
-                    
-                    const strapField = form.querySelector('select[name="strap"]');
-                    if (strapField) strapField.value = item.strap || '';
-                    
-                    const materialField = form.querySelector('select[name="material"]');
-                    if (materialField) materialField.value = item.material || '';
-                    
-                    const sizeField = form.querySelector('select[name="size"]');
-                    if (sizeField) sizeField.value = item.size || '';
-                });
-            }
+                const genderField = form.querySelector('select[name="gender"]');
+                if (genderField) genderField.value = item.gender || '';
+                
+                const typeField = form.querySelector('select[name="type"]');
+                if (typeField) typeField.value = item.type || '';
+                
+                const strapField = form.querySelector('select[name="strap"]');
+                if (strapField) strapField.value = item.strap || '';
+                
+                const materialField = form.querySelector('select[name="material"]');
+                if (materialField) materialField.value = item.material || '';
+                
+                const sizeField = form.querySelector('select[name="size"]');
+                if (sizeField) sizeField.value = item.size || '';
+            }, 100);
         } else {
-            // Add mode - reset form
+            // Add mode
             form.reset();
             title.textContent = 'Add New Inventory Item';
             saveBtn.textContent = 'Save Item';
@@ -717,17 +670,8 @@ class InventoryModule {
             document.getElementById('dynamic-fields').innerHTML = '';
         }
 
-        // Show modal and focus immediately
         modal.style.display = 'block';
-        
-        // Focus on the first editable field
-        requestAnimationFrame(() => {
-            const firstInput = form.querySelector('input[name="code"]');
-            if (firstInput && !firstInput.readOnly) {
-                firstInput.focus();
-                firstInput.select();
-            }
-        });
+        form.querySelector('input[name="code"]').focus();
     }
 
     async handleFormSubmit(e) {
