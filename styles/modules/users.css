@@ -1,22 +1,22 @@
-/* Inventory module styles */
+/* User Management module styles */
 
-.inventory-container {
+.users-container {
   padding: var(--spacing-lg);
 }
 
-.inventory-header {
+.users-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: var(--spacing-xl);
   padding: var(--spacing-lg);
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+  background: linear-gradient(135deg, var(--secondary-color) 0%, var(--secondary-light) 100%);
   border-radius: var(--radius-lg);
   color: var(--white);
   box-shadow: var(--shadow-md);
 }
 
-.inventory-header h1 {
+.users-header h1 {
   margin: 0;
   color: var(--white);
   font-size: var(--font-size-3xl);
@@ -24,7 +24,7 @@
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.inventory-toolbar {
+.users-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -70,11 +70,11 @@
 }
 
 .filter-section .form-select {
-  min-width: 150px;
+  min-width: 140px;
 }
 
-/* Inventory stats */
-.inventory-stats {
+/* User stats */
+.users-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: var(--spacing-lg);
@@ -100,7 +100,7 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, var(--primary-color), var(--primary-light));
+  background: linear-gradient(90deg, var(--secondary-color), var(--secondary-light));
 }
 
 .stat-item:hover {
@@ -112,7 +112,7 @@
   display: block;
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
-  color: var(--primary-color);
+  color: var(--secondary-color);
   margin-bottom: var(--spacing-xs);
 }
 
@@ -124,8 +124,8 @@
   letter-spacing: 0.5px;
 }
 
-/* Inventory list */
-.inventory-list-container {
+/* Users list */
+.users-list-container {
   background: var(--white);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
@@ -133,20 +133,29 @@
   overflow: hidden;
 }
 
-/* Dynamic fields section */
-.dynamic-fields-section {
-  margin-top: var(--spacing-lg);
-  padding: var(--spacing-lg);
-  background: var(--gray-50);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-light);
+/* User type badges */
+.user-type-badge {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.dynamic-fields-section h4 {
-  margin: 0 0 var(--spacing-md) 0;
-  color: var(--text-primary);
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
+.user-type-badge.admin {
+  background: var(--error-bg);
+  color: var(--error-color);
+}
+
+.user-type-badge.owner {
+  background: var(--warning-bg);
+  color: var(--warning-color);
+}
+
+.user-type-badge.manager {
+  background: var(--info-bg);
+  color: var(--info-color);
 }
 
 /* Status badges */
@@ -159,82 +168,120 @@
   letter-spacing: 0.5px;
 }
 
-.status-badge.available {
+.status-badge.active {
   background: var(--success-bg);
   color: var(--success-color);
 }
 
-.status-badge.sold {
+.status-badge.inactive {
   background: var(--gray-100);
   color: var(--gray-600);
 }
 
-/* History modal styles */
-.history-list {
-  max-height: 400px;
-  overflow-y: auto;
+/* Permissions section */
+.permissions-section {
+  margin-top: var(--spacing-lg);
+  padding: var(--spacing-lg);
+  background: var(--gray-50);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
 }
 
-.history-item {
-  padding: var(--spacing-md);
-  border-bottom: 1px solid var(--border-light);
-  margin-bottom: var(--spacing-sm);
-}
-
-.history-item:last-child {
-  border-bottom: none;
-  margin-bottom: 0;
-}
-
-.history-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-xs);
-}
-
-.history-field {
-  font-weight: var(--font-weight-semibold);
+.permissions-section h4 {
+  margin: 0 0 var(--spacing-sm) 0;
   color: var(--text-primary);
-  text-transform: capitalize;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
 }
 
-.history-date {
-  font-size: var(--font-size-xs);
+.permissions-help {
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: var(--font-size-sm);
   color: var(--text-muted);
 }
 
-.history-changes {
+.permissions-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-xs);
 }
 
-.old-value,
-.new-value {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
+.permission-item {
+  background: var(--white);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  transition: all var(--transition-fast);
+}
+
+.permission-item:hover {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-sm);
+}
+
+.permission-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+  margin: 0;
   font-size: var(--font-size-sm);
 }
 
-.old-value {
-  background: var(--error-bg);
-  color: var(--error-color);
+.permission-label.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.new-value {
-  background: var(--success-bg);
-  color: var(--success-color);
+.permission-checkbox {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--primary-color);
 }
 
-.history-user {
+.permission-text {
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.permission-note {
+  display: block;
   font-size: var(--font-size-xs);
   color: var(--text-muted);
+  margin-top: var(--spacing-xs);
   font-style: italic;
 }
 
-/* Modal styles specific to inventory */
+/* Access denied page */
+.access-denied {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-2xl);
+  text-align: center;
+  min-height: 400px;
+}
+
+.access-denied-icon {
+  font-size: 4rem;
+  margin-bottom: var(--spacing-lg);
+  color: var(--error-color);
+}
+
+.access-denied h2 {
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-md);
+}
+
+.access-denied p {
+  color: var(--text-muted);
+  margin-bottom: var(--spacing-lg);
+  max-width: 400px;
+}
+
+/* Modal styles specific to users */
 .modal-backdrop {
   position: fixed;
   top: 0;
@@ -260,6 +307,10 @@
 
 .modal-dialog.modal-lg {
   max-width: 800px;
+}
+
+.modal-dialog.modal-md {
+  max-width: 500px;
 }
 
 .modal-dialog.modal-sm {
@@ -333,7 +384,8 @@
 
 /* Empty and error states */
 .empty-state,
-.error-state {
+.error-state,
+.error-container {
   text-align: center;
   padding: var(--spacing-2xl);
   color: var(--text-muted);
@@ -344,12 +396,14 @@
   margin-bottom: var(--spacing-lg);
 }
 
-.empty-state h3 {
+.empty-state h3,
+.error-container h2 {
   color: var(--text-primary);
   margin-bottom: var(--spacing-md);
 }
 
-.empty-state p {
+.empty-state p,
+.error-container p {
   margin-bottom: var(--spacing-lg);
 }
 
@@ -374,25 +428,30 @@
   margin-bottom: var(--spacing-xs);
 }
 
-/* Table action buttons */
+/* Table action buttons for users */
 .table-actions .btn:nth-child(1) {
   background-color: var(--secondary-color);
   border-color: var(--secondary-color);
 }
 
 .table-actions .btn:nth-child(2) {
+  background-color: var(--warning-color);
+  border-color: var(--warning-color);
+}
+
+.table-actions .btn:nth-child(3) {
   background-color: var(--info-color);
   border-color: var(--info-color);
 }
 
-.table-actions .btn:nth-child(3) {
+.table-actions .btn:nth-child(4) {
   background-color: var(--error-color);
   border-color: var(--error-color);
 }
 
 /* Responsive design */
 @media (max-width: 768px) {
-  .inventory-toolbar {
+  .users-toolbar {
     flex-direction: column;
     align-items: stretch;
   }
@@ -412,11 +471,11 @@
     min-width: auto;
   }
   
-  .inventory-stats {
+  .users-stats {
     grid-template-columns: 1fr;
   }
   
-  .inventory-header {
+  .users-header {
     flex-direction: column;
     gap: var(--spacing-md);
     text-align: center;
@@ -437,7 +496,11 @@
     margin: var(--spacing-md);
   }
   
-  .history-changes {
+  .permissions-grid {
     grid-template-columns: 1fr;
+  }
+  
+  .permission-item {
+    padding: var(--spacing-sm);
   }
 }

@@ -1,0 +1,41 @@
+/* Expense module styles */
+
+.expense-container {
+  padding: var(--spacing-lg);
+}
+
+.expense-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background: linear-gradient(135deg, var(--error-color) 0%, var(--error-light) 100%);
+  border-radius: var(--radius-lg);
+  color: var(--white);
+  box-shadow: var(--shadow-md);
+}
+
+.expense-header h1 {
+  margin: 0;
+  color: var(--white);
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.expense-description {
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payment-badge {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--gray-100);
+  color: var(--gray-700);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}

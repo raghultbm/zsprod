@@ -1,5 +1,5 @@
-// Category configurations for ZEDSON Watchcraft
-module.exports = {
+// Category configurations for ZEDSON Watchcraft - Browser version
+const categories = {
     inventory: [
         {
             name: 'Watch',
@@ -93,3 +93,12 @@ module.exports = {
         }
     }
 };
+
+// Make categories globally available
+if (typeof window !== 'undefined') {
+    window.categories = categories;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = categories;
+}
