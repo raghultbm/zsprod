@@ -3,126 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZEDSON Watchcraft - Management System</title>
-    <link rel="stylesheet" href="styles/styles.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>ZEDSON Watchcraft</title>
+    <link rel="stylesheet" href="styles/base/variables.css">
+    <link rel="stylesheet" href="styles/base/reset.css">
+    <link rel="stylesheet" href="styles/base/typography.css">
+    <link rel="stylesheet" href="styles/components/buttons.css">
+    <link rel="stylesheet" href="styles/components/forms.css">
+    <link rel="stylesheet" href="styles/components/tables.css">
+    <link rel="stylesheet" href="styles/components/modals.css">
+    <link rel="stylesheet" href="styles/layout/header.css">
+    <link rel="stylesheet" href="styles/layout/sidebar.css">
+    <link rel="stylesheet" href="styles/layout/main.css">
+    <link rel="stylesheet" href="styles/modules/dashboard.css">
+    <link rel="stylesheet" href="styles/modules/customers.css">
+    <link rel="stylesheet" href="styles/modules/inventory.css">
+    <link rel="stylesheet" href="styles/utilities/spacing.css">
+    <link rel="stylesheet" href="styles/utilities/responsive.css">
 </head>
 <body>
-    <!-- Application Container -->
     <div id="app">
         <!-- Login Screen -->
-        <div id="login-screen" class="screen active">
-            <div class="login-container">
-                <div class="login-form">
-                    <div class="logo-section">
-                        <img src="assets/logo.png" alt="ZEDSON Watchcraft" class="logo">
-                        <h1>ZEDSON Watchcraft</h1>
-                        <p>Management System</p>
-                    </div>
-                    
-                    <form id="login-form">
-                        <div class="form-group">
-                            <label for="username">Username</label>
-                            <input type="text" id="username" name="username" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="password">Password</label>
-                            <input type="password" id="password" name="password" required>
-                        </div>
-                        
-                        <button type="submit" class="login-btn">
-                            <i class="fas fa-sign-in-alt"></i> Login
-                        </button>
-                        
-                        <div id="login-error" class="error-message hidden"></div>
-                    </form>
+        <div id="login-screen" class="login-container">
+            <div class="login-box">
+                <div class="logo-container">
+                    <img src="assets/logo.png" alt="ZEDSON Watchcraft" class="login-logo">
+                    <h1>ZEDSON Watchcraft</h1>
                 </div>
+                <form id="login-form" class="login-form">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary login-btn">Login</button>
+                </form>
+                <div id="login-error" class="error-message" style="display: none;"></div>
             </div>
         </div>
 
         <!-- Main Application -->
-        <div id="main-app" class="screen">
+        <div id="main-app" style="display: none;">
             <!-- Header -->
             <header class="app-header">
                 <div class="header-left">
-                    <img src="assets/logo.png" alt="Logo" class="header-logo">
+                    <img src="assets/logo.png" alt="ZEDSON Watchcraft" class="header-logo">
                     <h1>ZEDSON Watchcraft</h1>
                 </div>
-                
                 <div class="header-right">
-                    <span class="user-info">
-                        <i class="fas fa-user"></i>
-                        <span id="current-user">User</span>
-                    </span>
-                    <button id="logout-btn" class="logout-btn">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </button>
+                    <span id="current-user" class="user-info"></span>
+                    <button id="logout-btn" class="btn btn-secondary">Logout</button>
                 </div>
             </header>
 
-            <!-- Navigation -->
-            <nav class="sidebar">
-                <ul class="nav-menu">
-                    <li><a href="#" data-module="dashboard" class="nav-item active">
-                        <i class="fas fa-tachometer-alt"></i> Dashboard
-                    </a></li>
-                    <li><a href="#" data-module="customers" class="nav-item">
-                        <i class="fas fa-users"></i> Customers
-                    </a></li>
-                    <li><a href="#" data-module="inventory" class="nav-item">
-                        <i class="fas fa-boxes"></i> Inventory
-                    </a></li>
-                    <li><a href="#" data-module="sales" class="nav-item">
-                        <i class="fas fa-shopping-cart"></i> Sales
-                    </a></li>
-                    <li><a href="#" data-module="service" class="nav-item">
-                        <i class="fas fa-tools"></i> Service
-                    </a></li>
-                    <li><a href="#" data-module="invoices" class="nav-item">
-                        <i class="fas fa-file-invoice"></i> Invoices
-                    </a></li>
-                    <li><a href="#" data-module="expense" class="nav-item">
-                        <i class="fas fa-money-bill-wave"></i> Expense
-                    </a></li>
-                    <li><a href="#" data-module="ledger" class="nav-item">
-                        <i class="fas fa-book"></i> Ledger
-                    </a></li>
-                    <li><a href="#" data-module="users" class="nav-item">
-                        <i class="fas fa-user-cog"></i> Users
-                    </a></li>
-                </ul>
-            </nav>
+            <div class="app-body">
+                <!-- Sidebar Navigation -->
+                <nav class="sidebar">
+                    <ul class="nav-menu">
+                        <li><a href="#" data-module="dashboard" class="nav-link active">Dashboard</a></li>
+                        <li><a href="#" data-module="customers" class="nav-link">Customers</a></li>
+                        <li><a href="#" data-module="inventory" class="nav-link">Inventory</a></li>
+                        <li><a href="#" data-module="sales" class="nav-link">Sales</a></li>
+                        <li><a href="#" data-module="service" class="nav-link">Service</a></li>
+                        <li><a href="#" data-module="invoices" class="nav-link">Invoices</a></li>
+                        <li><a href="#" data-module="expense" class="nav-link">Expense</a></li>
+                        <li><a href="#" data-module="ledger" class="nav-link">Ledger</a></li>
+                        <li><a href="#" data-module="users" class="nav-link">User Management</a></li>
+                    </ul>
+                </nav>
 
-            <!-- Main Content Area -->
-            <main class="main-content">
-                <div id="module-container">
-                    <!-- Modules will be loaded here dynamically -->
-                </div>
-            </main>
+                <!-- Main Content Area -->
+                <main class="main-content">
+                    <div id="module-content">
+                        <!-- Module content will be loaded here -->
+                    </div>
+                </main>
+            </div>
         </div>
     </div>
 
     <!-- Loading Overlay -->
-    <div id="loading-overlay" class="loading-overlay hidden">
-        <div class="loading-spinner">
-            <i class="fas fa-spinner fa-spin"></i>
-            <p>Loading...</p>
-        </div>
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner"></div>
+        <p>Loading...</p>
     </div>
 
-    <!-- Modal Container -->
-    <div id="modal-container"></div>
-
     <!-- Scripts -->
-    <script src="core/database.js"></script>
-    <script src="core/auth.js"></script>
-    <script src="core/audit.js"></script>
-    <script src="core/utils.js"></script>
+    <script src="config/constants.js"></script>
     <script src="config/tables.js"></script>
     <script src="config/categories.js"></script>
-    <script src="config/constants.js"></script>
     <script src="config/validators.js"></script>
+    <script src="core/utils.js"></script>
+    <script src="core/auth.js"></script>
+    <script src="core/audit.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

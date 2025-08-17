@@ -1,262 +1,272 @@
-class AuditLogger {
-    constructor() {
-        this.enableLogging = true;
-        this.logQueue = [];
-        this.isProcessing = false;
-    }
-
-    async log(tableName, recordId, action, oldValues = {}, newValues = {}) {
-        if (!this.enableLogging) return;
-
-        const currentUser = window.Auth?.getCurrentUser();
-        if (!currentUser) return;
-
-        const auditEntry = {
-            table_name: tableName,
-            record_id: recordId.toString(),
-            action: action.toUpperCase(),
-            old_values: JSON.stringify(oldValues),
-            new_values: JSON.stringify(newValues),
-            user_name: currentUser.username,
-            timestamp: new Date().toISOString()
-        };
-
-        // Add to queue for batch processing
-        this.logQueue.push(auditEntry);
-        
-        // Process queue if not already processing
-        if (!this.isProcessing) {
-            await this.processQueue();
-        }
-    }
-
-    async processQueue() {
-        if (this.logQueue.length === 0) return;
-
-        this.isProcessing = true;
-        
+// Audit logging system for ZEDSON Watchcraft
+const Audit = {
+    // Log an audit entry
+    async log(action, tableName, recordId, details) {
         try {
-            while (this.logQueue.length > 0) {
-                const entry = this.logQueue.shift();
-                await this.writeToDatabase(entry);
-            }
-        } catch (error) {
-            console.error('Error processing audit queue:', error);
-        } finally {
-            this.isProcessing = false;
-        }
-    }
-
-    async writeToDatabase(entry) {
-        try {
-            await window.DB.run(`
-                INSERT INTO audit_log (table_name, record_id, action, old_values, new_values, user_name, timestamp)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+            const currentUser = Auth.getCurrentUser();
+            const userName = currentUser ? currentUser.username : 'system';
+            
+            await app.run(`
+                INSERT INTO audit_log (action, table_name, record_id, details, user_name, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
             `, [
-                entry.table_name,
-                entry.record_id,
-                entry.action,
-                entry.old_values,
-                entry.new_values,
-                entry.user_name,
-                entry.timestamp
+                action,
+                tableName,
+                recordId,
+                details,
+                userName,
+                new Date().toISOString()
             ]);
+            
+            console.log(`Audit log: ${action} on ${tableName} by ${userName}`);
         } catch (error) {
-            console.error('Error writing audit log:', error);
-            // Re-add to queue for retry
-            this.logQueue.unshift(entry);
+            console.error('Audit logging error:', error);
+            // Don't throw error as this shouldn't break the main operation
         }
-    }
+    },
 
-    async getAuditTrail(tableName, recordId, limit = 50) {
+    // Log CREATE operations
+    async logCreate(tableName, recordId, data, customMessage = null) {
+        const details = customMessage || `Created new ${tableName} record with data: ${JSON.stringify(data)}`;
+        await this.log('CREATE', tableName, recordId, details);
+    },
+
+    // Log UPDATE operations
+    async logUpdate(tableName, recordId, oldData, newData, customMessage = null) {
+        const changes = this.getChanges(oldData, newData);
+        const details = customMessage || `Updated ${tableName} record. Changes: ${JSON.stringify(changes)}`;
+        await this.log('UPDATE', tableName, recordId, details);
+    },
+
+    // Log DELETE operations
+    async logDelete(tableName, recordId, data, customMessage = null) {
+        const details = customMessage || `Deleted ${tableName} record: ${JSON.stringify(data)}`;
+        await this.log('DELETE', tableName, recordId, details);
+    },
+
+    // Log custom actions
+    async logAction(action, tableName, recordId, details) {
+        await this.log(action, tableName, recordId, details);
+    },
+
+    // Get changes between old and new data
+    getChanges(oldData, newData) {
+        const changes = {};
+        
+        // Check for modified fields
+        for (const key in newData) {
+            if (oldData[key] !== newData[key]) {
+                changes[key] = {
+                    from: oldData[key],
+                    to: newData[key]
+                };
+            }
+        }
+        
+        // Check for removed fields
+        for (const key in oldData) {
+            if (!(key in newData)) {
+                changes[key] = {
+                    from: oldData[key],
+                    to: null
+                };
+            }
+        }
+        
+        return changes;
+    },
+
+    // Get audit trail for a specific record
+    async getAuditTrail(tableName, recordId) {
         try {
-            const logs = await window.DB.all(`
-                SELECT * FROM audit_log 
+            const auditEntries = await app.query(`
+                SELECT action, details, user_name, created_at
+                FROM audit_log
                 WHERE table_name = ? AND record_id = ?
-                ORDER BY timestamp DESC 
-                LIMIT ?
-            `, [tableName, recordId.toString(), limit]);
-
-            return logs.map(log => ({
-                ...log,
-                old_values: this.parseJSON(log.old_values),
-                new_values: this.parseJSON(log.new_values),
-                formatted_timestamp: this.formatTimestamp(log.timestamp)
+                ORDER BY created_at DESC
+            `, [tableName, recordId]);
+            
+            return auditEntries.map(entry => ({
+                ...entry,
+                created_at: Utils.formatDate(entry.created_at, CONSTANTS.DATE_FORMATS.DISPLAY),
+                details: this.tryParseJSON(entry.details)
             }));
         } catch (error) {
             console.error('Error fetching audit trail:', error);
             return [];
         }
-    }
+    },
 
-    async getRecentActivity(limit = 20) {
+    // Get audit logs with filters
+    async getAuditLogs(filters = {}) {
         try {
-            const logs = await window.DB.all(`
-                SELECT * FROM audit_log 
-                ORDER BY timestamp DESC 
-                LIMIT ?
-            `, [limit]);
-
-            return logs.map(log => ({
-                ...log,
-                old_values: this.parseJSON(log.old_values),
-                new_values: this.parseJSON(log.new_values),
-                formatted_timestamp: this.formatTimestamp(log.timestamp),
-                description: this.generateDescription(log)
-            }));
-        } catch (error) {
-            console.error('Error fetching recent activity:', error);
-            return [];
-        }
-    }
-
-    parseJSON(jsonString) {
-        try {
-            return jsonString ? JSON.parse(jsonString) : {};
-        } catch (error) {
-            return {};
-        }
-    }
-
-    formatTimestamp(timestamp) {
-        return new Date(timestamp).toLocaleString('en-IN', {
-            year: 'numeric',
-            month: 'short',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-        });
-    }
-
-    generateDescription(log) {
-        const { table_name, action, user_name } = log;
-        const tableName = table_name.replace('_', ' ').toUpperCase();
-        
-        switch (action) {
-            case 'INSERT':
-                return `${user_name} created a new ${tableName} record`;
-            case 'UPDATE':
-                return `${user_name} updated ${tableName} record`;
-            case 'DELETE':
-                return `${user_name} deleted ${tableName} record`;
-            case 'LOGIN':
-                return `${user_name} logged into the system`;
-            case 'LOGOUT':
-                return `${user_name} logged out of the system`;
-            default:
-                return `${user_name} performed ${action} on ${tableName}`;
-        }
-    }
-
-    async getActivityByUser(username, limit = 50) {
-        try {
-            const logs = await window.DB.all(`
-                SELECT * FROM audit_log 
-                WHERE user_name = ?
-                ORDER BY timestamp DESC 
-                LIMIT ?
-            `, [username, limit]);
-
-            return logs.map(log => ({
-                ...log,
-                old_values: this.parseJSON(log.old_values),
-                new_values: this.parseJSON(log.new_values),
-                formatted_timestamp: this.formatTimestamp(log.timestamp)
-            }));
-        } catch (error) {
-            console.error('Error fetching user activity:', error);
-            return [];
-        }
-    }
-
-    async getActivityByDate(date, limit = 100) {
-        try {
-            const startDate = new Date(date);
-            startDate.setHours(0, 0, 0, 0);
+            let query = 'SELECT * FROM audit_log WHERE 1=1';
+            const params = [];
             
-            const endDate = new Date(date);
-            endDate.setHours(23, 59, 59, 999);
-
-            const logs = await window.DB.all(`
-                SELECT * FROM audit_log 
-                WHERE timestamp BETWEEN ? AND ?
-                ORDER BY timestamp DESC 
-                LIMIT ?
-            `, [startDate.toISOString(), endDate.toISOString(), limit]);
-
-            return logs.map(log => ({
-                ...log,
-                old_values: this.parseJSON(log.old_values),
-                new_values: this.parseJSON(log.new_values),
-                formatted_timestamp: this.formatTimestamp(log.timestamp)
-            }));
-        } catch (error) {
-            console.error('Error fetching activity by date:', error);
-            return [];
-        }
-    }
-
-    // Method to track field changes for history table
-    async trackFieldChange(tableName, recordId, fieldName, oldValue, newValue, comments = '') {
-        if (!window.Auth?.getCurrentUser()) return;
-
-        try {
-            await window.DB.run(`
-                INSERT INTO history (table_name, record_id, field_name, old_value, new_value, comments, updated_by, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            `, [
-                tableName,
-                recordId,
-                fieldName,
-                oldValue?.toString() || '',
-                newValue?.toString() || '',
-                comments,
-                window.Auth.getCurrentUser().username,
-                new Date().toISOString()
-            ]);
-        } catch (error) {
-            console.error('Error tracking field change:', error);
-        }
-    }
-
-    async getFieldHistory(tableName, recordId, fieldName = null) {
-        try {
-            let sql = `
-                SELECT * FROM history 
-                WHERE table_name = ? AND record_id = ?
-            `;
-            let params = [tableName, recordId];
-
-            if (fieldName) {
-                sql += ` AND field_name = ?`;
-                params.push(fieldName);
+            if (filters.tableName) {
+                query += ' AND table_name = ?';
+                params.push(filters.tableName);
             }
-
-            sql += ` ORDER BY updated_at DESC`;
-
-            const history = await window.DB.all(sql, params);
             
-            return history.map(entry => ({
-                ...entry,
-                formatted_timestamp: this.formatTimestamp(entry.updated_at)
+            if (filters.action) {
+                query += ' AND action = ?';
+                params.push(filters.action);
+            }
+            
+            if (filters.userName) {
+                query += ' AND user_name = ?';
+                params.push(filters.userName);
+            }
+            
+            if (filters.dateFrom) {
+                query += ' AND DATE(created_at) >= ?';
+                params.push(filters.dateFrom);
+            }
+            
+            if (filters.dateTo) {
+                query += ' AND DATE(created_at) <= ?';
+                params.push(filters.dateTo);
+            }
+            
+            query += ' ORDER BY created_at DESC';
+            
+            if (filters.limit) {
+                query += ' LIMIT ?';
+                params.push(filters.limit);
+            }
+            
+            const logs = await app.query(query, params);
+            
+            return logs.map(log => ({
+                ...log,
+                created_at: Utils.formatDate(log.created_at, CONSTANTS.DATE_FORMATS.DISPLAY),
+                details: this.tryParseJSON(log.details)
             }));
         } catch (error) {
-            console.error('Error fetching field history:', error);
+            console.error('Error fetching audit logs:', error);
             return [];
         }
-    }
+    },
 
-    // Toggle logging on/off
-    toggleLogging(enable) {
-        this.enableLogging = enable;
-    }
+    // Helper to try parsing JSON details
+    tryParseJSON(jsonString) {
+        try {
+            return JSON.parse(jsonString);
+        } catch (e) {
+            return jsonString;
+        }
+    },
 
-    // Get logging status
-    isLoggingEnabled() {
-        return this.enableLogging;
+    // Get audit statistics
+    async getAuditStats(dateFrom, dateTo) {
+        try {
+            let query = `
+                SELECT 
+                    action,
+                    table_name,
+                    COUNT(*) as count
+                FROM audit_log
+                WHERE 1=1
+            `;
+            const params = [];
+            
+            if (dateFrom) {
+                query += ' AND DATE(created_at) >= ?';
+                params.push(dateFrom);
+            }
+            
+            if (dateTo) {
+                query += ' AND DATE(created_at) <= ?';
+                params.push(dateTo);
+            }
+            
+            query += ' GROUP BY action, table_name ORDER BY count DESC';
+            
+            const stats = await app.query(query, params);
+            
+            // Get user activity stats
+            let userQuery = `
+                SELECT 
+                    user_name,
+                    COUNT(*) as activity_count,
+                    COUNT(DISTINCT table_name) as tables_accessed
+                FROM audit_log
+                WHERE 1=1
+            `;
+            
+            if (dateFrom) {
+                userQuery += ' AND DATE(created_at) >= ?';
+            }
+            
+            if (dateTo) {
+                userQuery += ' AND DATE(created_at) <= ?';
+            }
+            
+            userQuery += ' GROUP BY user_name ORDER BY activity_count DESC';
+            
+            const userStats = await app.query(userQuery, params);
+            
+            return {
+                actionStats: stats,
+                userStats: userStats
+            };
+        } catch (error) {
+            console.error('Error fetching audit statistics:', error);
+            return { actionStats: [], userStats: [] };
+        }
+    },
+
+    // Clean old audit logs (keep only last N days)
+    async cleanOldLogs(daysToKeep = 365) {
+        try {
+            if (!Auth.isAdmin()) {
+                throw new Error('Only admin users can clean audit logs');
+            }
+            
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
+            
+            const result = await app.run(`
+                DELETE FROM audit_log 
+                WHERE created_at < ?
+            `, [cutoffDate.toISOString()]);
+            
+            await this.log('SYSTEM', 'audit_log', null, `Cleaned ${result.changes} old audit log entries older than ${daysToKeep} days`);
+            
+            return result.changes;
+        } catch (error) {
+            console.error('Error cleaning old audit logs:', error);
+            throw error;
+        }
+    },
+
+    // Export audit logs to CSV
+    async exportLogs(filters = {}) {
+        try {
+            const logs = await this.getAuditLogs(filters);
+            
+            const exportData = logs.map(log => ({
+                'Date & Time': log.created_at,
+                'User': log.user_name,
+                'Action': log.action,
+                'Table': log.table_name,
+                'Record ID': log.record_id,
+                'Details': typeof log.details === 'object' ? JSON.stringify(log.details) : log.details
+            }));
+            
+            Utils.exportToCSV(exportData, 'audit_logs');
+        } catch (error) {
+            console.error('Error exporting audit logs:', error);
+            throw error;
+        }
     }
+};
+
+// Make Audit globally available
+if (typeof window !== 'undefined') {
+    window.Audit = Audit;
 }
 
-// Global audit logger instance
-window.AuditLogger = new AuditLogger();
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = Audit;
+}

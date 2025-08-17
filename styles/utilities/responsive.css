@@ -1,0 +1,88 @@
+/* Responsive utilities for ZEDSON Watchcraft */
+
+/* Responsive breakpoints */
+@media (max-width: 768px) {
+  /* Hide elements on mobile */
+  .hidden-mobile { display: none !important; }
+  
+  /* Show only on mobile */
+  .mobile-only { display: block !important; }
+  
+  /* Stack columns on mobile */
+  .mobile-stack {
+    flex-direction: column !important;
+  }
+  
+  /* Full width on mobile */
+  .mobile-full {
+    width: 100% !important;
+  }
+  
+  /* Text alignment */
+  .mobile-text-center { text-align: center !important; }
+  .mobile-text-left { text-align: left !important; }
+  
+  /* Spacing adjustments */
+  .mobile-p-2 { padding: var(--spacing-sm) !important; }
+  .mobile-m-2 { margin: var(--spacing-sm) !important; }
+}
+
+@media (min-width: 769px) {
+  /* Hide on desktop */
+  .hidden-desktop { display: none !important; }
+  
+  /* Hide mobile-only on desktop */
+  .mobile-only { display: none !important; }
+}
+
+/* Container widths */
+.container {
+  width: 100%;
+  max-width: var(--container-max-width);
+  margin: 0 auto;
+  padding: 0 var(--spacing-md);
+}
+
+.container-fluid {
+  width: 100%;
+  padding: 0 var(--spacing-md);
+}
+
+/* Grid system */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 calc(-1 * var(--spacing-sm));
+}
+
+.col {
+  flex: 1;
+  padding: 0 var(--spacing-sm);
+}
+
+.col-auto {
+  flex: 0 0 auto;
+  width: auto;
+}
+
+/* Column sizes */
+.col-1 { flex: 0 0 8.33333%; }
+.col-2 { flex: 0 0 16.66667%; }
+.col-3 { flex: 0 0 25%; }
+.col-4 { flex: 0 0 33.33333%; }
+.col-5 { flex: 0 0 41.66667%; }
+.col-6 { flex: 0 0 50%; }
+.col-7 { flex: 0 0 58.33333%; }
+.col-8 { flex: 0 0 66.66667%; }
+.col-9 { flex: 0 0 75%; }
+.col-10 { flex: 0 0 83.33333%; }
+.col-11 { flex: 0 0 91.66667%; }
+.col-12 { flex: 0 0 100%; }
+
+/* Responsive columns */
+@media (max-width: 768px) {
+  .col-sm-12 { flex: 0 0 100%; }
+  .col-sm-6 { flex: 0 0 50%; }
+  .col-sm-4 { flex: 0 0 33.33333%; }
+  .col-sm-3 { flex: 0 0 25%; }
+}

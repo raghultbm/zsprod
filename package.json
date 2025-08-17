@@ -1,139 +1,34 @@
 {
   "name": "zedson-watchcraft",
   "version": "1.0.0",
-  "description": "ZEDSON Watchcraft - Complete Watch Shop Management System",
+  "description": "ZEDSON Watchcraft - Watch Shop Management System",
   "main": "main.js",
-  "author": {
-    "name": "ZEDSON Watchcraft",
-    "email": "info@zedsonwatchcraft.com"
-  },
-  "license": "MIT",
-  "private": true,
-  "homepage": "./",
   "scripts": {
     "start": "electron .",
-    "dev": "NODE_ENV=development electron .",
-    "build": "electron-builder",
-    "build-win": "electron-builder --win",
-    "build-mac": "electron-builder --mac",
-    "build-linux": "electron-builder --linux",
-    "dist": "npm run build",
-    "pack": "electron-builder --dir",
-    "rebuild": "electron-rebuild",
-    "postinstall": "npm run install-sqlite3",
-    "install-sqlite3": "npm install sqlite3 --build-from-source=false --fallback-to-build=false || npm install sqlite3 --build-from-source"
+    "dev": "electron . --dev",
+    "build": "electron-builder"
   },
-  "dependencies": {
-    "sqlite3": "^5.1.7"
-  },
+  "keywords": ["watch", "shop", "management", "electron", "sqlite"],
+  "author": "ZEDSON Watchcraft",
+  "license": "MIT",
   "devDependencies": {
     "electron": "^27.0.0",
-    "electron-builder": "^24.6.4",
-    "electron-rebuild": "^3.2.9"
+    "electron-builder": "^24.6.4"
+  },
+  "dependencies": {
+    "sqlite3": "^5.1.6",
+    "bcrypt": "^5.1.1"
   },
   "build": {
-    "appId": "com.zedsonwatchcraft.app",
+    "appId": "com.zedson.watchcraft",
     "productName": "ZEDSON Watchcraft",
     "directories": {
       "output": "dist"
     },
     "files": [
       "**/*",
-      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
-      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
-      "!**/node_modules/*.d.ts",
-      "!**/node_modules/.bin",
-      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
-      "!.editorconfig",
-      "!**/._*",
-      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
-      "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
-      "!**/{appveyor.yml,.travis.yml,circle.yml}",
-      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
-    ],
-    "extraResources": [
-      {
-        "from": "assets/",
-        "to": "assets/"
-      }
-    ],
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64",
-            "ia32"
-          ]
-        }
-      ],
-      "icon": "assets/logo.ico",
-      "publisherName": "ZEDSON Watchcraft"
-    },
-    "mac": {
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ],
-      "icon": "assets/logo.icns",
-      "category": "public.app-category.business"
-    },
-    "linux": {
-      "target": [
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "deb",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "icon": "assets/logo.png",
-      "category": "Office"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "ZEDSON Watchcraft"
-    },
-    "dmg": {
-      "title": "ZEDSON Watchcraft Installer",
-      "backgroundColor": "#ffffff"
-    },
-    "publish": null
-  },
-  "keywords": [
-    "electron",
-    "watch",
-    "shop",
-    "management",
-    "inventory",
-    "sales",
-    "service",
-    "sqlite",
-    "business"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/your-username/zedson-watchcraft.git"
-  },
-  "engines": {
-    "node": ">=16.0.0",
-    "npm": ">=8.0.0"
-  },
-  "electronDownload": {
-    "mirror": "https://github.com/electron/electron/releases/"
+      "!node_modules/sqlite3/deps/**",
+      "!node_modules/sqlite3/build/**"
+    ]
   }
 }

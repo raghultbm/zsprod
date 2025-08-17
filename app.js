@@ -1,317 +1,246 @@
-// Main application router and controller for ZEDSON Watchcraft
-class WatchcraftApp {
+const { ipcRenderer } = require('electron');
+
+class App {
     constructor() {
+        this.currentUser = null;
         this.currentModule = null;
-        this.isInitialized = false;
         this.modules = {};
+        this.init();
     }
 
-    async initialize() {
-        if (this.isInitialized) return;
-
+    async init() {
         try {
-            // Initialize database
-            await window.DB.initialize();
+            // Wait a bit for the DOM to be fully ready
+            await new Promise(resolve => setTimeout(resolve, 100));
             
-            // Initialize authentication
-            await window.Auth.initialize();
+            // Initialize auth system
+            await Auth.init();
             
             // Setup event listeners
             this.setupEventListeners();
             
-            // Check authentication state
-            if (window.Auth.isLoggedIn) {
+            // Check if user is already logged in
+            const savedUser = await Auth.getCurrentUser();
+            if (savedUser) {
+                this.currentUser = savedUser;
                 this.showMainApp();
                 this.loadModule('dashboard');
             } else {
                 this.showLoginScreen();
             }
-
-            this.isInitialized = true;
-            console.log('Application initialized successfully');
         } catch (error) {
-            console.error('Failed to initialize application:', error);
-            this.showError('Failed to initialize application. Please try again.');
+            console.error('App initialization error:', error);
+            this.showError('Failed to initialize application');
         }
     }
 
     setupEventListeners() {
-        // Login form submission
+        // Login form
         const loginForm = document.getElementById('login-form');
-        if (loginForm) {
-            loginForm.addEventListener('submit', (e) => this.handleLogin(e));
-        }
+        loginForm.addEventListener('submit', (e) => this.handleLogin(e));
 
         // Logout button
         const logoutBtn = document.getElementById('logout-btn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', () => this.handleLogout());
-        }
+        logoutBtn.addEventListener('click', () => this.handleLogout());
 
         // Navigation menu
-        const navItems = document.querySelectorAll('.nav-item');
-        navItems.forEach(item => {
-            item.addEventListener('click', (e) => this.handleNavigation(e));
+        const navLinks = document.querySelectorAll('.nav-link');
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => this.handleNavigation(e));
         });
 
-        // Handle window close
-        window.addEventListener('beforeunload', () => {
-            if (window.DB) {
-                window.DB.close();
-            }
+        // Global error handler
+        window.addEventListener('error', (e) => {
+            console.error('Global error:', e.error);
+            this.showError('An unexpected error occurred');
         });
 
-        // Handle offline/online status
-        window.addEventListener('online', () => {
-            window.Utils.showToast('Connection restored', 'success');
-        });
-
-        window.addEventListener('offline', () => {
-            window.Utils.showToast('Connection lost - working offline', 'warning');
+        // Global unhandled promise rejection handler
+        window.addEventListener('unhandledrejection', (e) => {
+            console.error('Unhandled promise rejection:', e.reason);
+            this.showError('An unexpected error occurred');
         });
     }
 
-    async handleLogin(event) {
-        event.preventDefault();
+    async handleLogin(e) {
+        e.preventDefault();
         
-        const formData = new FormData(event.target);
-        const username = formData.get('username');
-        const password = formData.get('password');
-
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        
         if (!username || !password) {
             this.showLoginError('Please enter both username and password');
             return;
         }
 
-        window.Utils.showLoader();
-        
         try {
-            const result = await window.Auth.login(username, password);
+            this.showLoading(true);
             
-            if (result.success) {
+            const user = await Auth.login(username, password);
+            if (user) {
+                this.currentUser = user;
                 this.hideLoginError();
                 this.showMainApp();
                 this.loadModule('dashboard');
-                window.Utils.showToast(`Welcome back, ${result.user.username}!`, 'success');
+                
+                // Log login audit
+                await Audit.log('LOGIN', 'USER', user.id, `User ${user.username} logged in`);
             } else {
-                this.showLoginError(result.error);
+                this.showLoginError('Invalid username or password');
             }
         } catch (error) {
             console.error('Login error:', error);
             this.showLoginError('Login failed. Please try again.');
         } finally {
-            window.Utils.hideLoader();
+            this.showLoading(false);
         }
     }
 
     async handleLogout() {
         try {
-            await window.Auth.logout();
-            this.showLoginScreen();
+            if (this.currentUser) {
+                await Audit.log('LOGOUT', 'USER', this.currentUser.id, `User ${this.currentUser.username} logged out`);
+            }
+            
+            await Auth.logout();
+            this.currentUser = null;
             this.currentModule = null;
-            window.Utils.showToast('Logged out successfully', 'info');
+            this.modules = {};
+            
+            this.showLoginScreen();
+            this.clearForm('login-form');
         } catch (error) {
             console.error('Logout error:', error);
         }
     }
 
-    handleNavigation(event) {
-        event.preventDefault();
+    handleNavigation(e) {
+        e.preventDefault();
         
-        const module = event.target.dataset.module;
-        if (module && window.Auth.hasPermission(module)) {
+        const module = e.target.getAttribute('data-module');
+        if (module && module !== this.currentModule) {
+            // Update active nav link
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            e.target.classList.add('active');
+            
             this.loadModule(module);
-        } else {
-            window.Utils.showToast('You do not have permission to access this module', 'error');
         }
     }
 
     async loadModule(moduleName) {
-        if (!window.Auth.hasPermission(moduleName)) {
-            window.Utils.showToast('Access denied', 'error');
-            return;
-        }
-
         try {
-            window.Utils.showLoader();
-
-            // Update navigation
-            this.updateNavigation(moduleName);
-
-            // Load module dynamically
-            await this.loadModuleScript(moduleName);
-
-            // Initialize module
-            const moduleClass = this.getModuleClass(moduleName);
-            if (moduleClass) {
-                this.currentModule = new moduleClass();
-                await this.currentModule.render();
+            this.showLoading(true);
+            
+            // Check user permissions
+            if (!Auth.hasPermission(this.currentUser, moduleName)) {
+                this.showError('You do not have permission to access this module');
+                return;
             }
 
-            console.log(`Module ${moduleName} loaded successfully`);
+            // Load module dynamically
+            if (!this.modules[moduleName]) {
+                await this.loadModuleScript(moduleName);
+            }
+
+            const moduleContent = document.getElementById('module-content');
+            
+            // Initialize and render module
+            if (this.modules[moduleName]) {
+                await this.modules[moduleName].render(moduleContent);
+                this.currentModule = moduleName;
+            }
         } catch (error) {
-            console.error(`Failed to load module ${moduleName}:`, error);
-            window.Utils.showToast(`Failed to load ${moduleName} module`, 'error');
+            console.error(`Error loading module ${moduleName}:`, error);
+            this.showError(`Failed to load ${moduleName} module`);
         } finally {
-            window.Utils.hideLoader();
+            this.showLoading(false);
         }
     }
 
     async loadModuleScript(moduleName) {
-        // Check if module is already loaded
-        if (this.modules[moduleName]) {
-            return;
-        }
-
-        // Define module file paths
-        const moduleFiles = {
-            dashboard: ['modules/dashboard/dashboard.js', 'modules/dashboard/dashboard-queries.js'],
-            customers: ['modules/customers/customers.js', 'modules/customers/customers-form.js', 'modules/customers/customers-db.js'],
-            inventory: ['modules/inventory/inventory.js', 'modules/inventory/inventory-form.js', 'modules/inventory/inventory-list.js', 'modules/inventory/inventory-db.js'],
-            sales: ['modules/sales/sales.js', 'modules/sales/sales-form.js', 'modules/sales/sales-invoice.js', 'modules/sales/sales-db.js'],
-            service: ['modules/service/service.js', 'modules/service/service-new.js', 'modules/service/service-instant.js', 'modules/service/service-status.js', 'modules/service/service-db.js'],
-            invoices: ['modules/invoices/invoices.js', 'modules/invoices/invoices-print.js'],
-            expense: ['modules/expense/expense.js', 'modules/expense/expense-db.js'],
-            ledger: ['modules/ledger/ledger.js', 'modules/ledger/ledger-export.js'],
-            users: ['modules/users/users.js', 'modules/users/users-permissions.js']
-        };
-
-        const files = moduleFiles[moduleName] || [];
-        
-        // Load all module files
-        for (const file of files) {
-            await this.loadScript(file);
-        }
-
-        this.modules[moduleName] = true;
-    }
-
-    loadScript(src) {
         return new Promise((resolve, reject) => {
-            // Check if script is already loaded
-            if (document.querySelector(`script[src="${src}"]`)) {
-                resolve();
-                return;
-            }
-
             const script = document.createElement('script');
-            script.src = src;
-            script.onload = resolve;
-            script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+            script.src = `modules/${moduleName}/${moduleName}.js`;
+            script.onload = () => {
+                // Module should register itself
+                resolve();
+            };
+            script.onerror = () => {
+                reject(new Error(`Failed to load ${moduleName} module script`));
+            };
             document.head.appendChild(script);
         });
     }
 
-    getModuleClass(moduleName) {
-        const moduleClasses = {
-            dashboard: window.DashboardModule,
-            customers: window.CustomersModule,
-            inventory: window.InventoryModule,
-            sales: window.SalesModule,
-            service: window.ServiceModule,
-            invoices: window.InvoicesModule,
-            expense: window.ExpenseModule,
-            ledger: window.LedgerModule,
-            users: window.UsersModule
-        };
-
-        return moduleClasses[moduleName];
-    }
-
-    updateNavigation(activeModule) {
-        // Remove active class from all nav items
-        const navItems = document.querySelectorAll('.nav-item');
-        navItems.forEach(item => item.classList.remove('active'));
-
-        // Add active class to current module
-        const activeItem = document.querySelector(`[data-module="${activeModule}"]`);
-        if (activeItem) {
-            activeItem.classList.add('active');
-        }
+    registerModule(name, moduleInstance) {
+        this.modules[name] = moduleInstance;
     }
 
     showLoginScreen() {
-        document.getElementById('login-screen').classList.add('active');
-        document.getElementById('main-app').classList.remove('active');
-        
-        // Clear login form
-        const loginForm = document.getElementById('login-form');
-        if (loginForm) {
-            loginForm.reset();
-        }
-        
-        this.hideLoginError();
+        document.getElementById('login-screen').style.display = 'block';
+        document.getElementById('main-app').style.display = 'none';
     }
 
     showMainApp() {
-        document.getElementById('login-screen').classList.remove('active');
-        document.getElementById('main-app').classList.add('active');
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('main-app').style.display = 'block';
         
         // Update user info
-        const currentUser = window.Auth.getCurrentUser();
-        if (currentUser) {
-            document.getElementById('current-user').textContent = currentUser.username;
-        }
-
-        // Setup module permissions
-        this.setupModulePermissions();
+        const userInfo = document.getElementById('current-user');
+        userInfo.textContent = `Welcome, ${this.currentUser.username}`;
     }
 
-    setupModulePermissions() {
-        const navItems = document.querySelectorAll('.nav-item');
-        
-        navItems.forEach(item => {
-            const module = item.dataset.module;
-            if (!window.Auth.hasPermission(module)) {
-                item.style.display = 'none';
-            } else {
-                item.style.display = 'block';
-            }
-        });
-    }
-
-    showLoginError(message) {
-        const errorElement = document.getElementById('login-error');
-        if (errorElement) {
-            errorElement.textContent = message;
-            errorElement.classList.remove('hidden');
-        }
-    }
-
-    hideLoginError() {
-        const errorElement = document.getElementById('login-error');
-        if (errorElement) {
-            errorElement.classList.add('hidden');
-        }
+    showLoading(show) {
+        const overlay = document.getElementById('loading-overlay');
+        overlay.style.display = show ? 'block' : 'none';
     }
 
     showError(message) {
-        window.Utils.showToast(message, 'error');
+        // You can implement a proper error modal here
+        alert(message);
     }
 
-    // Public method to reload current module
-    async reloadCurrentModule() {
-        if (this.currentModule && this.currentModule.render) {
-            await this.currentModule.render();
+    showLoginError(message) {
+        const errorDiv = document.getElementById('login-error');
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+    }
+
+    hideLoginError() {
+        const errorDiv = document.getElementById('login-error');
+        errorDiv.style.display = 'none';
+    }
+
+    clearForm(formId) {
+        const form = document.getElementById(formId);
+        if (form) {
+            form.reset();
         }
     }
 
-    // Public method to get current module
-    getCurrentModule() {
-        return this.currentModule;
+    // Database helper methods
+    async query(sql, params = []) {
+        return await ipcRenderer.invoke('db-query', sql, params);
     }
 
-    // Public method to navigate to specific module
-    navigateTo(moduleName, params = {}) {
-        this.loadModule(moduleName, params);
+    async run(sql, params = []) {
+        return await ipcRenderer.invoke('db-run', sql, params);
+    }
+
+    async get(sql, params = []) {
+        return await ipcRenderer.invoke('db-get', sql, params);
     }
 }
 
-// Initialize application when DOM is ready
-document.addEventListener('DOMContentLoaded', async () => {
-    window.App = new WatchcraftApp();
-    await window.App.initialize();
+// Global app instance
+let app;
+
+// Initialize app when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    app = new App();
 });
 
 // Make app globally available
-window.WatchcraftApp = WatchcraftApp;
+window.app = app;

@@ -1,114 +1,152 @@
-// Main Customers Module for ZEDSON Watchcraft
+// Customers module for ZEDSON Watchcraft
 class CustomersModule {
     constructor() {
         this.customers = [];
         this.filteredCustomers = [];
-        this.currentFilters = {};
-        this.currentSort = { field: 'creation_date', direction: 'desc' };
-        this.currentPage = 1;
-        this.pageSize = 20;
+        this.currentSort = { field: 'created_at', direction: 'desc' };
         this.searchTerm = '';
-        this.db = new CustomersDB();
-        this.form = new CustomersForm();
+        this.filters = {};
+        this.editingCustomer = null;
     }
 
-    async render() {
-        const container = document.getElementById('module-container');
-        container.innerHTML = this.getHTML();
-        
-        await this.loadCustomers();
-        this.setupEventListeners();
-        this.renderCustomersList();
+    async render(container) {
+        try {
+            container.innerHTML = this.getTemplate();
+            await this.loadCustomers();
+            this.setupEventListeners();
+            this.renderCustomersList();
+        } catch (error) {
+            console.error('Customers render error:', error);
+            Utils.showError('Failed to load customers module');
+        }
     }
 
-    getHTML() {
+    getTemplate() {
         return `
-            <div class="customers-module">
-                <div class="module-header">
-                    <h2 class="module-title">
-                        <i class="fas fa-users"></i> Customers Management
-                    </h2>
-                    <div class="module-actions">
-                        <button class="btn btn-primary" id="add-customer-btn">
-                            <i class="fas fa-plus"></i> New Customer
-                        </button>
-                        <button class="btn btn-secondary" id="export-customers-btn">
-                            <i class="fas fa-download"></i> Export
-                        </button>
+            <div class="customers-container">
+                <div class="customers-header">
+                    <h1>Customer Management</h1>
+                    <button class="btn btn-primary" id="add-customer-btn">
+                        <span>+</span> New Customer
+                    </button>
+                </div>
+
+                <div class="customers-toolbar">
+                    <div class="search-section">
+                        <div class="search-input">
+                            <input type="text" id="customer-search" class="form-input" 
+                                   placeholder="Search customers by name, mobile, or ID...">
+                        </div>
+                        <button class="btn btn-secondary" id="clear-search">Clear</button>
+                    </div>
+                    
+                    <div class="filter-section">
+                        <select id="location-filter" class="form-select">
+                            <option value="">All Locations</option>
+                            <option value="Semmancheri">Semmancheri</option>
+                            <option value="Navalur">Navalur</option>
+                            <option value="Padur">Padur</option>
+                        </select>
+                        
+                        <select id="sort-by" class="form-select">
+                            <option value="created_at-desc">Newest First</option>
+                            <option value="created_at-asc">Oldest First</option>
+                            <option value="name-asc">Name A-Z</option>
+                            <option value="name-desc">Name Z-A</option>
+                            <option value="net_value-desc">Highest Value</option>
+                            <option value="net_value-asc">Lowest Value</option>
+                        </select>
                     </div>
                 </div>
 
-                <!-- Search and Filters -->
-                <div class="filters">
-                    <div class="filters-row">
-                        <div class="filter-group" style="flex: 2;">
-                            <label>Search</label>
-                            <div class="search-container">
-                                <input type="text" id="customer-search" class="search-input" 
-                                       placeholder="Search by name, mobile, or customer ID...">
-                                <i class="fas fa-search search-icon"></i>
-                            </div>
+                <div class="customers-stats">
+                    <div class="stat-item">
+                        <span class="stat-number" id="total-customers-count">0</span>
+                        <span class="stat-label">Total Customers</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number" id="total-customer-value">₹0</span>
+                        <span class="stat-label">Total Customer Value</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number" id="active-customers-count">0</span>
+                        <span class="stat-label">Active This Month</span>
+                    </div>
+                </div>
+
+                <div class="customers-list-container">
+                    <div id="customers-list" class="table-responsive">
+                        <div class="loading-placeholder">Loading customers...</div>
+                    </div>
+                </div>
+
+                <!-- Customer Form Modal -->
+                <div id="customer-modal" class="modal-backdrop" style="display: none;">
+                    <div class="modal-dialog modal-md">
+                        <div class="modal-header">
+                            <h3 class="modal-title" id="modal-title">Add New Customer</h3>
+                            <button class="modal-close" onclick="this.closest('.modal-backdrop').style.display='none'">×</button>
                         </div>
-                        <div class="filter-group">
-                            <label>Creation Date From</label>
-                            <input type="date" id="date-from-filter" class="form-control">
+                        <div class="modal-body">
+                            <form id="customer-form" class="form">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label required">Customer ID</label>
+                                        <input type="text" name="customerId" id="customer-id" class="form-input" 
+                                               maxlength="6" pattern="[0-9]{6}" required>
+                                        <small class="form-help">6-digit customer ID (auto-generated)</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label required">Customer Name</label>
+                                        <input type="text" name="name" class="form-input" 
+                                               maxlength="100" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label required">Mobile Number</label>
+                                        <input type="tel" name="mobile" class="form-input" 
+                                               maxlength="15" pattern="[+]?[0-9]{10,15}" required>
+                                        <small class="form-help">Include country code if international</small>
+                                    </div>
+                                </div>
+
+                                <div id="form-errors" class="form-errors" style="display: none;"></div>
+                            </form>
                         </div>
-                        <div class="filter-group">
-                            <label>Creation Date To</label>
-                            <input type="date" id="date-to-filter" class="form-control">
-                        </div>
-                        <div class="filter-group">
-                            <label>Net Value Range</label>
-                            <select id="net-value-filter" class="form-control">
-                                <option value="">All Customers</option>
-                                <option value="0-1000">₹0 - ₹1,000</option>
-                                <option value="1000-5000">₹1,000 - ₹5,000</option>
-                                <option value="5000-10000">₹5,000 - ₹10,000</option>
-                                <option value="10000+">₹10,000+</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <label>&nbsp;</label>
-                            <button class="btn btn-warning" id="clear-filters-btn">
-                                <i class="fas fa-times"></i> Clear
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" onclick="this.closest('.modal-backdrop').style.display='none'">
+                                Cancel
+                            </button>
+                            <button type="submit" form="customer-form" class="btn btn-primary" id="save-customer-btn">
+                                Save Customer
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Customers List -->
-                <div class="card">
-                    <div class="card-header">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span>Customers List</span>
-                            <div class="pagination-info">
-                                <span id="customers-count">0 customers</span>
-                            </div>
+                <!-- Confirmation Modal -->
+                <div id="confirm-modal" class="modal-backdrop" style="display: none;">
+                    <div class="modal-dialog modal-sm confirm-modal">
+                        <div class="modal-header">
+                            <h3 class="modal-title">Confirm Action</h3>
+                            <button class="modal-close" onclick="this.closest('.modal-backdrop').style.display='none'">×</button>
                         </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-container">
-                            <table class="table" id="customers-table">
-                                <thead>
-                                    <tr>
-                                        <th data-sort="row_number">S.No</th>
-                                        <th data-sort="customer_id" class="sortable">Customer ID</th>
-                                        <th data-sort="name" class="sortable">Name</th>
-                                        <th data-sort="mobile_number" class="sortable">Mobile Number</th>
-                                        <th data-sort="creation_date" class="sortable">Creation Date</th>
-                                        <th data-sort="net_value" class="sortable">Net Value</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="customers-tbody">
-                                    <!-- Customer rows will be inserted here -->
-                                </tbody>
-                            </table>
+                        <div class="modal-body">
+                            <div class="confirm-icon warning">⚠️</div>
+                            <p id="confirm-message">Are you sure you want to delete this customer?</p>
                         </div>
-                        
-                        <!-- Pagination -->
-                        <div class="pagination-container" id="customers-pagination">
-                            <!-- Pagination will be inserted here -->
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" onclick="this.closest('.modal-backdrop').style.display='none'">
+                                Cancel
+                            </button>
+                            <button type="button" class="btn btn-error" id="confirm-action-btn">
+                                Delete
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -116,350 +154,493 @@ class CustomersModule {
         `;
     }
 
+    async loadCustomers() {
+        try {
+            this.customers = await app.query(`
+                SELECT 
+                    c.*,
+                    COALESCE(s.sales_total, 0) + COALESCE(srv.service_total, 0) as net_value
+                FROM customers c
+                LEFT JOIN (
+                    SELECT customer_id, SUM(total_amount) as sales_total
+                    FROM sales
+                    GROUP BY customer_id
+                ) s ON c.id = s.customer_id
+                LEFT JOIN (
+                    SELECT customer_id, SUM(amount) as service_total
+                    FROM services
+                    GROUP BY customer_id
+                ) srv ON c.id = srv.customer_id
+                ORDER BY c.created_at DESC
+            `);
+
+            this.applyFilters();
+            this.updateStats();
+        } catch (error) {
+            console.error('Error loading customers:', error);
+            throw error;
+        }
+    }
+
     setupEventListeners() {
-        // Add customer button
-        document.getElementById('add-customer-btn').addEventListener('click', () => {
-            this.showCustomerForm();
-        });
-
-        // Export button
-        document.getElementById('export-customers-btn').addEventListener('click', () => {
-            this.exportCustomers();
-        });
-
-        // Search input with debounce
+        // Remove any existing listeners first to prevent duplicates
+        const addBtn = document.getElementById('add-customer-btn');
         const searchInput = document.getElementById('customer-search');
-        searchInput.addEventListener('input', window.Utils.debounce((e) => {
+        const clearBtn = document.getElementById('clear-search');
+        const locationFilter = document.getElementById('location-filter');
+        const sortBy = document.getElementById('sort-by');
+        const form = document.getElementById('customer-form');
+
+        // Clone and replace elements to remove all existing listeners
+        addBtn.replaceWith(addBtn.cloneNode(true));
+        searchInput.replaceWith(searchInput.cloneNode(true));
+        clearBtn.replaceWith(clearBtn.cloneNode(true));
+        locationFilter.replaceWith(locationFilter.cloneNode(true));
+        sortBy.replaceWith(sortBy.cloneNode(true));
+
+        // Get fresh references after cloning
+        const newAddBtn = document.getElementById('add-customer-btn');
+        const newSearchInput = document.getElementById('customer-search');
+        const newClearBtn = document.getElementById('clear-search');
+        const newLocationFilter = document.getElementById('location-filter');
+        const newSortBy = document.getElementById('sort-by');
+
+        // Add customer button - single listener
+        newAddBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.openCustomerModal();
+        });
+
+        // Search functionality
+        newSearchInput.addEventListener('input', Utils.debounce((e) => {
             this.searchTerm = e.target.value;
             this.applyFilters();
         }, 300));
 
-        // Filter inputs
-        document.getElementById('date-from-filter').addEventListener('change', () => this.applyFilters());
-        document.getElementById('date-to-filter').addEventListener('change', () => this.applyFilters());
-        document.getElementById('net-value-filter').addEventListener('change', () => this.applyFilters());
-
-        // Clear filters
-        document.getElementById('clear-filters-btn').addEventListener('click', () => {
-            this.clearFilters();
-        });
-
-        // Table sorting
-        const sortableHeaders = document.querySelectorAll('.sortable');
-        sortableHeaders.forEach(header => {
-            header.addEventListener('click', () => {
-                const field = header.dataset.sort;
-                this.sortCustomers(field);
-            });
-        });
-    }
-
-    async loadCustomers() {
-        try {
-            window.Utils.showLoader();
-            this.customers = await this.db.getAllCustomers();
+        // Clear search
+        newClearBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            newSearchInput.value = '';
+            this.searchTerm = '';
             this.applyFilters();
-        } catch (error) {
-            console.error('Error loading customers:', error);
-            window.Utils.showToast('Failed to load customers', 'error');
-        } finally {
-            window.Utils.hideLoader();
-        }
+        });
+
+        // Filters
+        newLocationFilter.addEventListener('change', (e) => {
+            this.filters.location = e.target.value;
+            this.applyFilters();
+        });
+
+        newSortBy.addEventListener('change', (e) => {
+            const [field, direction] = e.target.value.split('-');
+            this.currentSort = { field, direction };
+            this.applyFilters();
+        });
+
+        // Form submission - single listener
+        form.addEventListener('submit', (e) => {
+            this.handleFormSubmit(e);
+        });
+
+        // Modal close on backdrop click
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-backdrop')) {
+                e.target.style.display = 'none';
+            }
+        });
     }
 
     applyFilters() {
-        this.filteredCustomers = [...this.customers];
+        let filtered = [...this.customers];
 
-        // Search filter
+        // Apply search filter
         if (this.searchTerm) {
             const term = this.searchTerm.toLowerCase();
-            this.filteredCustomers = this.filteredCustomers.filter(customer => 
+            filtered = filtered.filter(customer => 
                 customer.name.toLowerCase().includes(term) ||
-                customer.mobile_number.includes(term) ||
+                customer.mobile.includes(term) ||
                 customer.customer_id.includes(term)
             );
         }
 
-        // Date range filter
-        const dateFrom = document.getElementById('date-from-filter').value;
-        const dateTo = document.getElementById('date-to-filter').value;
-        
-        if (dateFrom) {
-            this.filteredCustomers = this.filteredCustomers.filter(customer => 
-                customer.creation_date >= dateFrom
-            );
-        }
-        
-        if (dateTo) {
-            this.filteredCustomers = this.filteredCustomers.filter(customer => 
-                customer.creation_date <= dateTo
-            );
-        }
-
-        // Net value filter
-        const netValueFilter = document.getElementById('net-value-filter').value;
-        if (netValueFilter) {
-            this.filteredCustomers = this.filteredCustomers.filter(customer => {
-                const netValue = parseFloat(customer.net_value) || 0;
-                switch (netValueFilter) {
-                    case '0-1000':
-                        return netValue >= 0 && netValue <= 1000;
-                    case '1000-5000':
-                        return netValue > 1000 && netValue <= 5000;
-                    case '5000-10000':
-                        return netValue > 5000 && netValue <= 10000;
-                    case '10000+':
-                        return netValue > 10000;
-                    default:
-                        return true;
-                }
-            });
+        // Apply location filter
+        if (this.filters.location) {
+            // This would be used if we track customer locations
+            // For now, we'll keep all customers
         }
 
         // Apply sorting
-        this.applySorting();
-        
-        // Reset to first page
-        this.currentPage = 1;
-        this.renderCustomersList();
-    }
+        filtered = Utils.sortBy(filtered, this.currentSort.field, this.currentSort.direction);
 
-    applySorting() {
-        this.filteredCustomers.sort((a, b) => {
-            let aVal = a[this.currentSort.field];
-            let bVal = b[this.currentSort.field];
-
-            // Handle different data types
-            if (this.currentSort.field === 'creation_date') {
-                aVal = new Date(aVal);
-                bVal = new Date(bVal);
-            } else if (this.currentSort.field === 'net_value') {
-                aVal = parseFloat(aVal) || 0;
-                bVal = parseFloat(bVal) || 0;
-            } else if (typeof aVal === 'string') {
-                aVal = aVal.toLowerCase();
-                bVal = bVal.toLowerCase();
-            }
-
-            let result = 0;
-            if (aVal < bVal) result = -1;
-            else if (aVal > bVal) result = 1;
-
-            return this.currentSort.direction === 'desc' ? -result : result;
-        });
-    }
-
-    sortCustomers(field) {
-        if (this.currentSort.field === field) {
-            this.currentSort.direction = this.currentSort.direction === 'asc' ? 'desc' : 'asc';
-        } else {
-            this.currentSort.field = field;
-            this.currentSort.direction = 'asc';
-        }
-
-        // Update header classes
-        document.querySelectorAll('.sortable').forEach(header => {
-            header.classList.remove('sort-asc', 'sort-desc');
-        });
-
-        const currentHeader = document.querySelector(`[data-sort="${field}"]`);
-        currentHeader.classList.add(`sort-${this.currentSort.direction}`);
-
-        this.applySorting();
+        this.filteredCustomers = filtered;
         this.renderCustomersList();
     }
 
     renderCustomersList() {
-        const tbody = document.getElementById('customers-tbody');
-        const startIndex = (this.currentPage - 1) * this.pageSize;
-        const endIndex = Math.min(startIndex + this.pageSize, this.filteredCustomers.length);
-        const pageCustomers = this.filteredCustomers.slice(startIndex, endIndex);
-
-        tbody.innerHTML = pageCustomers.map((customer, index) => `
-            <tr>
-                <td>${startIndex + index + 1}</td>
-                <td><strong>${customer.customer_id}</strong></td>
-                <td>${customer.name}</td>
-                <td>${customer.mobile_number}</td>
-                <td>${window.Utils.formatDate(customer.creation_date)}</td>
-                <td>${window.Utils.formatCurrency(customer.net_value)}</td>
-                <td>
-                    <div class="action-buttons">
-                        <button class="action-btn action-btn-edit" onclick="window.App.getCurrentModule().editCustomer('${customer.customer_id}')" title="Edit">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="action-btn action-btn-delete" onclick="window.App.getCurrentModule().deleteCustomer('${customer.customer_id}')" title="Delete">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                        <button class="action-btn action-btn-view" onclick="window.App.getCurrentModule().triggerSale('${customer.customer_id}')" title="New Sale">
-                            <i class="fas fa-shopping-cart"></i>
-                        </button>
-                        <button class="action-btn action-btn-warning" onclick="window.App.getCurrentModule().triggerService('${customer.customer_id}')" title="New Service">
-                            <i class="fas fa-tools"></i>
-                        </button>
-                        <button class="action-btn action-btn-success" onclick="window.App.getCurrentModule().triggerInstantService('${customer.customer_id}')" title="Instant Service">
-                            <i class="fas fa-bolt"></i>
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        `).join('');
-
-        this.renderPagination();
-        this.updateCountDisplay();
-    }
-
-    renderPagination() {
-        const container = document.getElementById('customers-pagination');
-        const totalPages = Math.ceil(this.filteredCustomers.length / this.pageSize);
+        const container = document.getElementById('customers-list');
         
-        if (totalPages <= 1) {
-            container.innerHTML = '';
+        if (this.filteredCustomers.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">👥</div>
+                    <h3>No customers found</h3>
+                    <p>Start by adding your first customer</p>
+                    <button class="btn btn-primary" onclick="document.getElementById('add-customer-btn').click()">
+                        Add Customer
+                    </button>
+                </div>
+            `;
             return;
         }
 
-        let pagination = '<div class="pagination">';
-        
-        // Previous button
-        pagination += `<button ${this.currentPage === 1 ? 'disabled' : ''} 
-                       onclick="window.App.getCurrentModule().changePage(${this.currentPage - 1})">
-                       <i class="fas fa-chevron-left"></i>
-                       </button>`;
+        const tableHTML = `
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>S.No</th>
+                        <th class="sortable" data-field="customer_id">Customer ID</th>
+                        <th class="sortable" data-field="name">Name</th>
+                        <th class="sortable" data-field="mobile">Mobile</th>
+                        <th class="sortable" data-field="created_at">Created Date</th>
+                        <th class="sortable" data-field="net_value">Net Value</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${this.filteredCustomers.map((customer, index) => `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td class="font-mono">${customer.customer_id}</td>
+                            <td class="font-semibold">${customer.name}</td>
+                            <td>${customer.mobile}</td>
+                            <td>${Utils.formatDate(customer.created_at)}</td>
+                            <td class="text-success font-semibold">${Utils.formatCurrency(customer.net_value)}</td>
+                            <td>
+                                <div class="table-actions">
+                                    <button class="btn btn-sm btn-secondary" onclick="customersModule.editCustomer(${customer.id})" title="Edit">
+                                        ✏️
+                                    </button>
+                                    <button class="btn btn-sm btn-error" onclick="customersModule.deleteCustomer(${customer.id})" title="Delete">
+                                        🗑️
+                                    </button>
+                                    <button class="btn btn-sm btn-primary" onclick="customersModule.createSale(${customer.id})" title="New Sale">
+                                        💰
+                                    </button>
+                                    <button class="btn btn-sm btn-info" onclick="customersModule.createService(${customer.id})" title="New Service">
+                                        🔧
+                                    </button>
+                                    <button class="btn btn-sm btn-warning" onclick="customersModule.createInstantService(${customer.id})" title="Instant Service">
+                                        ⚡
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
 
-        // Page numbers
-        const startPage = Math.max(1, this.currentPage - 2);
-        const endPage = Math.min(totalPages, this.currentPage + 2);
+        container.innerHTML = tableHTML;
 
-        if (startPage > 1) {
-            pagination += `<button onclick="window.App.getCurrentModule().changePage(1)">1</button>`;
-            if (startPage > 2) {
-                pagination += '<span>...</span>';
-            }
-        }
-
-        for (let i = startPage; i <= endPage; i++) {
-            pagination += `<button ${i === this.currentPage ? 'class="active"' : ''} 
-                           onclick="window.App.getCurrentModule().changePage(${i})">${i}</button>`;
-        }
-
-        if (endPage < totalPages) {
-            if (endPage < totalPages - 1) {
-                pagination += '<span>...</span>';
-            }
-            pagination += `<button onclick="window.App.getCurrentModule().changePage(${totalPages})">${totalPages}</button>`;
-        }
-
-        // Next button
-        pagination += `<button ${this.currentPage === totalPages ? 'disabled' : ''} 
-                       onclick="window.App.getCurrentModule().changePage(${this.currentPage + 1})">
-                       <i class="fas fa-chevron-right"></i>
-                       </button>`;
-
-        pagination += '</div>';
-        container.innerHTML = pagination;
-    }
-
-    changePage(page) {
-        this.currentPage = page;
-        this.renderCustomersList();
-    }
-
-    updateCountDisplay() {
-        const countElement = document.getElementById('customers-count');
-        const total = this.filteredCustomers.length;
-        const showing = Math.min(this.pageSize, total - (this.currentPage - 1) * this.pageSize);
-        
-        if (total === this.customers.length) {
-            countElement.textContent = `${total} customers`;
-        } else {
-            countElement.textContent = `${total} of ${this.customers.length} customers`;
-        }
-    }
-
-    clearFilters() {
-        document.getElementById('customer-search').value = '';
-        document.getElementById('date-from-filter').value = '';
-        document.getElementById('date-to-filter').value = '';
-        document.getElementById('net-value-filter').value = '';
-        
-        this.searchTerm = '';
-        this.currentFilters = {};
-        this.applyFilters();
-    }
-
-    showCustomerForm(customerId = null) {
-        this.form.show(customerId, () => {
-            this.loadCustomers();
+        // Add sort click handlers
+        container.querySelectorAll('.sortable').forEach(th => {
+            th.addEventListener('click', () => {
+                const field = th.getAttribute('data-field');
+                const direction = this.currentSort.field === field && this.currentSort.direction === 'asc' ? 'desc' : 'asc';
+                
+                this.currentSort = { field, direction };
+                this.applyFilters();
+                
+                // Update UI indicators
+                container.querySelectorAll('th').forEach(header => header.classList.remove('sorted-asc', 'sorted-desc'));
+                th.classList.add(`sorted-${direction}`);
+            });
         });
     }
 
-    async editCustomer(customerId) {
-        this.showCustomerForm(customerId);
+    updateStats() {
+        const totalCount = this.customers.length;
+        const totalValue = this.customers.reduce((sum, customer) => sum + (customer.net_value || 0), 0);
+        
+        // Calculate active customers (those with transactions this month)
+        const thisMonth = new Date();
+        thisMonth.setDate(1);
+        const activeCount = this.customers.filter(customer => {
+            const createdDate = new Date(customer.created_at);
+            return createdDate >= thisMonth || customer.net_value > 0;
+        }).length;
+
+        document.getElementById('total-customers-count').textContent = totalCount.toLocaleString();
+        document.getElementById('total-customer-value').textContent = Utils.formatCurrency(totalValue);
+        document.getElementById('active-customers-count').textContent = activeCount.toLocaleString();
     }
 
-    async deleteCustomer(customerId) {
-        if (!window.Auth.hasPermission('customers', 'delete')) {
-            window.Utils.showToast('You do not have permission to delete customers', 'error');
+    openCustomerModal(customer = null) {
+        // Prevent multiple calls
+        if (document.getElementById('customer-modal').style.display === 'block') {
             return;
         }
+        
+        this.editingCustomer = customer;
+        const modal = document.getElementById('customer-modal');
+        const title = document.getElementById('modal-title');
+        const form = document.getElementById('customer-form');
+        const saveBtn = document.getElementById('save-customer-btn');
 
-        const customer = this.customers.find(c => c.customer_id === customerId);
-        if (!customer) return;
+        // Clear form errors
+        document.getElementById('form-errors').style.display = 'none';
 
-        const confirmed = confirm(`Are you sure you want to delete customer "${customer.name}"?\n\nThis action cannot be undone.`);
-        if (!confirmed) return;
+        if (customer) {
+            // Edit mode
+            title.textContent = 'Edit Customer';
+            saveBtn.textContent = 'Update Customer';
+            
+            // Populate fields directly
+            document.getElementById('customer-id').value = customer.customer_id;
+            document.getElementById('customer-id').readOnly = true;
+            document.getElementById('customer-id').style.backgroundColor = '#f8f9fa';
+            document.getElementById('customer-id').style.cursor = 'not-allowed';
+            document.getElementById('customer-id').style.color = '#6c757d';
+            
+            form.querySelector('input[name="name"]').value = customer.name || '';
+            form.querySelector('input[name="mobile"]').value = customer.mobile || '';
+            
+        } else {
+            // Add mode - reset form first
+            form.reset();
+            title.textContent = 'Add New Customer';
+            saveBtn.textContent = 'Save Customer';
+            
+            // Generate new customer ID immediately
+            const customerId = this.getNextCustomerIdSync();
+            document.getElementById('customer-id').value = customerId;
+            document.getElementById('customer-id').readOnly = false;
+            document.getElementById('customer-id').style.backgroundColor = '';
+            document.getElementById('customer-id').style.cursor = '';
+            document.getElementById('customer-id').style.color = '';
+        }
 
+        modal.style.display = 'block';
+        
+        // Focus on the name field
+        const nameField = form.querySelector('input[name="name"]');
+        nameField.focus();
+        nameField.select(); // Select any existing text for immediate replacement
+    }
+
+    getNextCustomerIdSync() {
         try {
-            window.Utils.showLoader();
-            await this.db.deleteCustomer(customerId);
-            await this.loadCustomers();
-            window.Utils.showToast('Customer deleted successfully', 'success');
+            if (this.customers.length === 0) {
+                return '100001';
+            }
+            
+            // Get the highest customer ID from current loaded customers (synchronous)
+            const highestId = Math.max(...this.customers.map(c => parseInt(c.customer_id)));
+            return (highestId + 1).toString().padStart(6, '0');
         } catch (error) {
-            console.error('Error deleting customer:', error);
-            window.Utils.showToast('Failed to delete customer', 'error');
-        } finally {
-            window.Utils.hideLoader();
+            console.error('Error generating customer ID:', error);
+            return '100001';
         }
     }
 
-    triggerSale(customerId) {
-        // Navigate to sales module with customer pre-selected
-        window.App.navigateTo('sales', { customerId, action: 'new' });
-    }
-
-    triggerService(customerId) {
-        // Navigate to service module with customer pre-selected
-        window.App.navigateTo('service', { customerId, action: 'new' });
-    }
-
-    triggerInstantService(customerId) {
-        // Navigate to service module with customer pre-selected for instant service
-        window.App.navigateTo('service', { customerId, action: 'instant' });
-    }
-
-    async exportCustomers() {
+    async handleFormSubmit(e) {
+        e.preventDefault();
+        
         try {
-            const dataToExport = this.filteredCustomers.map((customer, index) => ({
-                'S.No': index + 1,
-                'Customer ID': customer.customer_id,
-                'Name': customer.name,
-                'Mobile Number': customer.mobile_number,
-                'Email': customer.email || '',
-                'Address': customer.address || '',
-                'Creation Date': window.Utils.formatDate(customer.creation_date),
-                'Net Value': customer.net_value,
-                'Created By': customer.created_by
-            }));
+            // Simple form data collection
+            const form = e.target;
+            const formData = {
+                customerId: form.querySelector('#customer-id').value.trim(),
+                name: form.querySelector('input[name="name"]').value.trim(),
+                mobile: form.querySelector('input[name="mobile"]').value.trim()
+            };
+            
+            // Basic validation
+            if (!formData.customerId || !formData.name || !formData.mobile) {
+                this.showFormErrors({ general: 'All fields are required' });
+                return;
+            }
 
-            const filename = `customers_export_${window.Utils.formatDate(new Date(), 'YYYY-MM-DD')}.csv`;
-            window.Utils.exportToCSV(dataToExport, filename);
-            window.Utils.showToast('Customers exported successfully', 'success');
+            if (formData.customerId.length !== 6 || !/^\d{6}$/.test(formData.customerId)) {
+                this.showFormErrors({ general: 'Customer ID must be 6 digits' });
+                return;
+            }
+
+            if (formData.mobile.length < 10) {
+                this.showFormErrors({ general: 'Mobile number must be at least 10 digits' });
+                return;
+            }
+
+            // Check for duplicates
+            const existingCustomer = await app.get(`
+                SELECT id FROM customers 
+                WHERE (customer_id = ? OR mobile = ?) 
+                ${this.editingCustomer ? 'AND id != ?' : ''}
+            `, this.editingCustomer 
+                ? [formData.customerId, formData.mobile, this.editingCustomer.id]
+                : [formData.customerId, formData.mobile]
+            );
+
+            if (existingCustomer) {
+                this.showFormErrors({ general: 'Customer ID or mobile number already exists' });
+                return;
+            }
+
+            // Disable save button
+            const saveBtn = document.getElementById('save-customer-btn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+
+            if (this.editingCustomer) {
+                await this.updateCustomer(this.editingCustomer.id, formData);
+            } else {
+                await this.createCustomer(formData);
+            }
+
+            document.getElementById('customer-modal').style.display = 'none';
+            await this.loadCustomers();
+            
+            Utils.showSuccess(this.editingCustomer ? 'Customer updated successfully' : 'Customer created successfully');
+            
         } catch (error) {
-            console.error('Error exporting customers:', error);
-            window.Utils.showToast('Failed to export customers', 'error');
+            console.error('Form submission error:', error);
+            this.showFormErrors({ general: 'Failed to save customer. Please try again.' });
+        } finally {
+            // Re-enable save button
+            const saveBtn = document.getElementById('save-customer-btn');
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = this.editingCustomer ? 'Update Customer' : 'Save Customer';
+            }
+        }
+    }
+
+    async createCustomer(data) {
+        const currentUser = await Auth.getCurrentUser();
+        const username = currentUser ? currentUser.username : 'system';
+        
+        const result = await app.run(`
+            INSERT INTO customers (customer_id, name, mobile, created_by, created_at)
+            VALUES (?, ?, ?, ?, ?)
+        `, [
+            data.customerId,
+            data.name,
+            data.mobile,
+            username,
+            new Date().toISOString()
+        ]);
+
+        await Audit.logCreate('customers', result.id, data, `Created customer: ${data.name} (${data.customerId})`);
+        return result;
+    }
+
+    async updateCustomer(id, data) {
+        const oldData = this.customers.find(c => c.id === id);
+        
+        await app.run(`
+            UPDATE customers 
+            SET customer_id = ?, name = ?, mobile = ?, updated_at = ?
+            WHERE id = ?
+        `, [
+            data.customerId,
+            data.name,
+            data.mobile,
+            new Date().toISOString(),
+            id
+        ]);
+
+        await Audit.logUpdate('customers', id, oldData, data, `Updated customer: ${data.name} (${data.customerId})`);
+        return true;
+    }
+
+    editCustomer(id) {
+        const customer = this.customers.find(c => c.id === id);
+        if (customer) {
+            this.openCustomerModal(customer);
+        }
+    }
+
+    deleteCustomer(id) {
+        const customer = this.customers.find(c => c.id === id);
+        if (!customer) return;
+
+        const modal = document.getElementById('confirm-modal');
+        const message = document.getElementById('confirm-message');
+        const confirmBtn = document.getElementById('confirm-action-btn');
+
+        message.textContent = `Are you sure you want to delete "${customer.name}"? This action cannot be undone.`;
+        
+        confirmBtn.onclick = async () => {
+            try {
+                // Disable button to prevent double clicks
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = 'Deleting...';
+                
+                await app.run('DELETE FROM customers WHERE id = ?', [id]);
+                await Audit.logDelete('customers', id, customer, `Deleted customer: ${customer.name} (${customer.customer_id})`);
+                
+                modal.style.display = 'none';
+                await this.loadCustomers();
+                Utils.showSuccess('Customer deleted successfully');
+                
+            } catch (error) {
+                console.error('Delete error:', error);
+                Utils.showError('Failed to delete customer');
+            } finally {
+                // Re-enable button
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'Delete';
+            }
+        };
+
+        modal.style.display = 'block';
+    }
+
+    // Action methods for sales and services
+    createSale(customerId) {
+        // This will be implemented when we create the sales module
+        console.log('Create sale for customer:', customerId);
+        Utils.showError('Sales module not implemented yet');
+    }
+
+    createService(customerId) {
+        // This will be implemented when we create the service module
+        console.log('Create service for customer:', customerId);
+        Utils.showError('Service module not implemented yet');
+    }
+
+    createInstantService(customerId) {
+        // This will be implemented when we create the service module
+        console.log('Create instant service for customer:', customerId);
+        Utils.showError('Instant service module not implemented yet');
+    }
+
+    showFormErrors(errors) {
+        const errorsDiv = document.getElementById('form-errors');
+        const errorMessages = Object.values(errors).map(error => `<div class="error-item">• ${error}</div>`).join('');
+        
+        errorsDiv.innerHTML = `
+            <div class="alert alert-error">
+                <strong>Please fix the following errors:</strong>
+                ${errorMessages}
+            </div>
+        `;
+        errorsDiv.style.display = 'block';
+    }
+
+    async refresh() {
+        try {
+            await this.loadCustomers();
+        } catch (error) {
+            console.error('Customers refresh error:', error);
+            Utils.showError('Failed to refresh customers');
         }
     }
 }
 
-// Make module globally available
-window.CustomersModule = CustomersModule;
+// Register the module
+const customersModule = new CustomersModule();
+if (typeof app !== 'undefined') {
+    app.registerModule('customers', customersModule);
+}

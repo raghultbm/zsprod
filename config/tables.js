@@ -1,206 +1,228 @@
 // Database table schemas for ZEDSON Watchcraft
-window.Tables = {
+module.exports = {
     // Users table
-    users: `CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        user_type TEXT NOT NULL CHECK (user_type IN ('admin', 'owner', 'manager')),
-        is_active INTEGER DEFAULT 1,
-        permissions TEXT DEFAULT '{}',
-        created_by TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_by TEXT,
-        updated_at DATETIME
-    )`,
+    users: `
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username VARCHAR(50) UNIQUE NOT NULL,
+            password VARCHAR(255) NOT NULL,
+            user_type VARCHAR(20) NOT NULL CHECK (user_type IN ('admin', 'owner', 'manager')),
+            permissions TEXT,
+            is_active BOOLEAN DEFAULT 1,
+            created_by VARCHAR(50),
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `,
 
     // Customers table
-    customers: `CREATE TABLE IF NOT EXISTS customers (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        customer_id TEXT UNIQUE NOT NULL,
-        name TEXT NOT NULL,
-        mobile_number TEXT NOT NULL,
-        email TEXT,
-        address TEXT,
-        creation_date DATE NOT NULL,
-        net_value DECIMAL(10,2) DEFAULT 0,
-        is_active INTEGER DEFAULT 1,
-        created_by TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_by TEXT,
-        updated_at DATETIME
-    )`,
+    customers: `
+        CREATE TABLE IF NOT EXISTS customers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id VARCHAR(10) UNIQUE NOT NULL,
+            name VARCHAR(100) NOT NULL,
+            mobile VARCHAR(15) NOT NULL,
+            net_value DECIMAL(10,2) DEFAULT 0,
+            created_by VARCHAR(50),
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `,
+
+    // Categories for inventory classification
+    categories: `
+        CREATE TABLE IF NOT EXISTS categories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name VARCHAR(50) NOT NULL,
+            type VARCHAR(20) NOT NULL,
+            config TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `,
 
     // Inventory table
-    inventory: `CREATE TABLE IF NOT EXISTS inventory (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        code TEXT NOT NULL,
-        date DATE NOT NULL,
-        category TEXT NOT NULL,
-        brand TEXT,
-        gender TEXT,
-        type TEXT,
-        strap_material TEXT,
-        material TEXT,
-        size TEXT,
-        amount DECIMAL(10,2) NOT NULL,
-        warranty_period INTEGER DEFAULT 0,
-        location TEXT DEFAULT 'Semmancheri',
-        comments TEXT,
-        is_sold INTEGER DEFAULT 0,
-        sold_date DATE,
-        ageing_days INTEGER DEFAULT 0,
-        particulars TEXT,
-        created_by TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_by TEXT,
-        updated_at DATETIME
-    )`,
+    inventory: `
+        CREATE TABLE IF NOT EXISTS inventory (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code VARCHAR(50) NOT NULL,
+            date DATE NOT NULL,
+            category VARCHAR(50) NOT NULL,
+            brand VARCHAR(50),
+            gender VARCHAR(10),
+            type VARCHAR(20),
+            strap VARCHAR(20),
+            material VARCHAR(20),
+            size VARCHAR(10),
+            particulars TEXT,
+            amount DECIMAL(10,2) NOT NULL,
+            warranty_period INTEGER DEFAULT 0,
+            location VARCHAR(50) DEFAULT 'Semmancheri',
+            comments TEXT,
+            is_sold BOOLEAN DEFAULT 0,
+            created_by VARCHAR(50),
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `,
+
+    // Inventory history for tracking changes
+    inventory_history: `
+        CREATE TABLE IF NOT EXISTS inventory_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            inventory_id INTEGER NOT NULL,
+            field_name VARCHAR(50) NOT NULL,
+            old_value TEXT,
+            new_value TEXT,
+            comments TEXT,
+            changed_by VARCHAR(50),
+            changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (inventory_id) REFERENCES inventory(id)
+        )
+    `,
 
     // Sales table
-    sales: `CREATE TABLE IF NOT EXISTS sales (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        customer_id TEXT NOT NULL,
-        sale_date DATE NOT NULL,
-        invoice_number TEXT UNIQUE NOT NULL,
-        items TEXT NOT NULL,
-        subtotal DECIMAL(10,2) NOT NULL,
-        discount_type TEXT,
-        discount_value DECIMAL(10,2) DEFAULT 0,
-        discount_amount DECIMAL(10,2) DEFAULT 0,
-        advance_amount DECIMAL(10,2) DEFAULT 0,
-        balance_amount DECIMAL(10,2) DEFAULT 0,
-        total_amount DECIMAL(10,2) NOT NULL,
-        payment_modes TEXT NOT NULL,
-        status TEXT DEFAULT 'completed',
-        created_by TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_by TEXT,
-        updated_at DATETIME,
-        FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
-    )`,
+    sales: `
+        CREATE TABLE IF NOT EXISTS sales (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            sale_date DATE NOT NULL,
+            inventory_ids TEXT NOT NULL,
+            particulars TEXT,
+            subtotal DECIMAL(10,2) NOT NULL,
+            discount_type VARCHAR(20),
+            discount_value DECIMAL(10,2) DEFAULT 0,
+            discount_amount DECIMAL(10,2) DEFAULT 0,
+            advance_amount DECIMAL(10,2) DEFAULT 0,
+            balance_amount DECIMAL(10,2) DEFAULT 0,
+            total_amount DECIMAL(10,2) NOT NULL,
+            payment_mode VARCHAR(50),
+            invoice_number VARCHAR(50) UNIQUE,
+            status VARCHAR(20) DEFAULT 'completed',
+            created_by VARCHAR(50),
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (customer_id) REFERENCES customers(id)
+        )
+    `,
 
     // Services table
-    services: `CREATE TABLE IF NOT EXISTS services (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        customer_id TEXT NOT NULL,
-        service_date DATE NOT NULL,
-        delivery_date DATE,
-        acknowledgement_number TEXT UNIQUE,
-        invoice_number TEXT UNIQUE,
-        category TEXT NOT NULL,
-        brand TEXT,
-        dial_colour TEXT,
-        gender TEXT,
-        movement_no TEXT,
-        case_material TEXT,
-        strap TEXT,
-        particulars TEXT,
-        issue_type TEXT,
-        advance_amount DECIMAL(10,2) DEFAULT 0,
-        balance_amount DECIMAL(10,2) DEFAULT 0,
-        total_amount DECIMAL(10,2) NOT NULL,
-        payment_modes TEXT,
-        warranty_period INTEGER DEFAULT 0,
-        warranty_expiry_date DATE,
-        image_path TEXT,
-        inventory_used TEXT,
-        status TEXT DEFAULT 'Yet to Start',
-        location TEXT DEFAULT 'Semmancheri',
-        service_type TEXT NOT NULL CHECK (service_type IN ('new', 'instant')),
-        created_by TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_by TEXT,
-        updated_at DATETIME,
-        FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
-    )`,
+    services: `
+        CREATE TABLE IF NOT EXISTS services (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            service_type VARCHAR(20) NOT NULL CHECK (service_type IN ('new', 'instant')),
+            service_date DATE NOT NULL,
+            delivery_date DATE,
+            category VARCHAR(50),
+            brand VARCHAR(50),
+            dial_colour VARCHAR(50),
+            gender VARCHAR(10),
+            movement_no VARCHAR(50),
+            case_material VARCHAR(50),
+            strap VARCHAR(50),
+            particulars TEXT,
+            issue_type VARCHAR(50),
+            advance_amount DECIMAL(10,2) DEFAULT 0,
+            balance_amount DECIMAL(10,2) DEFAULT 0,
+            amount DECIMAL(10,2) NOT NULL,
+            payment_mode VARCHAR(50),
+            warranty_period INTEGER DEFAULT 0,
+            warranty_expiry DATE,
+            inventory_used TEXT,
+            image_path VARCHAR(255),
+            acknowledgement_number VARCHAR(50),
+            invoice_number VARCHAR(50),
+            status VARCHAR(50) DEFAULT 'Yet to Start',
+            location VARCHAR(50) DEFAULT 'Semmancheri',
+            comments TEXT,
+            created_by VARCHAR(50),
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (customer_id) REFERENCES customers(id)
+        )
+    `,
 
-    // Invoices table (consolidated for both sales and services)
-    invoices: `CREATE TABLE IF NOT EXISTS invoices (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        invoice_number TEXT UNIQUE NOT NULL,
-        invoice_type TEXT NOT NULL CHECK (invoice_type IN ('sale', 'service')),
-        customer_id TEXT NOT NULL,
-        customer_name TEXT NOT NULL,
-        customer_mobile TEXT NOT NULL,
-        invoice_date DATE NOT NULL,
-        items TEXT NOT NULL,
-        subtotal DECIMAL(10,2) NOT NULL,
-        discount_amount DECIMAL(10,2) DEFAULT 0,
-        total_amount DECIMAL(10,2) NOT NULL,
-        payment_modes TEXT NOT NULL,
-        reference_id INTEGER NOT NULL,
-        created_by TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
-    )`,
+    // Service history for status tracking
+    service_history: `
+        CREATE TABLE IF NOT EXISTS service_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            service_id INTEGER NOT NULL,
+            field_name VARCHAR(50) NOT NULL,
+            old_value TEXT,
+            new_value TEXT,
+            comments TEXT,
+            changed_by VARCHAR(50),
+            changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (service_id) REFERENCES services(id)
+        )
+    `,
+
+    // Invoices table (unified for sales and services)
+    invoices: `
+        CREATE TABLE IF NOT EXISTS invoices (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            invoice_number VARCHAR(50) UNIQUE NOT NULL,
+            invoice_type VARCHAR(20) NOT NULL CHECK (invoice_type IN ('sale', 'service')),
+            reference_id INTEGER NOT NULL,
+            customer_id INTEGER NOT NULL,
+            date DATE NOT NULL,
+            amount DECIMAL(10,2) NOT NULL,
+            is_sent BOOLEAN DEFAULT 0,
+            created_by VARCHAR(50),
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (customer_id) REFERENCES customers(id)
+        )
+    `,
 
     // Expenses table
-    expenses: `CREATE TABLE IF NOT EXISTS expenses (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        date DATE NOT NULL,
-        description TEXT NOT NULL,
-        amount DECIMAL(10,2) NOT NULL,
-        payment_mode TEXT NOT NULL,
-        category TEXT,
-        created_by TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_by TEXT,
-        updated_at DATETIME
-    )`,
+    expenses: `
+        CREATE TABLE IF NOT EXISTS expenses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date DATE NOT NULL,
+            description TEXT NOT NULL,
+            amount DECIMAL(10,2) NOT NULL,
+            payment_mode VARCHAR(50),
+            created_by VARCHAR(50),
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `,
 
-    // Ledger table (daily summary)
-    ledger: `CREATE TABLE IF NOT EXISTS ledger (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        date DATE UNIQUE NOT NULL,
-        sales_count INTEGER DEFAULT 0,
-        sales_amount DECIMAL(10,2) DEFAULT 0,
-        service_count INTEGER DEFAULT 0,
-        service_amount DECIMAL(10,2) DEFAULT 0,
-        total_revenue DECIMAL(10,2) DEFAULT 0,
-        total_expenses DECIMAL(10,2) DEFAULT 0,
-        net_amount DECIMAL(10,2) DEFAULT 0,
-        is_closed INTEGER DEFAULT 0,
-        closed_by TEXT,
-        closed_at DATETIME,
-        created_by TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_by TEXT,
-        updated_at DATETIME
-    )`,
+    // Ledger table for daily summaries
+    ledger: `
+        CREATE TABLE IF NOT EXISTS ledger (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date DATE UNIQUE NOT NULL,
+            sales_amount DECIMAL(10,2) DEFAULT 0,
+            service_amount DECIMAL(10,2) DEFAULT 0,
+            expense_amount DECIMAL(10,2) DEFAULT 0,
+            net_amount DECIMAL(10,2) DEFAULT 0,
+            is_closed BOOLEAN DEFAULT 0,
+            closed_by VARCHAR(50),
+            closed_at DATETIME,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `,
 
-    // Audit log table
-    audit_log: `CREATE TABLE IF NOT EXISTS audit_log (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        table_name TEXT NOT NULL,
-        record_id TEXT NOT NULL,
-        action TEXT NOT NULL,
-        old_values TEXT,
-        new_values TEXT,
-        user_name TEXT NOT NULL,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`,
+    // Audit log table for tracking all operations
+    audit_log: `
+        CREATE TABLE IF NOT EXISTS audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            action VARCHAR(50) NOT NULL,
+            table_name VARCHAR(50) NOT NULL,
+            record_id INTEGER,
+            details TEXT,
+            user_name VARCHAR(50),
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `,
 
-    // Brands table (for autocomplete)
-    brands: `CREATE TABLE IF NOT EXISTS brands (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT UNIQUE NOT NULL,
-        category TEXT,
-        is_active INTEGER DEFAULT 1,
-        created_by TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`,
-
-    // History table (for inventory and service updates)
-    history: `CREATE TABLE IF NOT EXISTS history (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        table_name TEXT NOT NULL,
-        record_id INTEGER NOT NULL,
-        field_name TEXT NOT NULL,
-        old_value TEXT,
-        new_value TEXT,
-        comments TEXT,
-        updated_by TEXT NOT NULL,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`
+    // Sequences table for auto-generated numbers
+    sequences: `
+        CREATE TABLE IF NOT EXISTS sequences (
+            name VARCHAR(50) PRIMARY KEY,
+            current_value INTEGER NOT NULL DEFAULT 0,
+            prefix VARCHAR(10),
+            suffix VARCHAR(10),
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `
 };
