@@ -4,22 +4,35 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ZEDSON Watchcraft</title>
+    <!-- Base Styles -->
     <link rel="stylesheet" href="styles/base/variables.css">
     <link rel="stylesheet" href="styles/base/reset.css">
     <link rel="stylesheet" href="styles/base/typography.css">
+    
+    <!-- Component Styles -->
     <link rel="stylesheet" href="styles/components/buttons.css">
     <link rel="stylesheet" href="styles/components/forms.css">
     <link rel="stylesheet" href="styles/components/tables.css">
     <link rel="stylesheet" href="styles/components/modals.css">
+    
+    <!-- Layout Styles -->
     <link rel="stylesheet" href="styles/layout/header.css">
     <link rel="stylesheet" href="styles/layout/sidebar.css">
     <link rel="stylesheet" href="styles/layout/main.css">
+    
+    <!-- Module Styles -->
     <link rel="stylesheet" href="styles/modules/dashboard.css">
     <link rel="stylesheet" href="styles/modules/customers.css">
     <link rel="stylesheet" href="styles/modules/inventory.css">
+    <link rel="stylesheet" href="styles/modules/sales.css">
+    <link rel="stylesheet" href="styles/modules/service.css">
+    <link rel="stylesheet" href="styles/modules/invoices.css">
+    <link rel="stylesheet" href="styles/modules/expense.css">
+    <link rel="stylesheet" href="styles/modules/users.css">
+    
+    <!-- Utility Styles -->
     <link rel="stylesheet" href="styles/utilities/spacing.css">
     <link rel="stylesheet" href="styles/utilities/responsive.css">
-    <link rel="stylesheet" href="styles/modules/users.css">
 </head>
 <body>
     <div id="app">
@@ -29,19 +42,27 @@
                 <div class="logo-container">
                     <img src="assets/logo.png" alt="ZEDSON Watchcraft" class="login-logo">
                     <h1>ZEDSON Watchcraft</h1>
+                    <p style="color: var(--text-muted); margin-top: 0.5rem;">Watch Shop Management System</p>
                 </div>
                 <form id="login-form" class="login-form">
                     <div class="form-group">
-                        <label for="username">Username</label>
-                        <input type="text" id="username" name="username" required>
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" id="username" name="username" class="form-input" 
+                               placeholder="Enter your username" required autocomplete="username">
                     </div>
                     <div class="form-group">
-                        <label for="password">Password</label>
-                        <input type="password" id="password" name="password" required>
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" id="password" name="password" class="form-input" 
+                               placeholder="Enter your password" required autocomplete="current-password">
                     </div>
-                    <button type="submit" class="btn btn-primary login-btn">Login</button>
+                    <button type="submit" class="btn btn-primary login-btn">
+                        <span>🔐</span> Login
+                    </button>
                 </form>
                 <div id="login-error" class="error-message" style="display: none;"></div>
+                <div style="text-align: center; margin-top: 1rem; font-size: 0.875rem; color: var(--text-muted);">
+                    Default credentials: admin / admin123
+                </div>
             </div>
         </div>
 
@@ -51,11 +72,22 @@
             <header class="app-header">
                 <div class="header-left">
                     <img src="assets/logo.png" alt="ZEDSON Watchcraft" class="header-logo">
-                    <h1>ZEDSON Watchcraft</h1>
+                    <div>
+                        <h1 style="margin: 0; font-size: 1.5rem;">ZEDSON Watchcraft</h1>
+                        <small style="color: var(--text-muted);">Semmancheri, Chennai</small>
+                    </div>
                 </div>
                 <div class="header-right">
-                    <span id="current-user" class="user-info"></span>
-                    <button id="logout-btn" class="btn btn-secondary">Logout</button>
+                    <div class="user-info-container">
+                        <span id="current-user" class="user-info">Welcome, User</span>
+                        <small id="current-time" style="display: block; font-size: 0.75rem; color: var(--text-muted);"></small>
+                    </div>
+                    <button id="refresh-btn" class="btn btn-secondary btn-sm" title="Refresh Current Module">
+                        🔄
+                    </button>
+                    <button id="logout-btn" class="btn btn-error btn-sm">
+                        <span>🚪</span> Logout
+                    </button>
                 </div>
             </header>
 
@@ -63,15 +95,33 @@
                 <!-- Sidebar Navigation -->
                 <nav class="sidebar">
                     <ul class="nav-menu">
-                        <li><a href="#" data-module="dashboard" class="nav-link active">Dashboard</a></li>
-                        <li><a href="#" data-module="customers" class="nav-link">Customers</a></li>
-                        <li><a href="#" data-module="inventory" class="nav-link">Inventory</a></li>
-                        <li><a href="#" data-module="sales" class="nav-link">Sales</a></li>
-                        <li><a href="#" data-module="service" class="nav-link">Service</a></li>
-                        <li><a href="#" data-module="invoices" class="nav-link">Invoices</a></li>
-                        <li><a href="#" data-module="expense" class="nav-link">Expense</a></li>
-                        <li><a href="#" data-module="ledger" class="nav-link">Ledger</a></li>
-                        <li><a href="#" data-module="users" class="nav-link">User Management</a></li>
+                        <li><a href="#" data-module="dashboard" class="nav-link active">
+                            <span>📊</span> Dashboard
+                        </a></li>
+                        <li><a href="#" data-module="customers" class="nav-link">
+                            <span>👥</span> Customers
+                        </a></li>
+                        <li><a href="#" data-module="inventory" class="nav-link">
+                            <span>📦</span> Inventory
+                        </a></li>
+                        <li><a href="#" data-module="sales" class="nav-link">
+                            <span>💰</span> Sales
+                        </a></li>
+                        <li><a href="#" data-module="service" class="nav-link">
+                            <span>🔧</span> Service
+                        </a></li>
+                        <li><a href="#" data-module="invoices" class="nav-link">
+                            <span>📄</span> Invoices
+                        </a></li>
+                        <li><a href="#" data-module="expense" class="nav-link">
+                            <span>💸</span> Expense
+                        </a></li>
+                        <li><a href="#" data-module="ledger" class="nav-link">
+                            <span>📊</span> Ledger
+                        </a></li>
+                        <li><a href="#" data-module="users" class="nav-link">
+                            <span>👤</span> User Management
+                        </a></li>
                     </ul>
                 </nav>
 
@@ -79,6 +129,13 @@
                 <main class="main-content">
                     <div id="module-content">
                         <!-- Module content will be loaded here -->
+                        <div style="display: flex; align-items: center; justify-content: center; height: 400px; color: var(--text-muted);">
+                            <div style="text-align: center;">
+                                <div style="font-size: 3rem; margin-bottom: 1rem;">⌚</div>
+                                <h3>Welcome to ZEDSON Watchcraft</h3>
+                                <p>Select a module from the sidebar to get started</p>
+                            </div>
+                        </div>
                     </div>
                 </main>
             </div>
@@ -91,16 +148,28 @@
         <p>Loading...</p>
     </div>
 
-    <!-- Scripts -->
-        <script src="config/constants.js"></script>
-        <script src="config/tables.js"></script>
-        <script src="config/categories.js"></script>
-        <script src="config/validators.js"></script>
-        <script src="core/utils.js"></script>
-        <script src="core/auth.js"></script>
-        <script src="core/audit.js"></script>
-        <script src="app.js"></script>
-        <script src="modules/inventory/inventory.js"></script> 
-        <script src="modules/users/users.js"></script>
+    <!-- Toast Notifications Container -->
+    <div id="toast-container" style="position: fixed; top: 20px; right: 20px; z-index: 10000;"></div>
+
+    <!-- Core Scripts - Load in Order -->
+    <script src="config/constants.js"></script>
+    <script src="config/categories.js"></script>
+    <script src="config/validators.js"></script>
+    <script src="core/utils.js"></script>
+    <script src="core/auth.js"></script>
+    <script src="core/audit.js"></script>
+    
+    <!-- Main Application Script -->
+    <script src="app.js"></script>
+    
+    <!-- Module Scripts - Load in Order -->
+    <script src="modules/dashboard/dashboard.js"></script>
+    <script src="modules/customers/customers.js"></script>
+    <script src="modules/inventory/inventory.js"></script>
+    <script src="modules/sales/sales.js"></script>
+    <script src="modules/service/service.js"></script>
+    <script src="modules/invoices/invoices.js"></script>
+    <script src="modules/expense/expense.js"></script>
+    <script src="modules/users/users.js"></script>
 </body>
 </html>
